@@ -1,7 +1,8 @@
 ---
 /**
  * Header mit Hauptnavigation.
- * – Immer mit hellem, deckendem Hintergrund – klar vom Seitenkopf bzw. Startbild abgesetzt.
+ * – Schwebende, runde Leiste auf allen Seiten: dunkel-milchig mit dünnem weißem Rand, Logo im hellen Label,
+ *   aktiver Menüpunkt im weißen Label.
  * – Bleibt bei Seitenwechseln stehen, während der Inhalt seitlich hinein- bzw. hinausgleitet.
  * – Unterhalb von 1100 px Breite: Menü-Button, der ein Vollbild-Menü aus- und einklappt.
  * Menüpunkte kommen aus src/config/navigation.ts, das Verhalten aus src/scripts/site.ts.
@@ -19,6 +20,7 @@ const isCurrent = (href: string) => {
   if (href === '/') return currentPath === '/';
   return currentPath.startsWith(href);
 };
+const hasActiveNav = mainNav.some((item) => isCurrent(item.href));
 ---
 
 <header class="site-header" id="top" data-site-header data-scrolled="false" data-menu-open="false">
@@ -41,6 +43,8 @@ const isCurrent = (href: string) => {
             ))
           }
         </ul>
+        {/* Weißes Label des aktiven Menüpunkts – eigenes Element, damit es beim Seitenwechsel hinübergleiten kann */}
+        {hasActiveNav && <span class="site-nav__indicator" aria-hidden="true"></span>}
       </nav>
 
       <div class="site-header__actions">
@@ -64,7 +68,6 @@ const isCurrent = (href: string) => {
         </button>
       </div>
     </div>
-    <span class="site-header__progress" aria-hidden="true"></span>
   </div>
 
   <div class="mobile-menu" id="mobile-menu" data-mobile-menu data-tone="dark">
@@ -100,140 +103,210 @@ const isCurrent = (href: string) => {
 
 <style>
   .site-header {
-    /* Deckender, heller Header – klar vom dunklen Startbild bzw. Seitenkopf abgesetzt */
-    --header-fg: var(--blue-950);
-    --header-fg-muted: var(--gray-600);
-    --header-bg: #ffffff;
-    --header-border: var(--gray-200);
-    --header-shadow: 0 1px 0 rgb(7 23 44 / 0.04), 0 10px 30px -18px rgb(7 23 44 / 0.35);
-    --header-accent: var(--blue-600);
+    /* Schwebende, runde Leiste – dunkel und milchig, mit dünnem weißen Rand (wie die Plakette am Seitenende) */
+    --header-fg: #ffffff;
+    --header-fg-muted: rgb(255 255 255 / 0.72);
+    --header-bg: rgb(var(--glass-dark));
+    --header-border: rgb(255 255 255 / 0.55);
+    --header-accent: var(--blue-300);
     --header-h: var(--header-height);
+    /* Innenabstand der Leiste – oben, unten, links und rechts gleich groß */
+    --header-pad: 0.8rem;
+    --header-item-h: 2.95rem;
+    --header-bar-h: calc(var(--header-item-h) + var(--header-pad) * 2);
+    --header-morph: 600ms var(--ease-in-out);
     --color-heading: var(--header-fg);
     --color-text-muted: var(--header-fg-muted);
     position: fixed;
     inset: 0 0 auto;
     z-index: var(--z-header);
+    padding: clamp(0.5rem, 0.3rem + 0.8vw, 0.9rem) clamp(0.5rem, 0.2rem + 0.8vw, 1rem) 0;
+    pointer-events: none;
+    transition: padding var(--header-morph);
     /* Eigene Ebene im Seitenübergang: Der Header gleitet nicht mit */
     view-transition-name: site-header;
   }
 
   .site-header[data-menu-open='true'] {
-    --header-fg: #ffffff;
-    --header-fg-muted: rgb(255 255 255 / 0.7);
-    --header-bg: var(--blue-950);
-    --header-border: rgb(255 255 255 / 0.08);
-    --header-shadow: none;
-    --header-accent: var(--blue-300);
+    --header-bg: var(--blue-900);
+    --header-border: rgb(255 255 255 / 0.25);
   }
 
   .site-header__bar {
     position: relative;
     z-index: 2;
+    pointer-events: auto;
+    max-width: 120rem;
+    margin-inline: auto;
+    border: 1px solid var(--header-border);
+    /* Genau halbe Höhe statt 999px – so lässt sich die Rundung weich auf 0 animieren */
+    border-radius: calc(var(--header-bar-h) / 2 + 1px);
     background: var(--header-bg);
-    border-bottom: 1px solid var(--header-border);
-    box-shadow: var(--header-shadow);
+    box-shadow: 0 14px 34px -20px rgb(7 23 44 / 0.6);
+    -webkit-backdrop-filter: blur(var(--glass-blur));
+    backdrop-filter: blur(var(--glass-blur));
     transition:
-      background-color var(--duration-slow) var(--ease-out),
-      box-shadow var(--duration-slow) var(--ease-out),
-      border-color var(--duration-slow) var(--ease-out);
+      max-width var(--header-morph),
+      border-radius var(--header-morph),
+      border-color var(--header-morph),
+      background-color var(--header-morph),
+      box-shadow var(--header-morph);
   }
 
-  /* Lesefortschritt als feine Linie unter dem Header */
-  .site-header__progress {
-    position: absolute;
-    left: 0;
-    bottom: -1px;
-    width: 100%;
-    height: 2px;
-    background: var(--blue-500);
-    transform: scaleX(var(--page-progress, 0));
-    transform-origin: left center;
-    opacity: 0;
-    transition: opacity var(--duration-base) ease;
+  /* Nach dem Scrollen: Die runde Leiste wird zur durchgehenden, soliden Leiste am oberen Rand */
+  .site-header[data-scrolled='true'] {
+    padding: 0;
   }
 
-  .site-header[data-scrolled='true']:not([data-menu-open='true']) .site-header__progress {
-    opacity: 1;
+  .site-header[data-scrolled='true'] .site-header__bar {
+    max-width: 100%;
+    border-color: transparent transparent rgb(255 255 255 / 0.12);
+    border-radius: 0;
+    background: var(--blue-950);
+    box-shadow: 0 10px 30px -16px rgb(7 23 44 / 0.55);
+  }
+
+  .site-header[data-scrolled='true'][data-menu-open='true'] .site-header__bar {
+    background: var(--blue-900);
   }
 
   .site-header__inner {
     display: flex;
     align-items: center;
-    gap: var(--space-6);
-    height: var(--header-h);
-    max-width: calc(var(--container-wide) + var(--gutter) * 2);
-    margin-inline: auto;
-    padding-inline: var(--gutter);
-    transition: height var(--duration-slow) var(--ease-out);
+    gap: var(--space-8);
+    height: var(--header-bar-h);
+    /* Höhe = Elementhöhe + Innenabstand oben und unten */
+    padding-inline: var(--header-pad);
+    transition: padding var(--header-morph);
   }
 
-  /* Logo */
+  .site-header[data-scrolled='true'] .site-header__inner {
+    padding-inline: clamp(0.8rem, 0.2rem + 1.6vw, 1.75rem);
+  }
+
+  /* Logo mit Schriftzug in einem hellen, runden Label */
   .site-header__brand {
+    --color-heading: var(--blue-950);
+    --color-text-muted: var(--gray-600);
     display: inline-flex;
     flex-shrink: 0;
-    color: var(--header-fg);
+    align-items: center;
+    height: var(--header-item-h);
+    padding: 0 1.1rem 0 0.75rem;
+    color: var(--blue-950);
     text-decoration: none;
-    border-radius: var(--radius-sm);
+    border-radius: 999px;
+    background: #ffffff;
+    transition: background-color var(--duration-base) ease;
   }
 
-  /* Desktop-Navigation */
+  .site-header__brand:hover {
+    background: var(--blue-50);
+  }
+
+  .site-header__brand :global(.logo) {
+    --logo-height: calc(var(--header-item-h) - 0.75rem);
+    gap: 0.6rem;
+  }
+
+  .site-header__brand :global(.logo__text) {
+    padding-left: 0.6rem;
+  }
+
+  .site-header__brand :global(.logo__name) {
+    font-size: 1.05rem;
+  }
+
+  .site-header__brand :global(.logo__sub) {
+    font-size: 0.56rem;
+  }
+
+  /* Desktop-Navigation: Menüpunkte nebeneinander, aktiver Punkt im weißen Label */
   .site-nav {
+    position: relative;
     display: none;
     margin-inline: auto;
   }
 
   .site-nav__list {
+    position: relative;
+    z-index: 1;
+    /* Beschriftungen liegen im Seitenübergang über dem gleitenden Label */
+    view-transition-name: site-nav-labels;
     display: flex;
     align-items: center;
-    gap: clamp(0.25rem, 0.8vw, 0.65rem);
+    gap: clamp(0.1rem, 0.5vw, 0.4rem);
     margin: 0;
     padding: 0;
   }
 
   .site-nav__link {
-    position: relative;
     display: inline-flex;
     align-items: center;
-    padding: 0.6rem 0.75rem;
+    padding: 0.55rem 1rem;
     font-size: var(--text-sm);
     font-weight: var(--weight-medium);
     color: var(--header-fg);
     text-decoration: none;
-    border-radius: var(--radius-sm);
-    transition: color var(--duration-base) ease;
+    border-radius: 999px;
+    transition: background-color var(--duration-base) ease;
   }
 
-  .site-nav__link::after {
-    content: '';
-    position: absolute;
-    left: 0.75rem;
-    right: 0.75rem;
-    bottom: 0.2rem;
-    height: 2px;
-    background: var(--header-accent);
-    transform: scaleX(0);
-    transform-origin: left center;
-    transition: transform var(--duration-slow) var(--ease-out);
+  /* Während eines Seitenübergangs alle Menütexte weiß – siehe „site-nav-labels“ in global.css */
+  :global(html:active-view-transition) .site-nav__link {
+    color: #ffffff;
   }
 
   .site-nav__link:hover {
     color: var(--header-fg);
-  }
-
-  .site-nav__link:hover::after,
-  .site-nav__link[aria-current='page']::after {
-    transform: scaleX(1);
+    background: rgb(255 255 255 / 0.14);
   }
 
   .site-nav__link[aria-current='page'] {
     font-weight: var(--weight-semibold);
+    color: var(--blue-950);
+    background: #ffffff;
+  }
+
+  .site-nav__indicator {
+    display: none;
+  }
+
+  /*
+   * Mit Anker-Positionierung sitzt das weiße Label als eigenes Element unter dem aktiven Menüpunkt.
+   * Beim Seitenwechsel gleitet es dadurch vom alten zum neuen Punkt (Animation: global.css).
+   * Ohne Unterstützung trägt der aktive Link das Label einfach selbst.
+   */
+  @supports (anchor-name: --a) {
+    .site-nav__link[aria-current='page'] {
+      anchor-name: --site-nav-active;
+    }
+
+    .site-nav__link[aria-current='page'],
+    .site-nav__link[aria-current='page']:hover {
+      background: transparent;
+    }
+
+    .site-nav__indicator {
+      position: absolute;
+      z-index: 0;
+      display: block;
+      position-anchor: --site-nav-active;
+      top: anchor(top);
+      right: anchor(right);
+      bottom: anchor(bottom);
+      left: anchor(left);
+      border-radius: 999px;
+      background: #ffffff;
+      view-transition-name: site-nav-indicator;
+    }
   }
 
   /* Aktionen rechts */
   .site-header__actions {
     display: flex;
     align-items: center;
-    gap: var(--space-3);
+    gap: var(--space-4);
     margin-left: auto;
   }
 
@@ -246,7 +319,7 @@ const isCurrent = (href: string) => {
     font-weight: var(--weight-semibold);
     color: var(--header-fg);
     text-decoration: none;
-    border-radius: var(--radius-sm);
+    border-radius: 999px;
   }
 
   .site-header__phone:hover {
@@ -263,7 +336,7 @@ const isCurrent = (href: string) => {
     width: 2.4rem;
     height: 2.4rem;
     font-size: 1.05rem;
-    border-radius: var(--radius-sm);
+    border-radius: 50%;
     color: var(--header-fg);
     box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--header-fg) 30%, transparent);
   }
@@ -278,9 +351,15 @@ const isCurrent = (href: string) => {
     display: none;
   }
 
+  .site-header :global(.site-header__cta.btn) {
+    min-height: var(--header-item-h);
+    border-radius: 999px;
+  }
+
   .site-header :global(.site-header__cta[aria-current='page']) {
-    --btn-bg: var(--blue-800);
-    --btn-border: var(--blue-800);
+    --btn-bg: #ffffff;
+    --btn-fg: var(--blue-950);
+    --btn-border: #ffffff;
   }
 
   .site-header[data-menu-open='true'] :global(.site-header__cta.btn) {
@@ -304,7 +383,7 @@ const isCurrent = (href: string) => {
     color: var(--header-fg);
     background: transparent;
     border: 1.5px solid color-mix(in srgb, var(--header-fg) 40%, transparent);
-    border-radius: var(--radius-button);
+    border-radius: 999px;
     transition:
       background-color var(--duration-base) ease,
       border-color var(--duration-base) ease;
@@ -571,7 +650,6 @@ const isCurrent = (href: string) => {
 
   @media (max-width: 22.5rem) {
     .site-header__brand :global(.logo) {
-      --logo-height: 2.5rem;
       gap: 0.5rem;
     }
 

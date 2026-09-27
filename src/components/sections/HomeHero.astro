@@ -1,22 +1,25 @@
 ---
 /**
- * HomeHero – die Startseite als ein einziger Bildschirm: Foto im Hintergrund (src/assets/images/hero.jpg),
- * links Leistungsversprechen und Eckdaten, rechts die drei Fachbereiche als Kreis (ServiceOrbit).
- * Rechtliche Links stehen am unteren Rand, da die Startseite keinen Footer hat.
+ * HomeHero – die Startseite als ein einziger Bildschirm: helles Foto über die ganze Fläche (src/assets/images/hero.jpg)
+ * mit weicher Vignette. Mittig – hinterlegt nur mit einer kantenlos auslaufenden Unschärfe – Ortszeile, Firmenname,
+ * Kurztext, die drei Fachbereiche als leichte Chips (Links zu den Leistungen) und die beiden Hauptaktionen.
+ * Ganz unten die rechtlichen Links als runde, milchige Plakette im Stil des Headers
+ * (die Startseite hat keinen Footer).
  */
 import { Picture } from 'astro:assets';
 import Button from '@/components/ui/Button.astro';
-import Container from '@/components/ui/Container.astro';
-import Eyebrow from '@/components/ui/Eyebrow.astro';
-import ServiceOrbit from '@/components/sections/ServiceOrbit.astro';
+import Icon from '@/components/ui/Icon.astro';
 import { legalNav } from '@/config/navigation';
 import { site } from '@/config/site';
+import { pillars } from '@/data/services';
 import { findImage } from '@/lib/images';
 
 const heroPhoto = findImage('hero');
+// Reihenfolge der Plakette: Impressum · © Firmenname · Datenschutz
+const [firstLegal, ...otherLegal] = legalNav;
 ---
 
-<section class="hero" data-tone="dark" aria-labelledby="hero-titel">
+<section class="hero" aria-labelledby="hero-titel">
   <div class="hero__bg" aria-hidden="true">
     {
       heroPhoto && (
@@ -34,46 +37,56 @@ const heroPhoto = findImage('hero');
     }
   </div>
 
-  <Container size="wide" class="hero__container">
-    <div class="hero__content">
-      <Eyebrow class="hero__eyebrow">{site.name} · Radolfzell am Bodensee</Eyebrow>
-
-      <h1 class="hero__title" id="hero-titel">
-        Gartenbau, Tiefbau und Straßenbau <span class="hero__title-accent">aus einer Hand.</span>
-      </h1>
-
-      <p class="hero__lead">
-        Seit {site.foundingYear} bauen wir Höfe, Wege, Gärten, Kanäle und Straßen im Landkreis Konstanz – für private
-        Bauherren, Gewerbebetriebe und öffentliche Auftraggeber. {site.claim}.
+  <div class="hero__content">
+    <div class="hero__card">
+      <p class="hero__kicker">
+        <span class="hero__kicker-line" aria-hidden="true"></span>
+        Radolfzell am Bodensee · seit {site.foundingYear}
+        <span class="hero__kicker-line" aria-hidden="true"></span>
       </p>
 
+      <h1 class="hero__title" id="hero-titel">
+        <span class="hero__title-pre">Pflasterarbeiten</span>
+        <span class="hero__title-main">Hildebrand</span>
+      </h1>
+
+      <hr class="hero__rule hero__rule--accent" aria-hidden="true" />
+
+      <p class="hero__lead">
+        Höfe, Wege, Gärten, Kanäle und Straßen – gebaut vom Familienbetrieb für private, gewerbliche und öffentliche
+        Auftraggeber im Landkreis Konstanz.
+      </p>
+
+      <hr class="hero__rule hero__rule--wide" aria-hidden="true" />
+
+      <nav class="hero__pillars" aria-label="Unsere Fachbereiche">
+        <ul role="list">
+          {
+            pillars.map((pillar) => (
+              <li>
+                <a class="hero__pillar" href={`/leistungen/#${pillar.id}`}>
+                  <Icon name={pillar.icon} size="1.05rem" class="hero__pillar-icon" />
+                  {pillar.title}
+                </a>
+              </li>
+            ))
+          }
+        </ul>
+      </nav>
+
+      <hr class="hero__rule hero__rule--mid" aria-hidden="true" />
+
       <div class="hero__actions">
-        <Button href="/leistungen/" variant="light" icon="arrow-right">Unsere Leistungen</Button>
-        <Button href="/kontakt/" variant="outline-light">Kontakt aufnehmen</Button>
+        <Button href="/referenzen/" variant="primary" size="lg" icon="arrow-right">Referenzen</Button>
+        <Button href="/kontakt/" variant="outline-light" size="lg" class="hero__glass-btn">Kontakt aufnehmen</Button>
       </div>
-
-      <dl class="hero__facts">
-        <div class="hero__fact">
-          <dt>Familienbetrieb</dt>
-          <dd>seit {site.foundingYear}</dd>
-        </div>
-        <div class="hero__fact">
-          <dt>Einsatzgebiet</dt>
-          <dd>Landkreis Konstanz</dd>
-        </div>
-        <div class="hero__fact">
-          <dt>Telefon</dt>
-          <dd><a href={site.contact.phoneHref}>{site.contact.phone}</a></dd>
-        </div>
-      </dl>
     </div>
-
-    <ServiceOrbit class="hero__orbit" />
-  </Container>
+  </div>
 
   <footer class="hero__legal">
+    {firstLegal && <a href={firstLegal.href}>{firstLegal.label}</a>}
     <span>© {new Date().getFullYear()} {site.name}</span>
-    {legalNav.map((item) => <a href={item.href}>{item.label}</a>)}
+    {otherLegal.map((item) => <a href={item.href}>{item.label}</a>)}
   </footer>
 </section>
 
@@ -83,15 +96,13 @@ const heroPhoto = findImage('hero');
     isolation: isolate;
     display: flex;
     flex-direction: column;
-    justify-content: center;
     min-height: 100vh;
     min-height: 100svh;
-    padding-top: calc(var(--header-height) + clamp(1.5rem, 4vh, 3rem));
     overflow: hidden;
     background: var(--blue-950);
   }
 
-  /* Hintergrund */
+  /* Foto in voller Helligkeit über die ganze Fläche */
   .hero__bg {
     position: absolute;
     inset: 0;
@@ -105,152 +116,315 @@ const heroPhoto = findImage('hero');
     width: 100%;
     height: 100%;
     object-fit: cover;
-    object-position: 60% 50%;
+    object-position: 60% 45%;
+    animation: hero-zoom 2400ms var(--ease-out) both;
   }
 
-  /* Abdunkelung: links kräftig für gut lesbaren Text, rechts leichter */
+  /*
+   * Vignette: kein runder Radialverlauf, sondern ein sehr breiter, weicher Innenschatten, der den Bildkanten folgt,
+   * plus sanft auslaufende Verläufe oben und unten (mehrere Stufen, damit keine Kante sichtbar wird).
+   */
   .hero__bg::after {
     content: '';
     position: absolute;
     inset: 0;
     background:
-      linear-gradient(90deg, rgb(7 23 44 / 0.94) 0%, rgb(7 23 44 / 0.82) 42%, rgb(7 23 44 / 0.5) 100%),
-      linear-gradient(0deg, rgb(7 23 44 / 0.7) 0%, transparent 35%);
+      linear-gradient(
+        to bottom,
+        rgb(7 23 44 / 0.4) 0%,
+        rgb(7 23 44 / 0.24) 10%,
+        rgb(7 23 44 / 0.11) 21%,
+        rgb(7 23 44 / 0.03) 33%,
+        transparent 42%,
+        transparent 58%,
+        rgb(7 23 44 / 0.05) 68%,
+        rgb(7 23 44 / 0.16) 80%,
+        rgb(7 23 44 / 0.32) 91%,
+        rgb(7 23 44 / 0.48) 100%
+      );
+    box-shadow:
+      inset 0 0 clamp(8rem, 22vmax, 20rem) clamp(1.5rem, 4vmax, 4rem) rgb(7 23 44 / 0.5),
+      inset 0 0 clamp(2rem, 5vmax, 5rem) rgb(7 23 44 / 0.25);
   }
 
-  /* Raster */
-  .hero :global(.hero__container) {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr);
-    gap: var(--space-10);
+  /* Inhalt: mittig, leicht oberhalb der Bildmitte */
+  .hero__content {
+    display: flex;
+    flex: 1;
     align-items: center;
+    justify-content: center;
+    width: 100%;
+    padding: calc(var(--header-height) + clamp(1rem, 3vh, 2.5rem)) var(--gutter) clamp(3rem, 9vh, 6.5rem);
   }
 
-  @media (min-width: 64rem) {
-    .hero :global(.hero__container) {
-      grid-template-columns: minmax(0, 1.1fr) minmax(0, 0.9fr);
-      gap: clamp(2.5rem, 1rem + 4vw, 5.5rem);
+  /* Inhaltsblock ohne sichtbare Fläche und ohne Rand */
+  .hero__card {
+    position: relative;
+    isolation: isolate;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: clamp(0.9rem, 2.2vh, 1.4rem);
+    width: 100%;
+    max-width: 62rem;
+    padding: clamp(1.25rem, 0.75rem + 2vw, 2.25rem) clamp(0.5rem, 2vw, 2rem);
+    text-align: center;
+    color: #ffffff;
+    text-shadow:
+      0 1px 2px rgb(7 23 44 / 0.5),
+      0 2px 12px rgb(7 23 44 / 0.45),
+      0 0 32px rgb(7 23 44 / 0.3);
+  }
+
+  /*
+   * Lesehilfe ohne Kanten: eine leichte Unschärfe mit einem Hauch Dunkelblau direkt hinter dem Text,
+   * die über eine weiche Maske zu allen Seiten hin unsichtbar ausläuft – keine Karte, kein Rand.
+   */
+  .hero__card::before {
+    content: '';
+    position: absolute;
+    inset: -12% -34%;
+    z-index: -1;
+    background: radial-gradient(closest-side, rgb(7 23 44 / 0.26), rgb(7 23 44 / 0.14) 55%, transparent 100%);
+    -webkit-backdrop-filter: blur(3px);
+    backdrop-filter: blur(3px);
+    -webkit-mask-image: radial-gradient(
+      closest-side,
+      #000 0%,
+      #000 38%,
+      rgb(0 0 0 / 0.7) 58%,
+      rgb(0 0 0 / 0.35) 76%,
+      rgb(0 0 0 / 0.1) 90%,
+      transparent 100%
+    );
+    mask-image: radial-gradient(
+      closest-side,
+      #000 0%,
+      #000 38%,
+      rgb(0 0 0 / 0.7) 58%,
+      rgb(0 0 0 / 0.35) 76%,
+      rgb(0 0 0 / 0.1) 90%,
+      transparent 100%
+    );
+    pointer-events: none;
+    animation: hero-haze-in 1200ms var(--ease-out) 100ms both;
+  }
+
+  .hero__kicker {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.9rem;
+    font-size: var(--text-xs);
+    font-weight: var(--weight-bold);
+    letter-spacing: var(--tracking-wider);
+    text-transform: uppercase;
+    color: rgb(255 255 255 / 0.92);
+    animation: hero-rise 800ms var(--ease-out) 150ms both;
+  }
+
+  .hero__kicker-line {
+    width: 2rem;
+    height: 1px;
+    background: currentColor;
+    opacity: 0.7;
+    box-shadow: 0 1px 3px rgb(7 23 44 / 0.4);
+  }
+
+  @media (max-width: 30rem) {
+    .hero__kicker {
+      font-size: 0.68rem;
+    }
+
+    .hero__kicker-line {
+      display: none;
     }
   }
 
-  /* Text */
-  .hero__content {
+  .hero__title {
     display: flex;
     flex-direction: column;
-    align-items: flex-start;
-    gap: clamp(1rem, 2.4vh, 1.5rem);
-  }
-
-  .hero__content > :global(.hero__eyebrow) {
-    animation: hero-rise 700ms var(--ease-out) 100ms both;
-  }
-
-  .hero__title {
-    max-width: 17ch;
-    font-size: clamp(2.25rem, 1.2rem + 2.6vw + 1vh, 4rem);
-    font-weight: var(--weight-bold);
-    line-height: 1.06;
-    letter-spacing: -0.022em;
+    align-items: center;
     color: #ffffff;
-    animation: hero-rise 800ms var(--ease-out) 180ms both;
+    line-height: 1;
+    animation: hero-rise 900ms var(--ease-out) 250ms both;
   }
 
-  .hero__title-accent {
-    color: var(--color-accent);
+  .hero__title-pre {
+    font-size: clamp(1rem, 0.7rem + 1.1vw, 1.6rem);
+    font-weight: var(--weight-semibold);
+    letter-spacing: 0.32em;
+    text-transform: uppercase;
+    /* Ausgleich für den Buchstabenabstand am Wortende */
+    margin-right: -0.32em;
+  }
+
+  .hero__title-main {
+    margin-top: 0.14em;
+    font-size: clamp(2.6rem, 1rem + 6.4vw, 6.5rem);
+    font-weight: var(--weight-bold);
+    letter-spacing: 0.01em;
+    text-transform: uppercase;
   }
 
   .hero__lead {
-    max-width: 36rem;
+    max-width: 48rem;
+    text-wrap: balance;
     font-size: var(--text-lg);
+    font-weight: var(--weight-medium);
     line-height: var(--leading-relaxed);
-    animation: hero-rise 800ms var(--ease-out) 300ms both;
+    color: #ffffff;
+    animation: hero-rise 900ms var(--ease-out) 380ms both;
+  }
+
+  /* Dünne weiße Trennlinien zwischen den Abschnitten – je nach Stelle unterschiedlich lang und kräftig */
+  .hero__rule {
+    flex-shrink: 0;
+    margin: 0;
+    border: 0;
+    border-radius: 999px;
+    box-shadow: 0 1px 6px rgb(7 23 44 / 0.35);
+    animation: hero-rule-in 900ms var(--ease-out) both;
+  }
+
+  /* Kurz und kräftig unter dem Firmennamen */
+  .hero__rule--accent {
+    width: 3.5rem;
+    height: 3px;
+    background: #ffffff;
+    animation-delay: 320ms;
+  }
+
+  /* Lang und fein, an den Enden auslaufend */
+  .hero__rule--wide {
+    width: min(26rem, 80%);
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgb(255 255 255 / 0.7) 22%, rgb(255 255 255 / 0.7) 78%, transparent);
+    box-shadow: none;
+    animation-delay: 440ms;
+  }
+
+  /* Mittellang, etwas zurückhaltender vor den Aktionen */
+  .hero__rule--mid {
+    width: min(12rem, 50%);
+    height: 2px;
+    background: rgb(255 255 255 / 0.55);
+    animation-delay: 680ms;
+  }
+
+  /* Fachbereiche als leichte Glas-Chips */
+  .hero__pillars ul {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: var(--space-2);
+    margin: 0;
+    padding: 0;
+  }
+
+  .hero__pillars li {
+    animation: hero-rise 800ms var(--ease-out) both;
+  }
+
+  .hero__pillars li:nth-child(1) {
+    animation-delay: 480ms;
+  }
+  .hero__pillars li:nth-child(2) {
+    animation-delay: 560ms;
+  }
+  .hero__pillars li:nth-child(3) {
+    animation-delay: 640ms;
+  }
+
+  .hero__pillar {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 1rem 0.5rem 0.8rem;
+    font-size: var(--text-sm);
+    font-weight: var(--weight-semibold);
+    color: #ffffff;
+    text-decoration: none;
+    text-shadow: none;
+    border-radius: 999px;
+    background: rgb(255 255 255 / 0.14);
+    box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.35);
+    -webkit-backdrop-filter: blur(10px);
+    backdrop-filter: blur(10px);
+    transition:
+      background-color var(--duration-base) ease,
+      box-shadow var(--duration-base) ease,
+      transform var(--duration-base) var(--ease-out);
+  }
+
+  .hero__pillar:hover {
+    background: rgb(255 255 255 / 0.26);
+    box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.6);
+    transform: translateY(-1px);
+  }
+
+  .hero__pillar:focus-visible {
+    outline: 2px solid var(--color-focus-inverse);
+    outline-offset: 3px;
+  }
+
+  .hero__pillar :global(.hero__pillar-icon) {
+    color: var(--blue-100);
   }
 
   .hero__actions {
     display: flex;
     flex-wrap: wrap;
+    justify-content: center;
     gap: var(--space-3);
-    animation: hero-rise 800ms var(--ease-out) 420ms both;
+    margin-top: clamp(0.75rem, 3vh, 2rem);
+    text-shadow: none;
+    animation: hero-rise 900ms var(--ease-out) 720ms both;
   }
 
-  .hero__facts {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(9.5rem, 1fr));
-    gap: var(--space-5) var(--space-8);
-    width: 100%;
-    max-width: 38rem;
-    margin: var(--space-4) 0 0;
-    padding-top: var(--space-6);
-    border-top: 1px solid var(--color-border);
-    animation: hero-rise 800ms var(--ease-out) 540ms both;
+  .hero__actions :global(.btn--primary) {
+    box-shadow: 0 12px 28px -12px rgb(7 23 44 / 0.7);
   }
 
-  .hero__fact {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-1);
+  /* Nebenaktion mit milchiger Füllung wie Header und Fußleiste */
+  .hero__actions :global(.hero__glass-btn.btn) {
+    --btn-bg: rgb(var(--glass-dark));
+    --btn-bg-hover: rgb(7 23 44 / 0.72);
+    -webkit-backdrop-filter: blur(var(--glass-blur));
+    backdrop-filter: blur(var(--glass-blur));
   }
 
-  .hero__fact dt {
-    font-size: var(--text-2xs);
-    font-weight: var(--weight-semibold);
-    letter-spacing: var(--tracking-wider);
-    text-transform: uppercase;
-    color: var(--color-text-muted);
-  }
-
-  .hero__fact dd {
-    margin: 0;
-    font-size: var(--text-base);
-    font-weight: var(--weight-semibold);
-    color: #ffffff;
-  }
-
-  .hero__fact dd a {
-    color: inherit;
-    text-decoration: none;
-  }
-
-  .hero__fact dd a:hover {
-    text-decoration: underline;
-  }
-
-  /* Rechtliche Links am unteren Rand */
+  /* Rechtliche Links am unteren Rand – runde, milchige Plakette wie der Header */
   .hero__legal {
     display: flex;
-    margin-top: var(--space-10);
     flex-wrap: wrap;
+    align-self: center;
     justify-content: center;
-    gap: 0.25rem 1.5rem;
-    padding: 0.9rem var(--gutter);
+    gap: 0.25rem 1.25rem;
+    max-width: calc(100% - var(--gutter) * 2);
+    margin-bottom: clamp(1.25rem, 3.5vh, 2rem);
+    padding: 0.55rem 1.4rem;
     font-size: var(--text-xs);
-    color: rgb(255 255 255 / 0.62);
-    border-top: 1px solid rgb(255 255 255 / 0.1);
-  }
-
-  /* Desktop: Startseite als ein Bildschirm, rechtliche Links am unteren Rand */
-  @media (min-width: 64rem) {
-    .hero {
-      padding-bottom: 3.25rem;
-    }
-
-    .hero__legal {
-      position: absolute;
-      left: 0;
-      right: 0;
-      bottom: 0;
-      margin-top: 0;
-    }
+    font-weight: var(--weight-bold);
+    letter-spacing: 0.01em;
+    text-align: center;
+    color: #ffffff;
+    border: 1px solid rgb(255 255 255 / 0.55);
+    border-radius: 999px;
+    background: rgb(var(--glass-dark));
+    -webkit-backdrop-filter: blur(var(--glass-blur));
+    backdrop-filter: blur(var(--glass-blur));
   }
 
   .hero__legal a {
-    color: rgb(255 255 255 / 0.82);
-    text-decoration: none;
+    color: #ffffff;
+    text-decoration: underline;
+    text-decoration-thickness: 1px;
+    text-underline-offset: 0.22em;
   }
 
   .hero__legal a:hover {
-    color: #ffffff;
-    text-decoration: underline;
+    color: var(--blue-100);
+    text-decoration-thickness: 2px;
   }
 
   @keyframes hero-rise {
@@ -264,12 +438,37 @@ const heroPhoto = findImage('hero');
     }
   }
 
+  @keyframes hero-rule-in {
+    from {
+      opacity: 0;
+      scale: 0.2 1;
+    }
+  }
+
+  @keyframes hero-haze-in {
+    from {
+      opacity: 0;
+    }
+  }
+
+  @keyframes hero-zoom {
+    from {
+      scale: 1.06;
+    }
+    to {
+      scale: 1;
+    }
+  }
+
   @media (prefers-reduced-motion: reduce) {
-    .hero__content > :global(*),
+    .hero__bg :global(img),
+    .hero__card::before,
+    .hero__rule,
+    .hero__kicker,
     .hero__title,
     .hero__lead,
-    .hero__actions,
-    .hero__facts {
+    .hero__pillars li,
+    .hero__actions {
       animation: none !important;
     }
   }

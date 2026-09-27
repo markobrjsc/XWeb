@@ -424,12 +424,6 @@ b {
   navigation: auto;
 }
 
-@media (prefers-reduced-motion: reduce) {
-  @view-transition {
-    navigation: none;
-  }
-}
-
 ::view-transition-group(root) {
   animation-duration: var(--duration-page, 560ms);
   animation-timing-function: var(--ease-in-out);
@@ -444,6 +438,38 @@ b {
 
 ::view-transition-old(site-header) {
   display: none;
+}
+
+/* Aktives Menü-Label gleitet zum neuen Menüpunkt */
+::view-transition-group(site-nav-indicator) {
+  animation-duration: 480ms;
+  animation-timing-function: var(--ease-in-out);
+}
+
+/*
+ * Beschriftungen über dem gleitenden Label: Während des Übergangs sind alle Menütexte weiß (Header.astro)
+ * und werden per „difference“ mit dem Label verrechnet – über dem weißen Label dunkel, daneben hell.
+ */
+::view-transition-group(site-nav-indicator) {
+  z-index: 1;
+}
+
+::view-transition-group(site-nav-labels) {
+  z-index: 2;
+  mix-blend-mode: difference;
+}
+
+::view-transition-old(site-nav-labels) {
+  display: none;
+}
+
+::view-transition-new(site-nav-labels) {
+  animation: none;
+}
+
+::view-transition-old(site-nav-indicator),
+::view-transition-new(site-nav-indicator) {
+  height: 100%;
 }
 
 html:active-view-transition-type(page-forward)::view-transition-old(root) {
@@ -465,6 +491,33 @@ html:active-view-transition-type(page-back)::view-transition-new(root) {
 html:active-view-transition-type(page-fade)::view-transition-old(root),
 html:active-view-transition-type(page-fade)::view-transition-new(root) {
   animation-duration: 260ms;
+}
+
+/* „Bewegung reduzieren“ im System: statt Gleiten nur ein kurzes Überblenden */
+@media (prefers-reduced-motion: reduce) {
+  html:active-view-transition-type(page-forward, page-back)::view-transition-old(root) {
+    animation: page-fade-out 220ms ease both;
+  }
+
+  html:active-view-transition-type(page-forward, page-back)::view-transition-new(root) {
+    animation: page-fade-in 220ms ease both;
+  }
+
+  ::view-transition-group(site-nav-indicator) {
+    animation-duration: 180ms;
+  }
+}
+
+@keyframes page-fade-out {
+  to {
+    opacity: 0;
+  }
+}
+
+@keyframes page-fade-in {
+  from {
+    opacity: 0;
+  }
 }
 
 @keyframes page-out-left {

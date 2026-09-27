@@ -1,7 +1,7 @@
 /**
  * Client-Skripte der Website – von Astro gebündelt und per CSP abgesichert ausgeliefert.
  *
- *  Header ........... kompakter Zustand beim Scrollen, ausklappbares Menü, Lesefortschritt
+ *  Header ........... Wechsel zur durchgehenden Leiste beim Scrollen, ausklappbares Menü
  *  Reveal ........... Elemente mit [data-reveal] beim Scrollen einblenden ([data-reveal-group] = gestaffelt)
  *  Zähler ........... [data-count-to] zählt beim Sichtbarwerden hoch
  *  Scroll-Effekte ... [data-parallax] Parallaxe, [data-progress] Fortschrittslinie
@@ -59,13 +59,11 @@ function initHeader() {
     if (event.matches && isOpen()) setOpen(false, false);
   });
 
-  // Kompakter Header + Lesefortschritt
+  // Header: nach dem Scrollen von der runden, schwebenden Leiste zur durchgehenden Leiste oben
   let ticking = false;
   const update = () => {
     const y = window.scrollY;
     header.dataset.scrolled = String(y > 24);
-    const max = document.documentElement.scrollHeight - window.innerHeight;
-    header.style.setProperty('--page-progress', max > 0 ? clamp(y / max).toFixed(4) : '0');
     ticking = false;
   };
 
