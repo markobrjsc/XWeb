@@ -1,44 +1,49 @@
 ---
 /**
- * ReferenceCard – ein Projekt aus src/content/referenzen.
- * Foto: src/assets/images/referenzen/<dateiname>.jpg (oder Feld "image" im Eintrag).
+ * ReferenceCard – ein Projekt aus src/content/referenzen mit Bildergalerie (Carousel).
+ * Fotos: alle Bilder im Ordner src/assets/images/referenzen/<dateiname>/ (oder Feld "gallery").
  */
 import type { CollectionEntry } from 'astro:content';
 import { getPillar } from '@/data/services';
+import { findImages } from '@/lib/images';
 import Badge from './Badge.astro';
 import Card from './Card.astro';
+import Carousel from './Carousel.astro';
 import Icon from './Icon.astro';
-import Media from './Media.astro';
+import MediaPlaceholder from './MediaPlaceholder.astro';
 
 interface Props {
   entry: CollectionEntry<'referenzen'>;
   headingLevel?: 'h2' | 'h3';
+  /** Erstes Foto sofort laden (für Karten im sichtbaren Bereich) */
+  eager?: boolean;
   class?: string;
 }
 
-const { entry, headingLevel: Heading = 'h3', class: className } = Astro.props;
-const { title, category, location, year, summary, services, icon, image, placeholder } = entry.data;
+const { entry, headingLevel: Heading = 'h3', eager = false, class: className } = Astro.props;
+const { title, category, location, year, summary, services, icon, gallery, placeholder } = entry.data;
 const pillar = getPillar(category);
+const photos = findImages(gallery ?? `referenzen/${entry.id}`);
 ---
 
-<Card interactive reveal="up" class:list={['ref-card', className]} data-category={category}>
-  <Media
-    slot="media"
-    name={image ?? `referenzen/${entry.id}`}
-    alt={title}
-    aspect="4 / 3"
-    sizes="(min-width: 64rem) 33vw, (min-width: 40rem) 50vw, 100vw"
-    placeholderIcon={icon}
-  />
+<Card reveal="up" class:list={['ref-card', className]} data-category={category} id={`ref-${entry.id}`}>
+  <div slot="media">
+    {photos.length > 0 ? <Carousel images={photos} label={title} eager={eager} /> : <MediaPlaceholder icon={icon} />}
+  </div>
   <div class="ref-card__meta">
     <Badge tone="soft" icon={pillar.icon} size="sm">{pillar.title}</Badge>
     {placeholder && <Badge tone="outline" size="sm">Beispiel</Badge>}
+    {photos.length > 1 && <span class="ref-card__count"><Icon name="images" size="1em" />{photos.length} Fotos</span>}
   </div>
   <Heading class="ref-card__title">{title}</Heading>
-  <p class="ref-card__location">
-    <Icon name="map-pin" size="1em" />
-    {location}{year && ` · ${year}`}
-  </p>
+  {
+    (location || year) && (
+      <p class="ref-card__location">
+        <Icon name="map-pin" size="1em" />
+        {[location, year].filter(Boolean).join(' · ')}
+      </p>
+    )
+  }
   <p class="ref-card__summary">{summary}</p>
   {
     services.length > 0 && (
@@ -52,10 +57,31 @@ const pillar = getPillar(category);
 </Card>
 
 <style>
+  .ref-card {
+    scroll-margin-top: calc(var(--header-height) + var(--space-6));
+  }
+
+  .ref-card:target {
+    box-shadow:
+      0 0 0 3px var(--blue-500),
+      var(--shadow-lg);
+  }
+
   .ref-card__meta {
     display: flex;
     flex-wrap: wrap;
+    align-items: center;
     gap: var(--space-2);
+  }
+
+  .ref-card__count {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35em;
+    margin-left: auto;
+    font-size: var(--text-2xs);
+    font-weight: var(--weight-semibold);
+    color: var(--color-text-subtle);
   }
 
   .ref-card__title {

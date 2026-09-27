@@ -5,14 +5,18 @@ Statische, sehr schnelle und sichere Website auf Basis von [Astro](https://astro
 
 | Seite            | Pfad                        | Inhalt                                                                        |
 | ---------------- | --------------------------- | ----------------------------------------------------------------------------- |
-| Startseite       | `/`                         | Startbildschirm, 3 Fachbereiche, alle Leistungen, Werte, Ablauf, Referenzen, Karriere |
-| Unser Betrieb    | `/betrieb/`                 | Familienbetrieb, Eckdaten, Auftraggeber, Werte                                |
-| Referenzen       | `/referenzen/`              | Projekte, filterbar nach Fachbereich                                          |
+| Startseite       | `/`                         | Ein Bildschirm ohne Scrollen: Startfoto, Kernaussage, die 3 Fachbereiche als Kreis |
+| Leistungen       | `/leistungen/`              | Alle Leistungen je Fachbereich, je Leistung ein Referenzprojekt, Ablauf        |
+| Unser Betrieb    | `/betrieb/`                 | Familienbetrieb, Team-Fotos, Firmengeschichte, Auftraggeber, Werte           |
+| Referenzen       | `/referenzen/`              | Projekte mit Foto-Galerien (Instagram-Stil), filterbar nach Fachbereich       |
 | Stellenangebote  | `/stellenangebote/`         | Offene Stellen, Vorteile, Bewerbungsablauf                                    |
 | Stellen-Details  | `/stellenangebote/<stelle>/`| Aufgaben, Profil, Bewerbung (mit Google-for-Jobs-Daten)                       |
+| Kontakt          | `/kontakt/`                 | Telefon, E-Mail, Adresse, Bürozeiten, Route, Einsatzgebiet                   |
 | Impressum / Datenschutz | `/impressum/`, `/datenschutz/` | Rechtstexte                                                          |
 
-Jede Seite endet mit dem Kontaktbereich (`#kontakt`), auf den auch der „Kontakt“-Button im Header springt.
+Jeder Menüpunkt ist eine eigene Seite. Beim Wechsel über das Menü gleitet die neue Seite von rechts herein, wenn
+sie im Menü weiter rechts steht – sonst von links (View Transitions; Reihenfolge in `src/config/navigation.ts`
+und `src/lib/inline-scripts.mjs`). Browser ohne Unterstützung wechseln die Seite ganz normal.
 
 ---
 
@@ -44,8 +48,10 @@ Alle Inhalte liegen an **einer** Stelle – Änderungen erscheinen automatisch �
 | Stellenangebote (eine Markdown-Datei je Stelle) | `src/content/stellenangebote/*.md`       |
 | Fotos                                       | `src/assets/images/` (siehe dortige README) |
 
-**Neue Referenz:** Datei in `src/content/referenzen/` kopieren und anpassen. Das Foto
-`src/assets/images/referenzen/<gleicher-dateiname>.jpg` wird automatisch zugeordnet.
+**Neue Referenz:** Datei in `src/content/referenzen/` kopieren und anpassen, die Fotos in den Ordner
+`src/assets/images/referenzen/<gleicher-dateiname>/` legen (`01.jpg`, `02.jpg` … – `01` ist das Titelbild).
+Sie erscheinen automatisch als Galerie. Welche Referenz bei einer Leistung gezeigt wird, steht im Feld
+`reference` in `src/data/services.ts`.
 **Neue Stelle:** Datei in `src/content/stellenangebote/` anlegen; `active: false` blendet eine Stelle aus.
 Beim Build prüft ein Schema (`src/content.config.ts`), ob alle Pflichtangaben vorhanden sind.
 
@@ -53,11 +59,12 @@ Beim Build prüft ein Schema (`src/content.config.ts`), ob alle Pflichtangaben v
 
 ### Fotos
 
-Fotos einfach unter dem passenden Namen in `src/assets/images/` ablegen (z. B. `hero.jpg`, `gartenbau.jpg`,
-`betrieb.jpg`) – sie werden beim Build automatisch in AVIF/WebP und mehreren Größen erzeugt. Solange ein Foto fehlt,
-zeigt die Website eine technische Zeichnung bzw. einen neutralen Platzhalter. Die vollständige Liste der Namen steht in
-[`src/assets/images/README.md`](src/assets/images/README.md). Bitte **nicht** `public/images` verwenden – dort
-werden Bilder nicht optimiert.
+Die Website nutzt verkleinerte Fotos (max. 1800 px) in `src/assets/images/` – beim Build werden daraus automatisch
+AVIF/WebP-Dateien in mehreren Größen erzeugt. Die vollständige Liste steht in
+[`src/assets/images/README.md`](src/assets/images/README.md).
+
+Die **Originalfotos** (ca. 1,6 GB) liegen in `fotos-original/`. Dieser Ordner wird **nicht** veröffentlicht – in
+`public/` würden alle Originale unverändert mit hochgeladen. Bitte keine Fotos nach `public/images` legen.
 
 ---
 
@@ -157,8 +164,9 @@ Soll eine andere Domain verwendet werden: `SITE_URL` in `astro.config.mjs` anpas
 - [ ] **Firmendaten** in `src/config/site.ts` bestätigen lassen – insbesondere die mit „PRÜFEN“ markierten Angaben:
       Gründungsjahr (1989), Firmierung laut Handelsregister, USt-IdNr., Registernummer
 - [ ] **Impressum & Datenschutzerklärung** rechtlich prüfen lassen (Mustertexte, zugeschnitten auf diese Website)
-- [ ] **Referenzen:** Beispiel-Einträge durch echte Projekte ersetzen und `placeholder: true` entfernen
-- [ ] **Fotos** in `src/assets/images/` ergänzen (Startbild, Fachbereiche, Betrieb, Referenzen)
+- [ ] **Referenzen:** Titel und Beschreibungen wurden anhand der Fotos formuliert – bitte prüfen, bei Bedarf
+      Ort und Jahr ergänzen (`location`, `year`)
+- [ ] **Firmengeschichte:** Texte auf der Seite „Unser Betrieb“ bestätigen lassen
 - [ ] **Stellenangebote** inhaltlich prüfen (Aufgaben, Profil, `datePosted`)
 - [ ] Nach dem Livegang: Sitemap in der **Google Search Console** einreichen und das
       **Google-Unternehmensprofil** auf die neue Website verlinken

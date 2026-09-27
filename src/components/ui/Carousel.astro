@@ -1,0 +1,268 @@
+---
+/**
+ * Carousel – Bildergalerie im Stil von Instagram: wischen (Touch), Pfeile (Maus/Tastatur),
+ * Zähler oben rechts („2/13“) und Punkte am unteren Rand.
+ * Ohne JavaScript bleibt die Galerie per Wischen bzw. horizontalem Scrollen bedienbar.
+ *
+ * <Carousel images={findImages('referenzen/hofeinfahrt-betonpflaster')} label="Hofeinfahrt" />
+ * Verhalten: initCarousels() in src/scripts/site.ts
+ */
+import type { ImageMetadata } from 'astro';
+import { Image } from 'astro:assets';
+import Icon from './Icon.astro';
+
+interface Props {
+  images: ImageMetadata[];
+  /** Name der Galerie – für Screenreader und Alternativtexte („<label> – Foto 2 von 13“) */
+  label: string;
+  aspect?: '4 / 3' | '3 / 2' | '16 / 10' | '1 / 1';
+  sizes?: string;
+  /** Erstes Bild sofort laden (nur für Galerien im sichtbaren Bereich) */
+  eager?: boolean;
+  class?: string;
+}
+
+const {
+  images,
+  label,
+  aspect = '4 / 3',
+  sizes = '(min-width: 64rem) 33vw, (min-width: 40rem) 50vw, 100vw',
+  eager = false,
+  class: className,
+} = Astro.props;
+
+const count = images.length;
+const aspectKey = aspect.replace(/\s/g, '');
+---
+
+<div class:list={['carousel', className]} data-carousel data-aspect={aspectKey} data-count={count}>
+  <ul class="carousel__track" role="list" tabindex="0" aria-label={`${label}: ${count} ${count === 1 ? 'Foto' : 'Fotos'}`} data-carousel-track>
+    {
+      images.map((image, index) => (
+        <li class="carousel__slide">
+          <Image
+            src={image}
+            alt={`${label} – Foto ${index + 1} von ${count}`}
+            widths={[480, 800, 1200].filter((w) => w <= image.width)}
+            sizes={sizes}
+            loading={eager && index === 0 ? 'eager' : 'lazy'}
+            decoding="async"
+            class="carousel__img"
+            draggable="false"
+          />
+        </li>
+      ))
+    }
+  </ul>
+
+  {
+    count > 1 && (
+      <>
+        <span class="carousel__counter" aria-hidden="true">
+          <span data-carousel-current>1</span>/{count}
+        </span>
+        <button class="carousel__nav carousel__nav--prev" type="button" data-carousel-prev aria-label="Vorheriges Foto" disabled>
+          <Icon name="chevron-left" size="1.15rem" />
+        </button>
+        <button class="carousel__nav carousel__nav--next" type="button" data-carousel-next aria-label="Nächstes Foto">
+          <Icon name="chevron-right" size="1.15rem" />
+        </button>
+        <div class="carousel__dots" aria-hidden="true">
+          <div class="carousel__dots-strip" data-carousel-dots>
+            {images.map((_, index) => (
+              <span class="carousel__dot" data-dist={Math.min(index, 3)} />
+            ))}
+          </div>
+        </div>
+      </>
+    )
+  }
+</div>
+
+<style>
+  .carousel {
+    --dot: 6px;
+    --dot-gap: 5px;
+    position: relative;
+    isolation: isolate;
+    overflow: hidden;
+    background: var(--gray-100);
+    aspect-ratio: 4 / 3;
+  }
+
+  .carousel[data-aspect='3/2'] {
+    aspect-ratio: 3 / 2;
+  }
+  .carousel[data-aspect='16/10'] {
+    aspect-ratio: 16 / 10;
+  }
+  .carousel[data-aspect='1/1'] {
+    aspect-ratio: 1 / 1;
+  }
+
+  .carousel__track {
+    display: flex;
+    height: 100%;
+    margin: 0;
+    padding: 0;
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+    scroll-snap-type: x mandatory;
+    scrollbar-width: none;
+  }
+
+  .carousel__track::-webkit-scrollbar {
+    display: none;
+  }
+
+  .carousel__track:focus-visible {
+    outline: 3px solid var(--color-focus);
+    outline-offset: -3px;
+  }
+
+  .carousel__slide {
+    flex: 0 0 100%;
+    scroll-snap-align: start;
+    scroll-snap-stop: always;
+  }
+
+  .carousel :global(.carousel__img) {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    user-select: none;
+  }
+
+  /* Zähler „2/13“ – oben rechts, wie bei Instagram */
+  .carousel__counter {
+    position: absolute;
+    top: 0.7rem;
+    right: 0.7rem;
+    z-index: 2;
+    display: none;
+    padding: 0.2rem 0.6rem;
+    font-size: 0.75rem;
+    font-weight: var(--weight-semibold);
+    line-height: 1.4;
+    letter-spacing: 0.02em;
+    font-variant-numeric: tabular-nums;
+    color: #ffffff;
+    border-radius: 999px;
+    background: rgb(7 17 30 / 0.66);
+    -webkit-backdrop-filter: blur(4px);
+    backdrop-filter: blur(4px);
+  }
+
+  /* Pfeile: auf Geräten mit Maus beim Überfahren sichtbar */
+  .carousel__nav {
+    position: absolute;
+    top: 50%;
+    z-index: 2;
+    display: none;
+    place-items: center;
+    width: 2.1rem;
+    height: 2.1rem;
+    padding: 0;
+    color: var(--blue-950);
+    border: 0;
+    border-radius: 50%;
+    background: rgb(255 255 255 / 0.9);
+    box-shadow: 0 4px 14px -4px rgb(0 0 0 / 0.4);
+    translate: 0 -50%;
+    opacity: 0;
+    transition:
+      opacity var(--duration-base) ease,
+      background-color var(--duration-base) ease;
+  }
+
+  .carousel__nav--prev {
+    left: 0.6rem;
+  }
+
+  .carousel__nav--next {
+    right: 0.6rem;
+  }
+
+  .carousel__nav:hover {
+    background: #ffffff;
+  }
+
+  .carousel__nav:disabled {
+    visibility: hidden;
+  }
+
+  /* Punkte am unteren Rand – max. fünf sichtbar, äußere kleiner (Instagram-Stil) */
+  .carousel__dots {
+    position: absolute;
+    left: 50%;
+    bottom: 0.75rem;
+    z-index: 2;
+    display: none;
+    width: calc(var(--dot) * 5 + var(--dot-gap) * 4);
+    padding: 0.3rem 0;
+    overflow: hidden;
+    translate: -50% 0;
+  }
+
+  .carousel[data-count='2'] .carousel__dots {
+    width: calc(var(--dot) * 2 + var(--dot-gap));
+  }
+  .carousel[data-count='3'] .carousel__dots {
+    width: calc(var(--dot) * 3 + var(--dot-gap) * 2);
+  }
+  .carousel[data-count='4'] .carousel__dots {
+    width: calc(var(--dot) * 4 + var(--dot-gap) * 3);
+  }
+
+  .carousel__dots-strip {
+    display: flex;
+    gap: var(--dot-gap);
+    translate: var(--dots-offset, 0px) 0;
+    transition: translate 300ms var(--ease-out);
+  }
+
+  .carousel__dot {
+    flex: 0 0 var(--dot);
+    height: var(--dot);
+    border-radius: 50%;
+    background: rgb(255 255 255 / 0.55);
+    box-shadow: 0 0 3px rgb(0 0 0 / 0.35);
+    transition:
+      scale 300ms var(--ease-out),
+      background-color 300ms ease;
+  }
+
+  .carousel__dot[data-dist='0'] {
+    background: #ffffff;
+  }
+
+  .carousel__dot[data-dist='2'] {
+    scale: 0.7;
+  }
+
+  .carousel__dot[data-dist='3'] {
+    scale: 0.45;
+  }
+
+  :global(.js) .carousel__counter,
+  :global(.js) .carousel__dots {
+    display: block;
+  }
+
+  @media (hover: hover) {
+    :global(.js) .carousel__nav {
+      display: grid;
+    }
+
+    .carousel:hover .carousel__nav,
+    .carousel:focus-within .carousel__nav {
+      opacity: 1;
+    }
+  }
+
+  @media (prefers-reduced-motion: no-preference) {
+    .carousel__track {
+      scroll-behavior: smooth;
+    }
+  }
+</style>

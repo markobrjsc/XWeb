@@ -1,20 +1,30 @@
 ---
 /**
- * ServiceCard – eine einzelne Leistung mit Icon, Beschreibung und Stichpunkten.
+ * ServiceCard – eine einzelne Leistung mit Icon, Beschreibung, Stichpunkten und – falls hinterlegt –
+ * einem Referenzprojekt (Feld `reference` in src/data/services.ts) samt Link „Mehr Referenzen sehen“.
  */
-import type { Service } from '@/data/services';
+import { Image } from 'astro:assets';
+import { getEntry } from 'astro:content';
+import type { PillarId, Service } from '@/data/services';
+import { findImages } from '@/lib/images';
 import Card from './Card.astro';
-import IconBadge from './IconBadge.astro';
 import CheckList from './CheckList.astro';
+import Icon from './Icon.astro';
+import IconBadge from './IconBadge.astro';
 
 interface Props {
   service: Service;
+  pillar: PillarId;
   headingLevel?: 'h3' | 'h4';
   reveal?: boolean | 'up' | 'left' | 'right' | 'zoom' | 'fade';
   class?: string;
 }
 
-const { service, headingLevel: Heading = 'h4', reveal = true, class: className } = Astro.props;
+const { service, pillar, headingLevel: Heading = 'h4', reveal = true, class: className } = Astro.props;
+const reference = service.reference ? await getEntry('referenzen', service.reference) : undefined;
+const photos = reference ? findImages(reference.data.gallery ?? `referenzen/${reference.id}`) : [];
+const cover = photos[0];
+const moreHref = `/referenzen/?bereich=${pillar}`;
 ---
 
 <Card as="article" interactive reveal={reveal} id={`leistung-${service.id}`} class:list={['service', className]}>
@@ -24,6 +34,29 @@ const { service, headingLevel: Heading = 'h4', reveal = true, class: className }
   </div>
   <p class="service__text">{service.description}</p>
   <CheckList items={service.points} size="sm" class="service__points" />
+
+  <div slot="footer" class="service__ref">
+    {
+      reference && (
+        <a class="service__ref-link" href={`${moreHref}#ref-${reference.id}`}>
+          {cover && (
+            <span class="service__ref-media">
+              <Image src={cover} alt="" widths={[400, 800]} sizes="(min-width: 64rem) 20rem, 90vw" class="service__ref-img" />
+              {photos.length > 1 && <span class="service__ref-count">{photos.length} Fotos</span>}
+            </span>
+          )}
+          <span class="service__ref-text">
+            <span class="service__ref-label">Referenz</span>
+            <span class="service__ref-title">{reference.data.title}</span>
+          </span>
+        </a>
+      )
+    }
+    <a class="service__more" href={moreHref}>
+      Mehr Referenzen sehen
+      <Icon name="arrow-right" size="1em" />
+    </a>
+  </div>
 </Card>
 
 <style>
@@ -54,4 +87,102 @@ const { service, headingLevel: Heading = 'h4', reveal = true, class: className }
     border-top: 1px solid var(--color-border);
   }
 
+  .service__ref {
+    display: grid;
+    gap: var(--space-3);
+    padding-top: var(--space-4);
+    border-top: 1px solid var(--color-border);
+  }
+
+  .service__ref-link {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+    padding: var(--space-2) var(--space-2) var(--space-3);
+    color: inherit;
+    text-decoration: none;
+    border-radius: var(--radius-md);
+    background: var(--color-bg-subtle);
+    transition: background-color var(--duration-base) ease;
+  }
+
+  .service__ref-link:hover {
+    background: var(--blue-50);
+  }
+
+  .service__ref-media {
+    position: relative;
+    aspect-ratio: 16 / 9;
+    overflow: hidden;
+    border-radius: var(--radius-sm);
+  }
+
+  .service__ref-media :global(.service__ref-img) {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: scale var(--duration-slow) var(--ease-out);
+  }
+
+  .service__ref-link:hover :global(.service__ref-img) {
+    scale: 1.05;
+  }
+
+  .service__ref-count {
+    position: absolute;
+    top: 0.5rem;
+    right: 0.5rem;
+    padding: 0.1rem 0.5rem;
+    font-size: 0.6875rem;
+    font-weight: var(--weight-semibold);
+    color: #ffffff;
+    border-radius: 999px;
+    background: rgb(7 17 30 / 0.66);
+  }
+
+  .service__ref-text {
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+    min-width: 0;
+    padding-inline: var(--space-2);
+  }
+
+  .service__ref-label {
+    font-size: var(--text-2xs);
+    font-weight: var(--weight-semibold);
+    letter-spacing: var(--tracking-wider);
+    text-transform: uppercase;
+    color: var(--color-text-subtle);
+  }
+
+  .service__ref-title {
+    font-size: var(--text-sm);
+    font-weight: var(--weight-semibold);
+    line-height: 1.3;
+    color: var(--color-heading);
+    overflow-wrap: anywhere;
+    hyphens: auto;
+  }
+
+  .service__ref-link:hover .service__ref-title {
+    color: var(--blue-700);
+    text-decoration: underline;
+  }
+
+  .service__more {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    justify-self: start;
+    font-size: var(--text-sm);
+    font-weight: var(--weight-semibold);
+    color: var(--color-link, var(--blue-700));
+    text-decoration: none;
+  }
+
+  .service__more:hover {
+    text-decoration: underline;
+    text-underline-offset: 0.2em;
+  }
 </style>

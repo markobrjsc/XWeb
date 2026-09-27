@@ -37,11 +37,11 @@ const companyLinks = mainNav.filter((item) => item.href !== '/' && !item.href.in
           {
             pillars.map((pillar) => (
               <li>
-                <a href={`/#${pillar.id}`}>{pillar.title}</a>
+                <a href={`/leistungen/#${pillar.id}`}>{pillar.title}</a>
                 <ul class="site-footer__sublinks" role="list">
                   {pillar.services.map((service) => (
                     <li>
-                      <a href={`/#leistung-${service.id}`}>{service.title}</a>
+                      <a href={`/leistungen/#leistung-${service.id}`}>{service.title}</a>
                     </li>
                   ))}
                 </ul>
@@ -61,7 +61,7 @@ const companyLinks = mainNav.filter((item) => item.href !== '/' && !item.href.in
               </li>
             ))
           }
-          <li><a href="#kontakt">Kontakt</a></li>
+          <li><a href="/kontakt/">Kontakt</a></li>
         </ul>
       </nav>
 
@@ -94,7 +94,7 @@ const companyLinks = mainNav.filter((item) => item.href !== '/' && !item.href.in
     position: relative;
     isolation: isolate;
     overflow: hidden;
-    padding-top: calc(var(--footer-overlap) + clamp(3.5rem, 2.5rem + 3vw, 5rem));
+    padding-top: clamp(3.5rem, 2.5rem + 3vw, 5rem);
     background: linear-gradient(180deg, var(--blue-950) 0%, #051224 100%);
   }
 

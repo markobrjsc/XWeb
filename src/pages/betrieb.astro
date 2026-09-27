@@ -1,21 +1,24 @@
 ---
 /**
- * Unser Betrieb – Familienbetrieb, Werte, Kunden, Ausbildung.
- * Foto des Teams/Betriebs: src/assets/images/betrieb.jpg (wird automatisch eingebunden).
+ * Unser Betrieb – Familienbetrieb, Team, Firmengeschichte, Auftraggeber und Werte.
+ * Fotos: src/assets/images/betrieb/team/ (Team bei der Arbeit) und betrieb/historie/ (Firmengeschichte).
  */
 import BaseLayout from '@/layouts/BaseLayout.astro';
-import CareerTeaser from '@/components/sections/CareerTeaser.astro';
 import PageHero from '@/components/sections/PageHero.astro';
 import StatsBand from '@/components/sections/StatsBand.astro';
 import ValuesSection from '@/components/sections/ValuesSection.astro';
 import CheckList from '@/components/ui/CheckList.astro';
 import FactList from '@/components/ui/FactList.astro';
 import FeatureCard from '@/components/ui/FeatureCard.astro';
-import Media from '@/components/ui/Media.astro';
+import Carousel from '@/components/ui/Carousel.astro';
 import Section from '@/components/ui/Section.astro';
 import SectionHeader from '@/components/ui/SectionHeader.astro';
 import { site } from '@/config/site';
 import { clientGroups } from '@/data/company';
+import { findImages } from '@/lib/images';
+
+const teamPhotos = findImages('betrieb/team');
+const historyPhotos = findImages('betrieb/historie');
 
 const breadcrumbs = [
   { label: 'Start', href: '/' },
@@ -43,6 +46,7 @@ const facts = [
     eyebrow="Unser Betrieb"
     title={'Ein Familienbetrieb mit <span class="accent">festem Fundament.</span>'}
     lead={`Seit ${site.foundingYear} bauen wir im Landkreis Konstanz – mit eigenem Team, moderner Ausstattung und dem Anspruch, jedes Projekt so sorgfältig auszuführen, als wäre es unser eigenes.`}
+    image="betrieb/team/01"
   >
     <FactList slot="aside" title="Auf einen Blick" facts={facts} />
   </PageHero>
@@ -80,8 +84,8 @@ const facts = [
       </div>
 
       <figure class="about__media" data-reveal="fade">
-        <Media name="betrieb" alt="Das Team der Pflasterarbeiten Hildebrand GmbH" aspect="4 / 3" placeholderIcon="users" />
-        <figcaption class="about__caption">Familienbetrieb aus Radolfzell-Liggeringen</figcaption>
+        <Carousel images={teamPhotos} label="Unser Team bei der Arbeit" sizes="(min-width: 64rem) 45vw, 100vw" />
+        <figcaption class="about__caption">Unser Team bei der Arbeit – vom Pflastern bis zum Steinschnitt</figcaption>
       </figure>
     </div>
   </Section>
@@ -106,9 +110,35 @@ const facts = [
     </ul>
   </Section>
 
-  <ValuesSection tone="subtle" showLink={false} />
+  <Section tone="subtle" labelledby="geschichte-titel">
+    <div class="about about--reverse">
+      <figure class="about__media" data-reveal="fade">
+        <Carousel images={historyPhotos} label="Fotos aus der Firmengeschichte" sizes="(min-width: 64rem) 45vw, 100vw" />
+        <figcaption class="about__caption">Aus unserem Fotoarchiv</figcaption>
+      </figure>
+      <div class="about__text" data-reveal>
+        <SectionHeader
+          id="geschichte-titel"
+          eyebrow="Firmengeschichte"
+          title={'Gewachsen mit <span class="accent">der Region.</span>'}
+          reveal={false}
+        />
+        <div class="about__prose">
+          <p>
+            Angefangen hat alles mit Pflasterarbeiten – von Hand verlegt, Stein für Stein. Über die Jahrzehnte sind neue
+            Aufgaben, Maschinen und Mitarbeitende dazugekommen: vom ersten eigenen Kleinbagger bis zum heutigen Fuhrpark für
+            Garten-, Tief- und Straßenbau.
+          </p>
+          <p>
+            Geblieben ist der Anspruch, jede Fläche so zu bauen, dass sie Jahrzehnte hält – und das Vertrauen unserer
+            Kundinnen und Kunden im Landkreis Konstanz, von denen uns viele seit Langem begleiten.
+          </p>
+        </div>
+      </div>
+    </div>
+  </Section>
 
-  <CareerTeaser />
+  <ValuesSection showLink={false} />
 </BaseLayout>
 
 <style>
@@ -122,6 +152,12 @@ const facts = [
     .about {
       grid-template-columns: minmax(0, 1.05fr) minmax(0, 0.95fr);
       gap: clamp(3rem, 1rem + 5vw, 6rem);
+    }
+  }
+
+  @media (min-width: 64rem) {
+    .about--reverse {
+      grid-template-columns: minmax(0, 0.95fr) minmax(0, 1.05fr);
     }
   }
 

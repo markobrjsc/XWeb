@@ -1,13 +1,12 @@
 ---
 /**
- * BaseLayout – Grundgerüst jeder Seite: <head> mit SEO, Header, Inhalt, Kontaktbereich, Footer.
+ * BaseLayout – Grundgerüst jeder Seite: <head> mit SEO, Header, Inhalt, Footer.
  *
  * <BaseLayout title="Referenzen" description="…" breadcrumbs={[…]}> … </BaseLayout>
  */
 import '@/styles/global.css';
 import Footer from '@/components/layout/Footer.astro';
 import Header from '@/components/layout/Header.astro';
-import ContactSection from '@/components/sections/ContactSection.astro';
 import SEOHead from '@/components/seo/SEOHead.astro';
 import { site } from '@/config/site';
 import { type BreadcrumbItem, graph, organizationSchema, webPageSchema, websiteSchema } from '@/lib/seo';
@@ -26,10 +25,10 @@ interface Props {
   noindex?: boolean;
   /** Zusätzliche strukturierte Daten (z. B. JobPosting) */
   schema?: Record<string, unknown>[];
-  /** Kontaktbereich am Seitenende anzeigen */
-  showContact?: boolean;
-  contactTitle?: string;
-  contactText?: string;
+  /** Footer anzeigen – die Startseite ist ein einzelner Bildschirm ohne Footer */
+  footer?: boolean;
+  /** Klasse für <body>, z. B. "page-home" */
+  bodyClass?: string;
 }
 
 const {
@@ -41,9 +40,8 @@ const {
   breadcrumbs,
   noindex = false,
   schema = [],
-  showContact = true,
-  contactTitle,
-  contactText,
+  footer = true,
+  bodyClass,
 } = Astro.props;
 
 const origin = (Astro.site ?? Astro.url).origin;
@@ -63,14 +61,13 @@ const jsonLd = graph([
   <head>
     <SEOHead title={pageTitle} description={description} canonical={canonical} image={image} noindex={noindex} jsonLd={jsonLd} />
   </head>
-  <body>
+  <body class={bodyClass}>
     <a class="skip-link" href="#main">Zum Inhalt springen</a>
     <Header />
     <main id="main" tabindex="-1">
       <slot />
-      {showContact && <ContactSection title={contactTitle} text={contactText} />}
     </main>
-    <Footer />
+    {footer && <Footer />}
 
     <script>
       import '@/scripts/site.ts';

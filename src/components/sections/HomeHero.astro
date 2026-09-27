@@ -1,16 +1,15 @@
 ---
 /**
- * HomeHero – Startbildschirm der Startseite: Leistungsversprechen, Kontakt-Aktionen und
- * ein Lageplan, der Garten-, Tief- und Straßenbau in einer Zeichnung verbindet.
- * Liegt ein Foto unter src/assets/images/hero.(jpg|png|webp) vor, erscheint es automatisch
- * als Hintergrund (abgedunkelt für gute Lesbarkeit).
+ * HomeHero – die Startseite als ein einziger Bildschirm: Foto im Hintergrund (src/assets/images/hero.jpg),
+ * links Leistungsversprechen und Eckdaten, rechts die drei Fachbereiche als Kreis (ServiceOrbit).
+ * Rechtliche Links stehen am unteren Rand, da die Startseite keinen Footer hat.
  */
 import { Picture } from 'astro:assets';
-import LageplanDrawing from '@/components/drawings/LageplanDrawing.astro';
 import Button from '@/components/ui/Button.astro';
 import Container from '@/components/ui/Container.astro';
 import Eyebrow from '@/components/ui/Eyebrow.astro';
-import TechGrid from '@/components/ui/TechGrid.astro';
+import ServiceOrbit from '@/components/sections/ServiceOrbit.astro';
+import { legalNav } from '@/config/navigation';
 import { site } from '@/config/site';
 import { findImage } from '@/lib/images';
 
@@ -25,7 +24,7 @@ const heroPhoto = findImage('hero');
           src={heroPhoto}
           alt=""
           formats={['avif', 'webp']}
-          widths={[960, 1440, 1920, 2560].filter((w) => w <= heroPhoto.width)}
+          widths={[960, 1440, 1920, 2400].filter((w) => w <= heroPhoto.width)}
           sizes="100vw"
           loading="eager"
           fetchpriority="high"
@@ -33,9 +32,6 @@ const heroPhoto = findImage('hero');
         />
       )
     }
-    <div class="hero__grid" data-parallax="0.15">
-      <TechGrid tone="light" />
-    </div>
   </div>
 
   <Container size="wide" class="hero__container">
@@ -52,8 +48,8 @@ const heroPhoto = findImage('hero');
       </p>
 
       <div class="hero__actions">
-        <Button href="#leistungen" variant="light" size="lg" icon="arrow-right">Unsere Leistungen</Button>
-        <Button href="#kontakt" variant="outline-light" size="lg">Kontakt aufnehmen</Button>
+        <Button href="/leistungen/" variant="light" icon="arrow-right">Unsere Leistungen</Button>
+        <Button href="/kontakt/" variant="outline-light">Kontakt aufnehmen</Button>
       </div>
 
       <dl class="hero__facts">
@@ -72,10 +68,13 @@ const heroPhoto = findImage('hero');
       </dl>
     </div>
 
-    <figure class="hero__plan">
-      <LageplanDrawing animate />
-    </figure>
+    <ServiceOrbit class="hero__orbit" />
   </Container>
+
+  <footer class="hero__legal">
+    <span>© {new Date().getFullYear()} {site.name}</span>
+    {legalNav.map((item) => <a href={item.href}>{item.label}</a>)}
+  </footer>
 </section>
 
 <style>
@@ -85,11 +84,11 @@ const heroPhoto = findImage('hero');
     display: flex;
     flex-direction: column;
     justify-content: center;
-    min-height: max(36rem, min(88svh, 54rem));
-    padding-top: calc(var(--header-height) + var(--space-10));
-    padding-bottom: calc(var(--pillar-overlap) + clamp(2.5rem, 1.5rem + 3vw, 4.5rem));
+    min-height: 100vh;
+    min-height: 100svh;
+    padding-top: calc(var(--header-height) + clamp(1.5rem, 4vh, 3rem));
     overflow: hidden;
-    background: linear-gradient(160deg, var(--blue-950) 0%, var(--blue-900) 60%, #0e2b4d 100%);
+    background: var(--blue-950);
   }
 
   /* Hintergrund */
@@ -99,36 +98,31 @@ const heroPhoto = findImage('hero');
     z-index: -1;
   }
 
-  .hero__bg :global(.hero__photo) {
+  .hero__bg :global(picture),
+  .hero__bg :global(img) {
     position: absolute;
     inset: 0;
-  }
-
-  .hero__bg :global(.hero__photo img) {
     width: 100%;
     height: 100%;
     object-fit: cover;
-    opacity: 0.28;
-    filter: grayscale(0.4);
+    object-position: 60% 50%;
   }
 
-  .hero__grid {
-    position: absolute;
-    inset: -20% 0 0;
-    translate: 0 var(--parallax, 0px);
-    mask-image: radial-gradient(ellipse 75% 80% at 72% 35%, #000 15%, transparent 75%);
-  }
-
-  .hero__grid :global(.tech-grid) {
+  /* Abdunkelung: links kräftig für gut lesbaren Text, rechts leichter */
+  .hero__bg::after {
+    content: '';
     position: absolute;
     inset: 0;
+    background:
+      linear-gradient(90deg, rgb(7 23 44 / 0.94) 0%, rgb(7 23 44 / 0.82) 42%, rgb(7 23 44 / 0.5) 100%),
+      linear-gradient(0deg, rgb(7 23 44 / 0.7) 0%, transparent 35%);
   }
 
   /* Raster */
   .hero :global(.hero__container) {
     display: grid;
     grid-template-columns: minmax(0, 1fr);
-    gap: var(--space-12);
+    gap: var(--space-10);
     align-items: center;
   }
 
@@ -144,7 +138,7 @@ const heroPhoto = findImage('hero');
     display: flex;
     flex-direction: column;
     align-items: flex-start;
-    gap: var(--space-6);
+    gap: clamp(1rem, 2.4vh, 1.5rem);
   }
 
   .hero__content > :global(.hero__eyebrow) {
@@ -153,7 +147,7 @@ const heroPhoto = findImage('hero');
 
   .hero__title {
     max-width: 17ch;
-    font-size: var(--text-6xl);
+    font-size: clamp(2.25rem, 1.2rem + 2.6vw + 1vh, 4rem);
     font-weight: var(--weight-bold);
     line-height: 1.06;
     letter-spacing: -0.022em;
@@ -221,22 +215,42 @@ const heroPhoto = findImage('hero');
     text-decoration: underline;
   }
 
-  /* Lageplan */
-  .hero__plan {
-    margin: 0;
-    padding: clamp(0.75rem, 0.5rem + 1vw, 1.25rem);
-    border-radius: var(--radius-lg);
-    background: rgb(7 23 44 / 0.6);
-    box-shadow:
-      inset 0 0 0 1px rgb(255 255 255 / 0.1),
-      0 30px 60px -30px rgb(0 0 0 / 0.6);
-    animation: hero-rise 900ms var(--ease-out) 250ms both;
+  /* Rechtliche Links am unteren Rand */
+  .hero__legal {
+    display: flex;
+    margin-top: var(--space-10);
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 0.25rem 1.5rem;
+    padding: 0.9rem var(--gutter);
+    font-size: var(--text-xs);
+    color: rgb(255 255 255 / 0.62);
+    border-top: 1px solid rgb(255 255 255 / 0.1);
   }
 
-  @media (max-width: 63.99rem) {
-    .hero__plan {
-      max-width: 34rem;
+  /* Desktop: Startseite als ein Bildschirm, rechtliche Links am unteren Rand */
+  @media (min-width: 64rem) {
+    .hero {
+      padding-bottom: 3.25rem;
     }
+
+    .hero__legal {
+      position: absolute;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      margin-top: 0;
+    }
+  }
+
+  .hero__legal a {
+    color: rgb(255 255 255 / 0.82);
+    text-decoration: none;
+  }
+
+  .hero__legal a:hover {
+    color: #ffffff;
+    text-decoration: underline;
   }
 
   @keyframes hero-rise {
@@ -255,8 +269,7 @@ const heroPhoto = findImage('hero');
     .hero__title,
     .hero__lead,
     .hero__actions,
-    .hero__facts,
-    .hero__plan {
+    .hero__facts {
       animation: none !important;
     }
   }

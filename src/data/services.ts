@@ -11,6 +11,8 @@ export interface Service {
   icon: string;
   description: string;
   points: string[];
+  /** Beispielprojekt aus src/content/referenzen (Dateiname ohne .md) – wird auf der Leistungsseite gezeigt */
+  reference?: string;
 }
 
 export interface Pillar {
@@ -39,6 +41,7 @@ export const pillars: Pillar[] = [
     services: [
       {
         id: 'pflasterarbeiten',
+        reference: 'hofeinfahrt-betonpflaster',
         title: 'Pflasterarbeiten',
         icon: 'layout-grid',
         description:
@@ -47,6 +50,7 @@ export const pillars: Pillar[] = [
       },
       {
         id: 'pflanzungen',
+        reference: 'vorgarten-hochbeete-staudenpflanzung',
         title: 'Pflanzungen',
         icon: 'sprout',
         description:
@@ -55,6 +59,7 @@ export const pillars: Pillar[] = [
       },
       {
         id: 'gartengestaltung',
+        reference: 'garten-holzdeck-wasserspiel',
         title: 'Gartengestaltung',
         icon: 'flower-2',
         description:
@@ -75,6 +80,7 @@ export const pillars: Pillar[] = [
     services: [
       {
         id: 'kanal-leitungsbau',
+        reference: 'leitungsbau-hausanschluss',
         title: 'Kanal- & Leitungsbau',
         icon: 'cable',
         description:
@@ -83,6 +89,7 @@ export const pillars: Pillar[] = [
       },
       {
         id: 'erdbau',
+        reference: 'erdbau-baugrube',
         title: 'Erdbau',
         icon: 'mountain',
         description:
@@ -91,6 +98,7 @@ export const pillars: Pillar[] = [
       },
       {
         id: 'bauaushub',
+        reference: 'erdbau-baugrube',
         title: 'Bauaushub',
         icon: 'truck',
         description:
@@ -99,6 +107,7 @@ export const pillars: Pillar[] = [
       },
       {
         id: 'durchpressungen',
+        reference: 'leitungsbau-hausanschluss',
         title: 'Durchpressungen',
         icon: 'drill',
         description:
@@ -119,6 +128,7 @@ export const pillars: Pillar[] = [
     services: [
       {
         id: 'strassenbau',
+        reference: 'granitpflaster-bogen',
         title: 'Straßen- & Wegebau',
         icon: 'road',
         description:
@@ -127,6 +137,7 @@ export const pillars: Pillar[] = [
       },
       {
         id: 'asphaltbau',
+        reference: 'wirtschaftsweg-asphalt',
         title: 'Asphaltbau',
         icon: 'layers',
         description:

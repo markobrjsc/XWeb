@@ -1,6 +1,6 @@
 ---
 /**
- * ServicesSection (id="leistungen") – alle Leistungen, gegliedert nach Fachbereich.
+ * ServicesSection – alle Leistungen, gegliedert nach Fachbereich (Inhalt der Seite /leistungen/).
  * Links bzw. rechts: technische Zeichnung (bleibt beim Scrollen stehen), daneben Beschreibung und Leistungen.
  * Fotos: src/assets/images/gartenbau.jpg, tiefbau.jpg, strassenbau.jpg ersetzen die Zeichnungen automatisch.
  */
@@ -15,6 +15,13 @@ import ServiceCard from '@/components/ui/ServiceCard.astro';
 import TechGrid from '@/components/ui/TechGrid.astro';
 import { pillars } from '@/data/services';
 
+interface Props {
+  /** Abschnittsüberschrift zeigen (auf der Leistungsseite übernimmt das der Seitenkopf) */
+  showHeader?: boolean;
+}
+
+const { showHeader = true } = Astro.props;
+
 const drawings = {
   gartenbau: GartenbauDrawing,
   tiefbau: TiefbauDrawing,
@@ -22,13 +29,17 @@ const drawings = {
 };
 ---
 
-<Section id="leistungen" tone="subtle" labelledby="leistungen-titel" class="services">
-  <SectionHeader
-    id="leistungen-titel"
-    eyebrow="Unsere Leistungen"
-    title={'Vom ersten Spatenstich <span class="accent">bis zur fertigen Fläche.</span>'}
-    lead="Unsere Leistungen im Überblick – ausgeführt von unserem eigenen Team, abgestimmt auf Ihr Projekt und aus einer Hand koordiniert."
-  />
+<Section id="leistungen" tone="subtle" labelledby={showHeader ? 'leistungen-titel' : undefined} class="services">
+  {
+    showHeader && (
+      <SectionHeader
+        id="leistungen-titel"
+        eyebrow="Unsere Leistungen"
+        title={'Vom ersten Spatenstich <span class="accent">bis zur fertigen Fläche.</span>'}
+        lead="Unsere Leistungen im Überblick – ausgeführt von unserem eigenen Team, abgestimmt auf Ihr Projekt und aus einer Hand koordiniert."
+      />
+    )
+  }
 
   <div class="services__rows">
     {
@@ -57,14 +68,14 @@ const drawings = {
                 <Eyebrow icon={pillar.icon}>
                   {pillar.number} · {pillar.subtitle}
                 </Eyebrow>
-                <h3 class="pillar-row__title" id={`${pillar.id}-titel`}>
+                <h2 class="pillar-row__title" id={`${pillar.id}-titel`}>
                   {pillar.title}
-                </h3>
+                </h2>
                 <p class="pillar-row__text">{pillar.description}</p>
               </div>
               <div class="pillar-row__services" data-reveal-group="90">
                 {pillar.services.map((service) => (
-                  <ServiceCard service={service} />
+                  <ServiceCard service={service} pillar={pillar.id} headingLevel="h3" />
                 ))}
               </div>
             </div>

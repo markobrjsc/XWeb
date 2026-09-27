@@ -28,3 +28,16 @@ export function findImage(name: string | undefined): ImageMetadata | undefined {
   if (!name) return undefined;
   return imagesByName.get(name.toLowerCase());
 }
+
+/**
+ * Alle Fotos eines Ordners, sortiert nach Dateiname (01.jpg, 02.jpg …) – z. B. für Bildergalerien:
+ *   findImages('referenzen/hofeinfahrt-betonpflaster')
+ */
+export function findImages(folder: string | undefined): ImageMetadata[] {
+  if (!folder) return [];
+  const prefix = `${folder.toLowerCase().replace(/\/$/, '')}/`;
+  return [...imagesByName.entries()]
+    .filter(([name]) => name.startsWith(prefix) && !name.slice(prefix.length).includes('/'))
+    .sort(([a], [b]) => a.localeCompare(b, 'de', { numeric: true }))
+    .map(([, image]) => image);
+}
