@@ -1,0 +1,36 @@
+---
+/**
+ * Startseite: Gartenbau, Tiefbau und Straßenbau auf einen Blick.
+ */
+import BaseLayout from '@/layouts/BaseLayout.astro';
+import CareerTeaser from '@/components/sections/CareerTeaser.astro';
+import HomeHero from '@/components/sections/HomeHero.astro';
+import PillarCards from '@/components/sections/PillarCards.astro';
+import ProcessSection from '@/components/sections/ProcessSection.astro';
+import ReferencesTeaser from '@/components/sections/ReferencesTeaser.astro';
+import ServicesSection from '@/components/sections/ServicesSection.astro';
+import StatsBand from '@/components/sections/StatsBand.astro';
+import ValuesSection from '@/components/sections/ValuesSection.astro';
+import { processSteps } from '@/data/company';
+---
+
+<BaseLayout
+  title="Startseite"
+  fullTitle="Pflasterarbeiten Hildebrand – Garten-, Tief- & Straßenbau"
+  description="Familienbetrieb aus Radolfzell für Garten-, Tief- und Straßenbau: Pflasterarbeiten, Pflanzungen, Kanal-, Erd- und Asphaltbau im Landkreis Konstanz."
+>
+  <HomeHero />
+  <PillarCards />
+  <ServicesSection />
+  <StatsBand />
+  <ValuesSection />
+  <ProcessSection
+    steps={processSteps}
+    tone="subtle"
+    eyebrow="So arbeiten wir"
+    title={'In vier Schritten <span class="accent">zu Ihrem Projekt.</span>'}
+    lead="Klare Absprachen, ein fester Ansprechpartner und saubere Ausführung – so läuft die Zusammenarbeit mit uns ab."
+  />
+  <ReferencesTeaser />
+  <CareerTeaser space="none" />
+</BaseLayout>

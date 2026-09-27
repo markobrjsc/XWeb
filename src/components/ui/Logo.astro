@@ -1,0 +1,105 @@
+---
+/**
+ * Logo – Bildmarke (Figur mit Stein-„H“) plus Wortmarke.
+ * Die Bilddatei liegt in src/assets/brand/hildebrand-logo.webp und wird automatisch optimiert.
+ */
+import { Image } from 'astro:assets';
+import logo from '@/assets/brand/hildebrand-logo.webp';
+
+interface Props {
+  /** Nur Bildmarke ohne Schriftzug */
+  markOnly?: boolean;
+  size?: 'sm' | 'md' | 'lg';
+  /** Bild priorisiert laden (z. B. im Header) */
+  eager?: boolean;
+  class?: string;
+}
+
+const { markOnly = false, size = 'md', eager = false, class: className } = Astro.props;
+---
+
+<span class:list={['logo', `logo--${size}`, className]}>
+  <Image
+    src={logo}
+    alt={markOnly ? 'Pflasterarbeiten Hildebrand GmbH' : ''}
+    width={56}
+    densities={[1, 2, 3]}
+    class="logo__mark"
+    loading={eager ? 'eager' : 'lazy'}
+    decoding="async"
+  />
+  {
+    !markOnly && (
+      <span class="logo__text">
+        <span class="logo__name">Hildebrand</span>
+        <span class="logo__sub">Pflasterarbeiten GmbH</span>
+      </span>
+    )
+  }
+</span>
+
+<style>
+  .logo {
+    --logo-height: 3.1rem;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.75rem;
+    color: var(--color-heading);
+    line-height: 1;
+  }
+
+  .logo--sm {
+    --logo-height: 2.6rem;
+  }
+
+  .logo--lg {
+    --logo-height: 3.9rem;
+  }
+
+  .logo :global(.logo__mark) {
+    width: auto;
+    height: var(--logo-height);
+    transition: height var(--duration-slow) var(--ease-out);
+  }
+
+  .logo__text {
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
+    padding-left: 0.75rem;
+    border-left: 1px solid color-mix(in srgb, currentColor 28%, transparent);
+  }
+
+  .logo__name {
+    font-size: 1.3rem;
+    font-weight: var(--weight-bold);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    line-height: 1;
+  }
+
+  .logo__sub {
+    font-size: 0.66rem;
+    font-weight: var(--weight-medium);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--color-text-muted);
+    line-height: 1;
+  }
+
+  .logo--lg .logo__name {
+    font-size: 1.55rem;
+  }
+
+  .logo--lg .logo__sub {
+    font-size: 0.72rem;
+  }
+
+  .logo--sm .logo__name {
+    font-size: 1.1rem;
+  }
+
+  .logo--sm .logo__sub {
+    font-size: 0.58rem;
+  }
+</style>

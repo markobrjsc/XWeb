@@ -1,0 +1,55 @@
+---
+/**
+ * Eyebrow – kleine Überzeile über Überschriften, z. B. „Unsere Leistungen“.
+ */
+import type { HTMLTag } from 'astro/types';
+import Icon from './Icon.astro';
+
+interface Props {
+  as?: HTMLTag;
+  icon?: string;
+  class?: string;
+}
+
+const { as: Tag = 'p', icon, class: className } = Astro.props;
+---
+
+<Tag class:list={['eyebrow', className]}>
+  {icon ? <Icon name={icon} size="1.15em" class="eyebrow__icon" /> : <span class="eyebrow__line" aria-hidden="true" />}
+  <span><slot /></span>
+</Tag>
+
+<style>
+  .eyebrow {
+    --eyebrow-color: var(--blue-600);
+    --eyebrow-mark: var(--blue-600);
+    display: inline-flex;
+    align-items: center;
+    gap: 0.7rem;
+    font-size: var(--text-xs);
+    font-weight: var(--weight-bold);
+    font-stretch: 100%;
+    letter-spacing: var(--tracking-wider);
+    text-transform: uppercase;
+    color: var(--eyebrow-color);
+  }
+
+  :global([data-tone='dark']) .eyebrow,
+  :global([data-tone='brand']) .eyebrow {
+    --eyebrow-color: var(--blue-200);
+    --eyebrow-mark: var(--blue-300);
+  }
+
+  .eyebrow__line {
+    display: inline-block;
+    width: 1.5rem;
+    height: 2px;
+    border-radius: 1px;
+    background: var(--eyebrow-mark);
+    flex-shrink: 0;
+  }
+
+  .eyebrow :global(.eyebrow__icon) {
+    color: currentColor;
+  }
+</style>

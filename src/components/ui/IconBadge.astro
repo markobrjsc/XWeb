@@ -1,0 +1,77 @@
+---
+/**
+ * IconBadge – Icon in einer Fläche. Einheitlich für Leistungen, Vorteile und Kontaktangaben.
+ */
+import Icon from './Icon.astro';
+
+interface Props {
+  name: string;
+  size?: 'sm' | 'md' | 'lg';
+  tone?: 'primary' | 'soft' | 'light' | 'outline';
+  class?: string;
+}
+
+const { name, size = 'md', tone = 'soft', class: className } = Astro.props;
+---
+
+<span class:list={['icon-badge', `icon-badge--${size}`, `icon-badge--${tone}`, className]} aria-hidden="true">
+  <Icon name={name} size="1em" strokeWidth={1.75} />
+</span>
+
+<style>
+  .icon-badge {
+    --badge-size: 2.75rem;
+    --badge-icon: 1.3rem;
+    display: inline-grid;
+    place-items: center;
+    flex-shrink: 0;
+    width: var(--badge-size);
+    height: var(--badge-size);
+    font-size: var(--badge-icon);
+    border-radius: var(--radius-md);
+    transition:
+      background-color var(--duration-base) ease,
+      color var(--duration-base) ease;
+  }
+
+  .icon-badge--sm {
+    --badge-size: 2.25rem;
+    --badge-icon: 1.1rem;
+    border-radius: var(--radius-sm);
+  }
+
+  .icon-badge--lg {
+    --badge-size: 3.25rem;
+    --badge-icon: 1.55rem;
+  }
+
+  .icon-badge--primary {
+    background: var(--blue-600);
+    color: #ffffff;
+  }
+
+  .icon-badge--soft {
+    background: var(--blue-50);
+    color: var(--blue-700);
+    box-shadow: inset 0 0 0 1px var(--blue-100);
+  }
+
+  .icon-badge--light {
+    background: rgb(255 255 255 / 0.08);
+    color: var(--blue-200);
+    box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.12);
+  }
+
+  .icon-badge--outline {
+    background: transparent;
+    color: var(--blue-700);
+    box-shadow: inset 0 0 0 1.5px var(--color-border-strong);
+  }
+
+  :global([data-tone='dark']) .icon-badge--soft,
+  :global([data-tone='brand']) .icon-badge--soft {
+    background: rgb(255 255 255 / 0.08);
+    color: var(--blue-200);
+    box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.12);
+  }
+</style>

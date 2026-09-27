@@ -1,0 +1,30 @@
+# Build-Ausgabe
+dist/
+.astro/
+
+# Abhängigkeiten
+node_modules/
+
+# Cloudflare / Wrangler
+.wrangler/
+.dev.vars
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Umgebungsvariablen
+.env
+.env.*
+!.env.example
+
+# System
+.DS_Store
+Thumbs.db
+
+# Editor
+.vscode/*
+!.vscode/extensions.json
+.idea/

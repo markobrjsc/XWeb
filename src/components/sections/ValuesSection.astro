@@ -1,0 +1,89 @@
+---
+/**
+ * ValuesSection – „Warum Hildebrand?“: Werte und Stärken des Betriebs.
+ */
+import Button from '@/components/ui/Button.astro';
+import FeatureCard from '@/components/ui/FeatureCard.astro';
+import Section from '@/components/ui/Section.astro';
+import SectionHeader from '@/components/ui/SectionHeader.astro';
+import { values } from '@/data/company';
+
+interface Props {
+  tone?: 'default' | 'subtle';
+  showLink?: boolean;
+}
+
+const { tone = 'default', showLink = true } = Astro.props;
+---
+
+<Section tone={tone} labelledby="werte-titel" class="values">
+  <div class="values__layout">
+    <div class="values__intro">
+      <div class="values__sticky">
+        <SectionHeader
+          id="werte-titel"
+          eyebrow="Warum Hildebrand?"
+          title={'Handwerk, auf das <span class="accent">Verlass ist.</span>'}
+          lead="Als Familienbetrieb stehen wir mit unserem Namen für jedes Projekt ein. Das spüren unsere Kundinnen und Kunden – von der ersten Beratung bis zur Abnahme."
+        >
+          {showLink && <Button href="/betrieb/" variant="secondary" icon="arrow-right">Mehr über unseren Betrieb</Button>}
+        </SectionHeader>
+      </div>
+    </div>
+
+    <ul class="values__grid" role="list" data-reveal-group="100">
+      {
+        values.map((value) => (
+          <li class="values__item">
+            <FeatureCard icon={value.icon} title={value.title} text={value.text} />
+          </li>
+        ))
+      }
+    </ul>
+  </div>
+</Section>
+
+<style>
+  .values__layout {
+    display: grid;
+    gap: var(--space-4);
+  }
+
+  @media (min-width: 64rem) {
+    .values__layout {
+      grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.2fr);
+      gap: clamp(2.5rem, 1rem + 4vw, 5rem);
+      align-items: start;
+    }
+
+    .values__sticky {
+      position: sticky;
+      top: calc(var(--header-height-compact) + var(--space-10));
+    }
+
+    .values__sticky :global(.section-header) {
+      margin-bottom: 0;
+    }
+  }
+
+  .values__grid {
+    display: grid;
+    gap: var(--grid-gap);
+    margin: 0;
+    padding: 0;
+  }
+
+  @media (min-width: 40rem) {
+    .values__grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+  }
+
+  .values__item {
+    display: flex;
+  }
+
+  .values__item > :global(*) {
+    flex: 1;
+  }
+</style>

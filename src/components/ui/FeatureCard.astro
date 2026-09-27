@@ -1,0 +1,83 @@
+---
+/**
+ * FeatureCard – Icon, Titel und kurzer Text. Für Werte, Vorteile, Fakten usw.
+ */
+import Card from './Card.astro';
+import IconBadge from './IconBadge.astro';
+
+interface Props {
+  icon: string;
+  title: string;
+  text?: string;
+  variant?: 'elevated' | 'outline' | 'subtle' | 'dark' | 'glass';
+  layout?: 'stacked' | 'inline';
+  badgeTone?: 'primary' | 'soft' | 'light' | 'outline';
+  headingLevel?: 'h3' | 'h4';
+  interactive?: boolean;
+  reveal?: boolean | 'up' | 'left' | 'right' | 'zoom' | 'fade';
+  class?: string;
+}
+
+const {
+  icon,
+  title,
+  text,
+  variant = 'elevated',
+  layout = 'stacked',
+  badgeTone = 'soft',
+  headingLevel: Heading = 'h3',
+  interactive = true,
+  reveal = true,
+  class: className,
+} = Astro.props;
+---
+
+<Card variant={variant} interactive={interactive} reveal={reveal} class:list={['feature', `feature--${layout}`, className]}>
+  <div class="feature__inner">
+    <IconBadge name={icon} tone={badgeTone} class="feature__icon" />
+    <div class="feature__content">
+      <Heading class="feature__title">{title}</Heading>
+      {text && <p class="feature__text">{text}</p>}
+      <slot />
+    </div>
+  </div>
+</Card>
+
+<style>
+  .feature__inner {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-5);
+    height: 100%;
+  }
+
+  .feature--inline .feature__inner {
+    flex-direction: row;
+    align-items: flex-start;
+    gap: var(--space-4);
+  }
+
+  .feature__content {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+  }
+
+  .feature__title {
+    font-size: var(--text-lg);
+    font-weight: var(--weight-bold);
+    line-height: 1.3;
+  }
+
+  .feature__text {
+    font-size: var(--text-sm);
+    line-height: var(--leading-normal);
+    color: var(--color-text-muted);
+  }
+
+  .feature:hover :global(.feature__icon) {
+    background: var(--blue-600);
+    color: #ffffff;
+    box-shadow: none;
+  }
+</style>

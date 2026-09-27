@@ -1,0 +1,88 @@
+---
+/**
+ * SectionHeader – Überzeile, Überschrift und Einleitung eines Abschnitts.
+ * Im Titel darf einfaches HTML stehen, z. B. <span class="accent">…</span> für eine Hervorhebung.
+ */
+import Eyebrow from './Eyebrow.astro';
+
+interface Props {
+  eyebrow?: string;
+  title: string;
+  lead?: string;
+  align?: 'left' | 'center';
+  as?: 'h1' | 'h2' | 'h3';
+  /** id der Überschrift – für aria-labelledby der Section */
+  id?: string;
+  size?: 'md' | 'lg';
+  /** Scroll-Animation einschalten */
+  reveal?: boolean;
+  class?: string;
+}
+
+const {
+  eyebrow,
+  title,
+  lead,
+  align = 'left',
+  as: Heading = 'h2',
+  id,
+  size = 'lg',
+  reveal = true,
+  class: className,
+} = Astro.props;
+---
+
+<header
+  class:list={['section-header', `section-header--${align}`, `section-header--${size}`, className]}
+  data-reveal={reveal ? 'up' : undefined}
+>
+  {eyebrow && <Eyebrow>{eyebrow}</Eyebrow>}
+  <Heading id={id} class="section-header__title" set:html={title} />
+  {lead && <p class="section-header__lead">{lead}</p>}
+  {Astro.slots.has('default') && <div class="section-header__extra"><slot /></div>}
+</header>
+
+<style>
+  .section-header {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
+    max-width: 46rem;
+    margin-bottom: var(--stack-space);
+  }
+
+  .section-header--center {
+    align-items: center;
+    text-align: center;
+    margin-inline: auto;
+  }
+
+  .section-header__title {
+    font-size: var(--text-4xl);
+    line-height: 1.08;
+  }
+
+  .section-header--md .section-header__title {
+    font-size: var(--text-3xl);
+  }
+
+  .section-header__title :global(.accent) {
+    color: var(--color-primary);
+  }
+
+  :global([data-tone='dark']) .section-header__title :global(.accent),
+  :global([data-tone='brand']) .section-header__title :global(.accent) {
+    color: var(--color-accent);
+  }
+
+  .section-header__lead {
+    font-size: var(--text-lg);
+    line-height: var(--leading-relaxed);
+    color: var(--color-text-muted);
+    max-width: 40rem;
+  }
+
+  .section-header__extra {
+    margin-top: var(--space-2);
+  }
+</style>

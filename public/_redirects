@@ -1,0 +1,11 @@
+# Weiterleitungen von Adressen der bisherigen Website (301 = dauerhaft, Suchmaschinen übernehmen die neue Adresse)
+/home.html              /                   301
+/index.php              /                   301
+/kontakt.html           /#kontakt           301
+/impressum.html         /impressum/         301
+/datenschutz.html       /datenschutz/       301
+/leistungen.html        /#leistungen        301
+/referenzen.html        /referenzen/        301
+/stellenangebote.html   /stellenangebote/   301
+/ueber-uns.html         /betrieb/           301
+/betrieb.html           /betrieb/           301

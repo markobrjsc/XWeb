@@ -1,0 +1,135 @@
+---
+/**
+ * Technische Zeichnung „Regelquerschnitt Straße“ (halber Querschnitt bis zur Achse):
+ * Gehweg mit Pflaster, Bordstein mit Rückenstütze, Asphaltaufbau, Frostschutzschicht, Planum.
+ * Schematische Darstellung ohne Maßstab.
+ */
+import HatchPatterns from './HatchPatterns.astro';
+import { type Callout, drawingUid, leaderLeft, leaderRight, tick } from '@/lib/drawing';
+
+interface Props {
+  class?: string;
+}
+
+const { class: className } = Astro.props;
+const uid = drawingUid('str');
+const url = (name: string) => `url(#${uid}-${name})`;
+
+// Geometrie (Einheiten der viewBox)
+const xL = 130; // linker Schnitt (Gehweg)
+const xC1 = 210; // Bordstein, Gehwegseite
+const xC2 = 222; // Bordstein, Fahrbahnseite
+const xA = 470; // Straßenachse
+const road = (x: number) => 106 - (5 * (x - xC2)) / (xA - xC2); // Fahrbahnoberkante mit Quergefälle
+
+const joints = [146, 162, 178, 194];
+
+const right: Callout[] = [
+  { x: xA, y: 105, ly: 86, text: 'Asphaltdeckschicht' },
+  { x: xA, y: 114, ly: 106, text: 'Asphaltbinderschicht' },
+  { x: xA, y: 130, ly: 128, text: 'Asphalttragschicht' },
+  { x: xA, y: 163, ly: 160, text: 'Frostschutzschicht' },
+  { x: xA, y: 186, ly: 186, text: 'Planum' },
+  { x: xA, y: 208, ly: 210, text: 'Untergrund' },
+];
+
+const left: Callout[] = [
+  { x: xL, y: 101, ly: 84, text: 'Pflasterbelag' },
+  { x: xL, y: 108.5, ly: 104, text: 'Bettung' },
+  { x: xL, y: 120, ly: 124, text: 'Tragschicht' },
+  { x: 216, y: 132, ly: 144, text: 'Bordstein' },
+  { x: 200, y: 154, ly: 164, text: 'Rückenstütze' },
+];
+---
+
+<svg
+  class:list={['drawing', className]}
+  viewBox="0 30 640 265"
+  xmlns="http://www.w3.org/2000/svg"
+  role="img"
+  aria-label="Schematischer Regelquerschnitt einer Straße mit Gehweg, Bordstein und Asphaltaufbau"
+>
+  <HatchPatterns uid={uid} use={['soil', 'gravel', 'gravel-fine', 'sand', 'concrete', 'fade', 'dot']} />
+
+  <!-- Untergrund (blendet nach unten aus) -->
+  <rect x={xL} y="186" width={xA - xL} height="46" fill={url('soil')} mask={url('fade-mask')} />
+
+  <!-- Frostschutzschicht -->
+  <rect class="d-fill" x={xL} y="140" width={xA - xL} height="46" />
+  <rect x={xL} y="140" width={xA - xL} height="46" fill={url('gravel')} />
+
+  <!-- Gehweg: Tragschicht, Bettung, Pflaster -->
+  <rect class="d-fill" x={xL} y="111" width={xC1 - xL} height="29" />
+  <rect x={xL} y="111" width={xC1 - xL} height="29" fill={url('gravel-fine')} />
+  <rect x={xL} y="106" width={xC1 - xL} height="5" fill={url('sand')} />
+  <rect class="d-fill-strong" x={xL} y="96" width={xC1 - xL} height="10" />
+  <path class="d-thin" d={joints.map((x) => `M${x} 96 V106`).join(' ')} />
+
+  <!-- Fahrbahn: Asphaltschichten mit Quergefälle -->
+  <polygon class="d-solid-3" points={`${xC2},124 ${xA},${road(xA) + 18} ${xA},140 ${xC2},140`} />
+  <polygon class="d-solid-2" points={`${xC2},114 ${xA},${road(xA) + 8} ${xA},${road(xA) + 18} ${xC2},124`} />
+  <polygon class="d-solid-1" points={`${xC2},${road(xC2)} ${xA},${road(xA)} ${xA},${road(xA) + 8} ${xC2},114`} />
+
+  <!-- Bordstein mit Betonbett und Rückenstütze -->
+  <polygon class="d-fill" points="199,122 210,122 210,148 228,148 228,160 195,160" />
+  <polygon points="199,122 210,122 210,148 228,148 228,160 195,160" fill={url('concrete')} />
+  <polygon class="d-line" points="199,122 210,122 210,148 228,148 228,160 195,160" />
+  <rect class="d-fill-strong" x={xC1} y="96" width={xC2 - xC1} height="52" />
+  <rect class="d-line" x={xC1} y="96" width={xC2 - xC1} height="52" />
+
+  <!-- Schichtgrenzen -->
+  <line class="d-thin" x1={xL} y1="106" x2={xC1} y2="106" />
+  <line class="d-thin" x1={xL} y1="111" x2={xC1} y2="111" />
+  <line class="d-thin" x1={xL} y1="140" x2={xA} y2="140" />
+  <line class="d-line" x1={xL} y1="186" x2={xA} y2="186" />
+
+  <!-- Schnittkanten und Oberfläche -->
+  <line class="d-line" x1={xL} y1="96" x2={xL} y2="186" />
+  <line class="d-line" x1={xA} y1={road(xA)} x2={xA} y2="186" />
+  <polyline class="d-outline" points={`${xL},96 ${xC2},96 ${xC2},${road(xC2)} ${xA},${road(xA)}`} />
+
+  <!-- Achse -->
+  <line class="d-axis" x1={xA} y1="54" x2={xA} y2="248" />
+  <text class="d-caps" x={xA} y="46" text-anchor="middle">Achse</text>
+
+  <!-- Quergefälle -->
+  <line class="d-dim" x1="410" y1="93" x2="300" y2="95.2" />
+  <polygon class="d-arrow" points="300,95.2 307,92.3 307.2,97.9" />
+  <text class="d-note" x="355" y="88" text-anchor="middle">2,5 %</text>
+
+  <!-- Maßkette -->
+  <line class="d-dim" x1={xL} y1="60" x2={xA} y2="60" />
+  <line class="d-dim" x1={xL} y1="54" x2={xL} y2="90" />
+  <line class="d-dim" x1={xC2} y1="54" x2={xC2} y2="90" />
+  <path class="d-tick" d={tick(xL, 60)} />
+  <path class="d-tick" d={tick(xC2, 60)} />
+  <path class="d-tick" d={tick(xA, 60)} />
+  <text class="d-caps" x={(xL + xC2) / 2} y="54" text-anchor="middle">Gehweg</text>
+  <text class="d-caps" x={(xC2 + xA) / 2} y="54" text-anchor="middle">Fahrbahn</text>
+
+  <!-- Beschriftung -->
+  {
+    right.map((c) => (
+      <>
+        <path class="d-leader" d={leaderRight(c, xA)} marker-start={url('dot')} />
+        <text class="d-label" x={xA + 26} y={c.ly + 3.5}>
+          {c.text}
+        </text>
+      </>
+    ))
+  }
+  {
+    left.map((c) => (
+      <>
+        <path class="d-leader" d={leaderLeft(c, xL)} marker-start={url('dot')} />
+        <text class="d-label" x={xL - 26} y={c.ly + 3.5} text-anchor="end">
+          {c.text}
+        </text>
+      </>
+    ))
+  }
+
+  <!-- Plankopf -->
+  <text class="d-title" x={xL} y="270">Regelquerschnitt Straße</text>
+  <text class="d-note" x={xL} y="285">Schematische Darstellung · ohne Maßstab</text>
+</svg>

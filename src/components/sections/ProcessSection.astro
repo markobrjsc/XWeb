@@ -1,0 +1,179 @@
+---
+/**
+ * ProcessSection – Ablauf in Schritten. Die Verbindungslinie füllt sich beim Scrollen.
+ */
+import Section from '@/components/ui/Section.astro';
+import SectionHeader from '@/components/ui/SectionHeader.astro';
+import type { Step } from '@/data/company';
+
+interface Props {
+  steps: Step[];
+  eyebrow?: string;
+  title: string;
+  lead?: string;
+  id?: string;
+  tone?: 'default' | 'subtle' | 'dark';
+}
+
+const { steps, eyebrow, title, lead, id = 'ablauf', tone = 'default' } = Astro.props;
+---
+
+<Section id={id} tone={tone} labelledby={`${id}-titel`}>
+  <SectionHeader id={`${id}-titel`} align="center" eyebrow={eyebrow} title={title} lead={lead} />
+
+  <div class:list={['process', `process--${steps.length}`]} data-progress>
+    <span class="process__track" aria-hidden="true"><span class="process__fill"></span></span>
+    <ol class="process__list" role="list" data-reveal-group="160">
+      {
+        steps.map((step, index) => (
+          <li class="process__step" data-reveal>
+            <span class="process__num" aria-hidden="true">
+              {String(index + 1).padStart(2, '0')}
+            </span>
+            <div class="process__body">
+              <h3 class="process__title">
+                <span class="visually-hidden">Schritt {index + 1}: </span>
+                {step.title}
+              </h3>
+              <p class="process__text">{step.text}</p>
+            </div>
+          </li>
+        ))
+      }
+    </ol>
+  </div>
+</Section>
+
+<style>
+  .process {
+    --num-size: 3.25rem;
+    position: relative;
+  }
+
+  .process__list {
+    position: relative;
+    display: grid;
+    gap: var(--space-10);
+    margin: 0;
+    padding: 0;
+  }
+
+  /* Linie: mobil senkrecht, ab Tablet waagerecht */
+  .process__track {
+    position: absolute;
+    top: calc(var(--num-size) / 2);
+    bottom: calc(var(--num-size) / 2);
+    left: calc(var(--num-size) / 2 - 1.5px);
+    width: 3px;
+    border-radius: 3px;
+    background: var(--color-border);
+    overflow: hidden;
+  }
+
+  .process__fill {
+    position: absolute;
+    inset: 0;
+    background: var(--blue-600);
+    transform: scaleY(var(--progress, 0));
+    transform-origin: top center;
+    transition: transform 120ms linear;
+  }
+
+  .process__step {
+    position: relative;
+    display: grid;
+    grid-template-columns: var(--num-size) 1fr;
+    gap: var(--space-5);
+    align-items: start;
+  }
+
+  .process__num {
+    position: relative;
+    z-index: 1;
+    display: grid;
+    place-items: center;
+    width: var(--num-size);
+    height: var(--num-size);
+    font-size: var(--text-base);
+    font-weight: var(--weight-bold);
+    color: var(--blue-700);
+    background: #ffffff;
+    border: 1.5px solid var(--blue-600);
+    border-radius: 50%;
+    box-shadow: 0 0 0 6px var(--process-ring, var(--color-bg));
+  }
+
+  :global([data-tone='subtle']) .process {
+    --process-ring: var(--color-bg-subtle);
+  }
+
+  :global([data-tone='dark']) .process {
+    --process-ring: var(--color-bg-dark);
+  }
+
+  .process__body {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+    padding-top: var(--space-3);
+  }
+
+  .process__title {
+    font-size: var(--text-xl);
+  }
+
+  .process__text {
+    color: var(--color-text-muted);
+  }
+
+  @media (min-width: 56rem) {
+    .process__list {
+      grid-template-columns: repeat(var(--cols, 4), minmax(0, 1fr));
+      gap: var(--grid-gap);
+    }
+
+    .process--3 .process__list {
+      --cols: 3;
+    }
+
+    .process__track {
+      top: calc(var(--num-size) / 2 - 1.5px);
+      bottom: auto;
+      left: calc(var(--num-size) / 2);
+      right: calc(var(--num-size) / 2);
+      width: auto;
+      height: 3px;
+    }
+
+    /* Linie endet in der Mitte des letzten Kreises: Spaltenbreite minus halber Kreis */
+    .process--4 .process__track {
+      right: calc(25% - var(--grid-gap) * 0.75 - var(--num-size) / 2);
+    }
+
+    .process--3 .process__track {
+      right: calc(33.333% - var(--grid-gap) * 0.6667 - var(--num-size) / 2);
+    }
+
+    .process__fill {
+      background: var(--blue-600);
+      transform: scaleX(var(--progress, 0));
+      transform-origin: left center;
+    }
+
+    .process__step {
+      grid-template-columns: 1fr;
+      gap: var(--space-5);
+    }
+
+    .process__body {
+      padding-top: 0;
+      padding-right: var(--space-4);
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .process__fill {
+      transform: none;
+    }
+  }
+</style>

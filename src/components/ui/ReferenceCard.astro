@@ -1,0 +1,98 @@
+---
+/**
+ * ReferenceCard – ein Projekt aus src/content/referenzen.
+ * Foto: src/assets/images/referenzen/<dateiname>.jpg (oder Feld "image" im Eintrag).
+ */
+import type { CollectionEntry } from 'astro:content';
+import { getPillar } from '@/data/services';
+import Badge from './Badge.astro';
+import Card from './Card.astro';
+import Icon from './Icon.astro';
+import Media from './Media.astro';
+
+interface Props {
+  entry: CollectionEntry<'referenzen'>;
+  headingLevel?: 'h2' | 'h3';
+  class?: string;
+}
+
+const { entry, headingLevel: Heading = 'h3', class: className } = Astro.props;
+const { title, category, location, year, summary, services, icon, image, placeholder } = entry.data;
+const pillar = getPillar(category);
+---
+
+<Card interactive reveal="up" class:list={['ref-card', className]} data-category={category}>
+  <Media
+    slot="media"
+    name={image ?? `referenzen/${entry.id}`}
+    alt={title}
+    aspect="4 / 3"
+    sizes="(min-width: 64rem) 33vw, (min-width: 40rem) 50vw, 100vw"
+    placeholderIcon={icon}
+  />
+  <div class="ref-card__meta">
+    <Badge tone="soft" icon={pillar.icon} size="sm">{pillar.title}</Badge>
+    {placeholder && <Badge tone="outline" size="sm">Beispiel</Badge>}
+  </div>
+  <Heading class="ref-card__title">{title}</Heading>
+  <p class="ref-card__location">
+    <Icon name="map-pin" size="1em" />
+    {location}{year && ` · ${year}`}
+  </p>
+  <p class="ref-card__summary">{summary}</p>
+  {
+    services.length > 0 && (
+      <ul slot="footer" class="ref-card__tags" role="list" aria-label="Ausgeführte Arbeiten">
+        {services.map((service) => (
+          <li>{service}</li>
+        ))}
+      </ul>
+    )
+  }
+</Card>
+
+<style>
+  .ref-card__meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+  }
+
+  .ref-card__title {
+    font-size: var(--text-xl);
+    line-height: 1.2;
+  }
+
+  .ref-card__location {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+    font-size: var(--text-xs);
+    font-weight: var(--weight-semibold);
+    color: var(--color-text-subtle);
+  }
+
+  .ref-card__summary {
+    font-size: var(--text-sm);
+    color: var(--color-text-muted);
+  }
+
+  .ref-card__tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+    margin: 0;
+    padding: var(--space-4) 0 0;
+    border-top: 1px solid var(--color-border);
+    list-style: none;
+  }
+
+  .ref-card__tags li {
+    padding: 0.25em 0.65em;
+    font-size: var(--text-2xs);
+    font-weight: var(--weight-semibold);
+    color: var(--gray-700);
+    background: var(--gray-100);
+    border-radius: var(--radius-xs);
+  }
+</style>

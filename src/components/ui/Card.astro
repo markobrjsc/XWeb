@@ -1,0 +1,181 @@
+---
+/**
+ * Card – Basis-Karte für alle Kacheln (Leistungen, Referenzen, Stellen, Vorteile …).
+ * Aussehen zentral über Varianten steuerbar – spezielle Karten bauen auf dieser Komponente auf.
+ *
+ * Slots:  media (Bild/Illustration, randlos oben) · default (Inhalt) · footer (unten ausgerichtet)
+ * Tipp:   Einen Link in der Karte mit class="card__link" versehen – dann ist die ganze Karte klickbar.
+ */
+import type { HTMLTag } from 'astro/types';
+
+interface Props {
+  as?: HTMLTag;
+  variant?: 'elevated' | 'outline' | 'subtle' | 'dark' | 'glass';
+  padding?: 'none' | 'sm' | 'md' | 'lg';
+  /** Anheben beim Überfahren mit der Maus */
+  interactive?: boolean;
+  /** Scroll-Animation: true = „up“, oder eine Variante wie "zoom" */
+  reveal?: boolean | 'up' | 'left' | 'right' | 'zoom' | 'fade';
+  class?: string;
+  id?: string;
+  [key: `data-${string}`]: string | undefined;
+}
+
+const {
+  as: Tag = 'article',
+  variant = 'elevated',
+  padding = 'md',
+  interactive = false,
+  reveal = false,
+  class: className,
+  ...rest
+} = Astro.props;
+
+const hasMedia = Astro.slots.has('media');
+const hasFooter = Astro.slots.has('footer');
+const revealValue = reveal === true ? 'up' : reveal || undefined;
+---
+
+<Tag
+  class:list={['card', `card--${variant}`, `card--pad-${padding}`, { 'card--interactive': interactive }, className]}
+  data-tone={variant === 'dark' ? 'dark' : undefined}
+  data-reveal={revealValue}
+  {...rest}
+>
+  {
+    hasMedia && (
+      <div class="card__media">
+        <slot name="media" />
+      </div>
+    )
+  }
+  <div class="card__body">
+    <slot />
+    {
+      hasFooter && (
+        <div class="card__footer">
+          <slot name="footer" />
+        </div>
+      )
+    }
+  </div>
+</Tag>
+
+<style>
+  .card {
+    --card-pad: clamp(1.25rem, 0.9rem + 1.3vw, 1.85rem);
+    --card-bg: var(--color-surface);
+    --card-border: var(--color-border);
+    --card-shadow: var(--shadow-xs);
+    --card-shadow-hover: var(--shadow-md);
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    background: var(--card-bg);
+    border: 1px solid var(--card-border);
+    border-radius: var(--radius-card);
+    box-shadow: var(--card-shadow);
+    overflow: hidden;
+    isolation: isolate;
+  }
+
+  .card--pad-none {
+    --card-pad: 0px;
+  }
+
+  .card--pad-sm {
+    --card-pad: clamp(1rem, 0.8rem + 0.8vw, 1.35rem);
+  }
+
+  .card--pad-lg {
+    --card-pad: clamp(1.5rem, 1rem + 2vw, 2.5rem);
+  }
+
+  .card--outline {
+    --card-shadow: none;
+    --card-bg: transparent;
+  }
+
+  .card--subtle {
+    --card-bg: var(--color-bg-subtle);
+    --card-border: transparent;
+    --card-shadow: none;
+  }
+
+  .card--dark {
+    --card-bg: var(--blue-900);
+    --card-border: rgb(255 255 255 / 0.08);
+    --card-shadow: var(--shadow-lg);
+  }
+
+  .card--glass {
+    --card-bg: rgb(255 255 255 / 0.06);
+    --card-border: rgb(255 255 255 / 0.12);
+    --card-shadow: none;
+    backdrop-filter: blur(10px);
+  }
+
+  .card__media {
+    position: relative;
+    overflow: hidden;
+  }
+
+  .card__body {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    gap: var(--space-3);
+    padding: var(--card-pad);
+  }
+
+  .card__footer {
+    margin-top: auto;
+    padding-top: var(--space-3);
+  }
+
+  /* Hover-Effekt */
+  .card--interactive {
+    transition:
+      transform var(--duration-slow) var(--ease-out),
+      box-shadow var(--duration-slow) var(--ease-out),
+      border-color var(--duration-slow) var(--ease-out);
+  }
+
+  .card--interactive:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--card-shadow-hover);
+    border-color: var(--blue-300);
+  }
+
+  .card--interactive :global(.card__media img) {
+    transition: transform 700ms var(--ease-out);
+  }
+
+  .card--interactive:hover :global(.card__media img) {
+    transform: scale(1.02);
+  }
+
+  /* Ganze Karte klickbar über einen einzelnen Link */
+  .card :global(.card__link) {
+    color: inherit;
+    text-decoration: none;
+  }
+
+  .card :global(.card__link::after) {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    border-radius: inherit;
+  }
+
+  .card :global(.card__link:focus-visible) {
+    outline: none;
+  }
+
+  .card:has(:global(.card__link:focus-visible)) {
+    outline: 2px solid var(--color-focus);
+    outline-offset: 3px;
+  }
+</style>

@@ -1,0 +1,225 @@
+---
+/**
+ * Referenzen – alle Projekte aus src/content/referenzen, filterbar nach Fachbereich.
+ * Neue Referenz: Markdown-Datei in src/content/referenzen anlegen, Foto unter
+ * src/assets/images/referenzen/<dateiname>.jpg ablegen.
+ */
+import { getCollection } from 'astro:content';
+import BaseLayout from '@/layouts/BaseLayout.astro';
+import CtaStrip from '@/components/sections/CtaStrip.astro';
+import PageHero from '@/components/sections/PageHero.astro';
+import Button from '@/components/ui/Button.astro';
+import Icon from '@/components/ui/Icon.astro';
+import ReferenceCard from '@/components/ui/ReferenceCard.astro';
+import Section from '@/components/ui/Section.astro';
+import { site } from '@/config/site';
+import { pillars } from '@/data/services';
+
+const references = (await getCollection('referenzen')).sort((a, b) => a.data.order - b.data.order);
+
+const filters = [
+  { id: 'alle', label: 'Alle Projekte', icon: 'layout-grid', count: references.length },
+  ...pillars.map((pillar) => ({
+    id: pillar.id,
+    label: pillar.title,
+    icon: pillar.icon,
+    count: references.filter((entry) => entry.data.category === pillar.id).length,
+  })),
+];
+
+const breadcrumbs = [
+  { label: 'Start', href: '/' },
+  { label: 'Referenzen', href: '/referenzen/' },
+];
+---
+
+<BaseLayout
+  title="Referenzen"
+  description="Referenzen der Pflasterarbeiten Hildebrand GmbH: Hofeinfahrten, Gärten, Kanal- und Leitungsbau, Straßen und Parkplätze im Landkreis Konstanz."
+  pageType="CollectionPage"
+  breadcrumbs={breadcrumbs}
+>
+  <PageHero
+    breadcrumbs={breadcrumbs}
+    eyebrow="Referenzen"
+    title={'Projekte aus Garten-, Tief- <span class="accent">und Straßenbau.</span>'}
+    lead="Ein Auszug aus unserer Arbeit im Landkreis Konstanz – von der Hofeinfahrt bis zur Erschließungsstraße. Aktuelle Einblicke von unseren Baustellen zeigen wir auch auf Instagram."
+  >
+    <Button href={site.social.instagram} variant="outline-light" icon="instagram" iconPosition="start" external>
+      Instagram
+    </Button>
+  </PageHero>
+
+  <Section labelledby="projekte-titel">
+    <h2 id="projekte-titel" class="visually-hidden">Projektübersicht</h2>
+
+    <div class="filter" data-filter hidden>
+      <p class="filter__label" id="filter-label">Nach Fachbereich filtern:</p>
+      <div class="filter__buttons" role="group" aria-labelledby="filter-label">
+        {
+          filters.map((filter, index) => (
+            <button class="filter__btn" type="button" data-filter-value={filter.id} aria-pressed={index === 0 ? 'true' : 'false'}>
+              <Icon name={filter.icon} size="1.05em" />
+              {filter.label}
+              <span class="filter__count">{filter.count}</span>
+            </button>
+          ))
+        }
+      </div>
+      <p class="visually-hidden" aria-live="polite" data-filter-status></p>
+    </div>
+
+    <ul class="refs" role="list">
+      {
+        references.map((entry) => (
+          <li class="refs__item" data-category={entry.data.category}>
+            <ReferenceCard entry={entry} headingLevel="h3" />
+          </li>
+        ))
+      }
+    </ul>
+  </Section>
+
+  <CtaStrip
+    icon="instagram"
+    title="Mehr Einblicke von unseren Baustellen"
+    text="Auf Instagram zeigen wir regelmäßig aktuelle Projekte – vom ersten Aushub bis zur fertigen Fläche."
+  >
+    <Button href={site.social.instagram} variant="primary" icon="arrow-up-right" external>Zu Instagram</Button>
+  </CtaStrip>
+</BaseLayout>
+
+<script>
+  // Filter nach Fachbereich (nur mit JavaScript sichtbar – ohne JS werden einfach alle Projekte gezeigt)
+  const filter = document.querySelector<HTMLElement>('[data-filter]');
+  const items = [...document.querySelectorAll<HTMLElement>('.refs__item')];
+  const status = document.querySelector<HTMLElement>('[data-filter-status]');
+
+  if (filter && items.length) {
+    filter.hidden = false;
+    const buttons = [...filter.querySelectorAll<HTMLButtonElement>('[data-filter-value]')];
+
+    const apply = (value: string) => {
+      let visible = 0;
+      items.forEach((item) => {
+        const show = value === 'alle' || item.dataset.category === value;
+        item.hidden = !show;
+        if (show) visible += 1;
+      });
+      buttons.forEach((button) => button.setAttribute('aria-pressed', String(button.dataset.filterValue === value)));
+      if (status) status.textContent = `${visible} ${visible === 1 ? 'Projekt' : 'Projekte'} angezeigt`;
+    };
+
+    buttons.forEach((button) => {
+      button.addEventListener('click', () => apply(button.dataset.filterValue ?? 'alle'));
+    });
+
+    // Direkter Link auf einen Fachbereich, z. B. /referenzen/?bereich=tiefbau
+    const preset = new URLSearchParams(window.location.search).get('bereich');
+    if (preset && buttons.some((button) => button.dataset.filterValue === preset)) apply(preset);
+  }
+</script>
+
+<style>
+  .filter {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-3) var(--space-5);
+    margin-bottom: var(--stack-space);
+    padding-bottom: var(--space-6);
+    border-bottom: 1px solid var(--color-border);
+  }
+
+  .filter[hidden] {
+    display: none;
+  }
+
+  .filter__label {
+    font-size: var(--text-sm);
+    font-weight: var(--weight-semibold);
+    color: var(--color-text-muted);
+  }
+
+  .filter__buttons {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+  }
+
+  .filter__btn {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+    min-height: 2.6rem;
+    padding: 0.45rem 0.9rem;
+    font-size: var(--text-sm);
+    font-weight: var(--weight-medium);
+    color: var(--gray-700);
+    background: #ffffff;
+    border: 1px solid var(--gray-300);
+    border-radius: var(--radius-button);
+    transition:
+      background-color var(--duration-base) ease,
+      border-color var(--duration-base) ease,
+      color var(--duration-base) ease;
+  }
+
+  .filter__btn:hover {
+    border-color: var(--blue-400);
+    color: var(--blue-800);
+  }
+
+  .filter__btn[aria-pressed='true'] {
+    color: #ffffff;
+    background: var(--blue-600);
+    border-color: var(--blue-600);
+  }
+
+  .filter__count {
+    min-width: 1.4rem;
+    padding: 0.05rem 0.4rem;
+    font-size: var(--text-2xs);
+    font-weight: var(--weight-semibold);
+    text-align: center;
+    border-radius: var(--radius-sm);
+    background: var(--gray-100);
+    color: var(--gray-600);
+  }
+
+  .filter__btn[aria-pressed='true'] .filter__count {
+    background: rgb(255 255 255 / 0.2);
+    color: #ffffff;
+  }
+
+  .refs {
+    display: grid;
+    gap: var(--grid-gap);
+    margin: 0;
+    padding: 0;
+  }
+
+  @media (min-width: 40rem) {
+    .refs {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+  }
+
+  @media (min-width: 64rem) {
+    .refs {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+  }
+
+  .refs__item {
+    display: flex;
+  }
+
+  .refs__item[hidden] {
+    display: none;
+  }
+
+  .refs__item > :global(*) {
+    flex: 1;
+  }
+</style>

@@ -1,0 +1,219 @@
+---
+/**
+ * Technische Zeichnung „Lageplan“ – Beispielgrundstück mit Wohnhaus, Terrasse, Zufahrt, Garten,
+ * Straße mit Gehweg sowie Kanal- und Wasseranschluss. Verbindet alle drei Fachbereiche
+ * (Garten-, Tief- und Straßenbau) in einer Darstellung. Wird im Startbildschirm gezeigt.
+ * Mit `animate` „zeichnet“ sich der Plan beim Laden (bei reduzierter Bewegung: sofort sichtbar).
+ */
+import HatchPatterns from './HatchPatterns.astro';
+import { drawingUid } from '@/lib/drawing';
+
+interface Props {
+  animate?: boolean;
+  class?: string;
+}
+
+const { animate = false, class: className } = Astro.props;
+const uid = drawingUid('plan');
+const url = (name: string) => `url(#${uid}-${name})`;
+
+// Grundstück & Straße
+const lot = { x1: 40, y1: 40, x2: 440, y2: 322 };
+const walkTop = 330;
+const curbN = 356;
+const roadN = 360;
+const roadS = 410;
+const curbS = 414;
+const walkS = 430;
+const drive = { x1: 270, x2: 340 };
+
+
+const trees = [
+  { x: 385, y: 94, r: 38 },
+  { x: 398, y: 268, r: 24 },
+  { x: 72, y: 282, r: 22 },
+];
+const shrubs = [
+  { x: 254, y: 70, r: 9 },
+  { x: 264, y: 88, r: 7 },
+  { x: 76, y: 70, r: 10 },
+  { x: 92, y: 88, r: 6.5 },
+];
+const manholes = [110, 400];
+---
+
+<svg
+  class:list={['drawing', 'lageplan', { 'drawing--animate': animate }, className]}
+  viewBox="0 0 520 480"
+  xmlns="http://www.w3.org/2000/svg"
+  role="img"
+  aria-label="Schematischer Lageplan eines Beispielgrundstücks mit Wohnhaus, Terrasse, gepflasterter Zufahrt, Garten, Straße sowie Kanal- und Wasseranschluss"
+>
+  <HatchPatterns uid={uid} use={['building']} />
+  <defs>
+    <!-- Verbundpflaster (diagonal) für die Zufahrt -->
+    <pattern id={`${uid}-paving-diag`} width="8" height="8" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+      <path class="pl-joint" d="M0 0 H8 M0 0 V8" />
+    </pattern>
+    <!-- Plattenbelag (orthogonal) für die Terrasse -->
+    <pattern id={`${uid}-paving-grid`} width="10" height="10" patternUnits="userSpaceOnUse">
+      <path class="pl-joint" d="M0 0 H10 M0 0 V10" />
+    </pattern>
+    <!-- Gehwegpflaster: Querfugen alle 10 Einheiten -->
+    <pattern id={`${uid}-walk`} width="10" height="40" patternUnits="userSpaceOnUse" x="2">
+      <path class="pl-line" d="M0 0 V40" />
+    </pattern>
+    <!-- Trittplatten des Hauszugangs -->
+    <pattern id={`${uid}-steps`} width="25" height="10" patternUnits="userSpaceOnUse" y="0">
+      <path class="pl-line" d="M0 0 H25" />
+    </pattern>
+    <!-- Heckenpflanzung: Reihe kleiner Kreise -->
+    <pattern id={`${uid}-hedge`} width="12" height="11.5" patternUnits="userSpaceOnUse" x={lot.x2 - 14} y="52">
+      <circle class="pl-line" cx="6" cy="5.75" r="5" />
+    </pattern>
+    <!-- Entwässerungsrinne -->
+    <pattern id={`${uid}-channel`} width="8.5" height="4" patternUnits="userSpaceOnUse" x={drive.x1 + 5}>
+      <path class="pl-soft" d="M0 0 V4" />
+    </pattern>
+  </defs>
+
+  <!-- Planrahmen -->
+  <rect class="d-thin d-fade" x="8" y="8" width="504" height="464" />
+
+  <!-- Nachbarbebauung -->
+  <g class="d-fade d-delay-4">
+    <rect x="462" y="96" width="50" height="110" fill={url('building')} />
+    <path class="d-thin" d="M512 96 H462 V206 H512" />
+    <rect x="8" y="124" width="18" height="96" fill={url('building')} />
+    <path class="d-thin" d="M8 124 H26 V220 H8" />
+  </g>
+
+  <!-- Straße und Gehwege -->
+  <g class="d-fade d-delay-3">
+    <rect x="8" y={walkTop} width="504" height={curbN - walkTop} fill={url('walk')} />
+    <line class="d-thin" x1="8" y1={(walkTop + curbN) / 2} x2="512" y2={(walkTop + curbN) / 2} />
+    <rect x="8" y={curbS} width="504" height={walkS - curbS} fill={url('walk')} />
+    <rect class="d-fill-strong" x="8" y={roadN} width="504" height={roadS - roadN} />
+    <line class="d-thin d-dashed" x1="8" y1={(roadN + roadS) / 2} x2="512" y2={(roadN + roadS) / 2} />
+  </g>
+  <path class="d-line d-draw d-delay-1" pathLength="1" d={`M8 ${curbN} H${drive.x1} M${drive.x2} ${curbN} H512`} />
+  <path class="d-outline d-draw d-delay-1" pathLength="1" d={`M8 ${roadN} H512`} />
+  <path class="d-outline d-draw d-delay-1" pathLength="1" d={`M8 ${roadS} H512`} />
+  <path class="d-line d-draw d-delay-1" pathLength="1" d={`M8 ${curbS} H512`} />
+  <line class="d-line d-draw d-delay-1" pathLength="1" x1="8" y1={walkTop} x2="512" y2={walkTop} />
+
+  <!-- Grundstücksgrenze -->
+  <rect class="d-boundary d-fade d-delay-2" x={lot.x1} y={lot.y1} width={lot.x2 - lot.x1} height={lot.y2 - lot.y1} />
+
+  <!-- Terrasse -->
+  <rect x="110" y="60" width="120" height="50" fill={url('paving-grid')} class="d-fade d-delay-4" />
+  <rect class="d-line d-draw d-delay-2" pathLength="1" x="110" y="60" width="120" height="50" />
+
+  <!-- Wohnhaus -->
+  <rect x="90" y="110" width="160" height="120" fill={url('building')} class="d-fade d-delay-4" />
+  <rect class="d-outline d-draw" pathLength="1" x="90" y="110" width="160" height="120" />
+  <rect class="d-thin d-draw d-delay-1" pathLength="1" x="95" y="115" width="150" height="110" />
+
+  <!-- Carport -->
+  <rect class="d-line d-draw d-delay-2" pathLength="1" x={drive.x1} y="140" width={drive.x2 - drive.x1} height="90" />
+  <path class="d-thin d-fade d-delay-4" d={`M${drive.x1} 140 L${drive.x2} 230 M${drive.x2} 140 L${drive.x1} 230`} />
+
+  <!-- Zufahrt mit Entwässerungsrinne -->
+  <rect x={drive.x1} y="230" width={drive.x2 - drive.x1} height={curbN - 230} fill={url('paving-diag')} class="d-fade d-delay-4" />
+  <path class="d-line d-draw d-delay-2" pathLength="1" d={`M${drive.x1} 230 V${curbN} M${drive.x2} 230 V${curbN}`} />
+  <g class="d-fade d-delay-5">
+    <rect x={drive.x1} y="323" width={drive.x2 - drive.x1} height="4" fill={url('channel')} />
+    <path class="d-soft" d={`M${drive.x1} 323 H${drive.x2} M${drive.x1} 327 H${drive.x2}`} />
+  </g>
+
+  <!-- Hauszugang -->
+  <rect class="d-fill" x="150" y="230" width="25" height={walkTop - 230} />
+  <path class="d-line d-draw d-delay-3" pathLength="1" d={`M150 230 V${walkTop} M175 230 V${walkTop}`} />
+  <rect class="d-fade d-delay-4" x="150" y="240" width="25" height="81" fill={url('steps')} />
+
+  <!-- Bäume, Sträucher, Hecke -->
+  <g class="d-fade d-delay-5">
+    {
+      trees.map((t) => (
+        <g>
+          <circle class="d-fill" cx={t.x} cy={t.y} r={t.r} />
+          <circle class="d-soft" cx={t.x} cy={t.y} r={t.r} />
+          <circle class="d-thin d-dashed" cx={t.x} cy={t.y} r={t.r * 0.62} />
+          <path class="d-thin" d={`M${t.x - 5} ${t.y} H${t.x + 5} M${t.x} ${t.y - 5} V${t.y + 5}`} />
+        </g>
+      ))
+    }
+    {shrubs.map((s) => <circle class="d-soft" cx={s.x} cy={s.y} r={s.r} />)}
+    <rect x={lot.x2 - 14} y="52" width="12" height="264" fill={url('hedge')} />
+  </g>
+
+  <!-- Leitungen: Schmutzwasserkanal und Trinkwasser -->
+  <g class="d-fade d-delay-6">
+    <line class="d-utility" x1="8" y1="372" x2="512" y2="372" />
+    <path class="d-utility" d={`M225 230 V372`} />
+    <circle class="d-paper" cx="225" cy="316" r="5.5" />
+    <circle class="d-soft" cx="225" cy="316" r="5.5" />
+    {
+      manholes.map((x) => (
+        <g>
+          <circle class="d-paper" cx={x} cy="372" r="7" />
+          <circle class="d-soft" cx={x} cy="372" r="7" />
+          <circle class="d-soft" cx={x} cy="372" r="2.5" />
+        </g>
+      ))
+    }
+    <line class="d-utility-alt" x1="8" y1="399" x2="512" y2="399" />
+    <path class="d-utility-alt" d="M130 399 V230" />
+    <text class="d-caps" x="486" y="368" text-anchor="end">SW</text>
+    <text class="d-caps" x="486" y="395" text-anchor="end">TW</text>
+  </g>
+
+  <!-- Beschriftungen -->
+  <g class="d-fade d-delay-5">
+    <rect class="d-paper" x="136" y="163" width="68" height="15" />
+    <text class="d-caps" x="170" y="174" text-anchor="middle">Wohnhaus</text>
+    <text class="d-caps" x="170" y="89" text-anchor="middle">Terrasse</text>
+    <rect class="d-paper" x="277" y="178" width="56" height="14" />
+    <text class="d-caps" x="305" y="188.5" text-anchor="middle">Carport</text>
+    <text class="d-caps" x="305" y="280" text-anchor="middle" transform="rotate(-90 305 280)">Zufahrt</text>
+    <text class="d-caps" x="392" y="192" text-anchor="middle">Garten</text>
+    <text class="d-caps" x="52" y="346">Gehweg</text>
+    <text class="d-caps" x="52" y="389">Straße</text>
+  </g>
+
+  <!-- Nordpfeil -->
+  <g class="d-fade d-delay-5">
+    <circle class="d-thin" cx="478" cy="52" r="15" />
+    <polygon class="d-arrow" points="478,39 484,60 478,56 472,60" />
+    <text class="d-caps" x="478" y="31" text-anchor="middle">N</text>
+  </g>
+
+  <!-- Plankopf -->
+  <g class="d-fade d-delay-6">
+    <rect class="d-paper" x="316" y="438" width="196" height="34" />
+    <path class="d-thin" d="M316 472 V438 H512" />
+    <text class="d-title" x="326" y="453">Lageplan</text>
+    <text class="d-note" x="326" y="466">Beispielgrundstück · schematisch · o. M.</text>
+  </g>
+</svg>
+
+<style>
+  .lageplan :global(.pl-joint) {
+    fill: none;
+    stroke: var(--draw-hatch);
+    stroke-width: 0.6;
+  }
+
+  .lageplan :global(.pl-line) {
+    fill: none;
+    stroke: var(--draw-line);
+    stroke-width: 0.6;
+    stroke-opacity: 0.55;
+  }
+
+  .lageplan :global(.pl-soft) {
+    fill: none;
+    stroke: var(--draw-line-soft);
+    stroke-width: 1;
+  }
+</style>

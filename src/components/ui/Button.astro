@@ -1,0 +1,196 @@
+---
+/**
+ * Button – einheitliche Schaltfläche für die gesamte Website.
+ * Mit `href` wird ein Link (<a>) gerendert, sonst ein <button>.
+ *
+ * Varianten:
+ *   primary        Blau gefüllt – Standard-Aktion auf hellem Grund
+ *   secondary      Weiß mit Rahmen – Nebenaktion auf hellem Grund
+ *   ghost          Nur Text – zurückhaltende Aktion
+ *   light          Weiß gefüllt – Hauptaktion auf dunklem Grund
+ *   outline-light  Heller Rahmen – Nebenaktion auf dunklem Grund
+ */
+import type { HTMLAttributes } from 'astro/types';
+import Icon from './Icon.astro';
+
+type Variant = 'primary' | 'secondary' | 'ghost' | 'light' | 'outline-light';
+type Size = 'sm' | 'md' | 'lg';
+
+type Props = Omit<HTMLAttributes<'a'> & HTMLAttributes<'button'>, 'type'> & {
+  href?: string;
+  type?: 'button' | 'submit' | 'reset';
+  variant?: Variant;
+  size?: Size;
+  /** Lucide-Icon-Name */
+  icon?: string;
+  iconPosition?: 'start' | 'end';
+  /** Volle Breite */
+  block?: boolean;
+  /** Öffnet den Link in einem neuen Tab (mit rel="noopener"). */
+  external?: boolean;
+};
+
+const {
+  href,
+  type = 'button',
+  variant = 'primary',
+  size = 'md',
+  icon,
+  iconPosition = 'end',
+  block = false,
+  external = false,
+  class: className,
+  ...rest
+} = Astro.props;
+
+const Tag = href ? 'a' : 'button';
+const tagAttributes = href
+  ? { href, ...(external ? { target: '_blank', rel: 'noopener noreferrer' } : {}) }
+  : { type };
+---
+
+<Tag
+  class:list={['btn', `btn--${variant}`, `btn--${size}`, { 'btn--block': block, 'btn--icon-start': icon && iconPosition === 'start' }, className]}
+  {...tagAttributes}
+  {...rest}
+>
+  {icon && iconPosition === 'start' && <Icon name={icon} class="btn__icon" />}
+  <span class="btn__label"><slot /></span>
+  {icon && iconPosition === 'end' && <Icon name={icon} class="btn__icon" />}
+  {external && <span class="visually-hidden"> (öffnet in neuem Tab)</span>}
+</Tag>
+
+<style>
+  .btn {
+    /* Größen */
+    --btn-height: 3rem;
+    --btn-px: 1.35rem;
+    --btn-font: var(--text-sm);
+    --btn-gap: 0.6rem;
+    /* Farben (werden je Variante überschrieben) */
+    --btn-bg: var(--blue-600);
+    --btn-fg: #ffffff;
+    --btn-border: var(--btn-bg);
+    --btn-bg-hover: var(--blue-700);
+    --btn-fg-hover: var(--btn-fg);
+    --btn-border-hover: var(--btn-bg-hover);
+    --btn-shadow: none;
+
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--btn-gap);
+    min-height: var(--btn-height);
+    padding: 0.5rem var(--btn-px);
+    font-family: var(--font-sans);
+    font-size: var(--btn-font);
+    font-weight: var(--weight-semibold);
+    line-height: 1.15;
+    letter-spacing: 0.01em;
+    text-align: center;
+    text-decoration: none;
+    white-space: nowrap;
+    color: var(--btn-fg);
+    background-color: var(--btn-bg);
+    border: 1.5px solid var(--btn-border);
+    border-radius: var(--radius-button);
+    box-shadow: var(--btn-shadow);
+    cursor: pointer;
+    user-select: none;
+    -webkit-tap-highlight-color: transparent;
+    transition:
+      background-color var(--duration-base) var(--ease-out),
+      border-color var(--duration-base) var(--ease-out),
+      color var(--duration-base) var(--ease-out),
+      box-shadow var(--duration-base) var(--ease-out);
+  }
+
+  .btn:hover {
+    color: var(--btn-fg-hover);
+    background-color: var(--btn-bg-hover);
+    border-color: var(--btn-border-hover);
+  }
+
+  .btn:focus-visible {
+    outline: 2px solid var(--color-focus);
+    outline-offset: 3px;
+  }
+
+  .btn__label {
+    display: inline-block;
+  }
+
+  .btn :global(.btn__icon) {
+    width: 1.15em;
+    height: 1.15em;
+    transition: transform var(--duration-base) var(--ease-out);
+  }
+
+  .btn:not(.btn--icon-start):hover :global(.btn__icon) {
+    transform: translateX(2px);
+  }
+
+  /* Größen */
+  .btn--sm {
+    --btn-height: 2.5rem;
+    --btn-px: 1rem;
+    --btn-font: var(--text-xs);
+    --btn-gap: 0.45rem;
+  }
+
+  .btn--lg {
+    --btn-height: 3.375rem;
+    --btn-px: 1.6rem;
+    --btn-font: var(--text-base);
+    --btn-gap: 0.65rem;
+  }
+
+  .btn--block {
+    display: flex;
+    width: 100%;
+  }
+
+  /* Varianten */
+  .btn--secondary {
+    --btn-bg: #ffffff;
+    --btn-fg: var(--blue-800);
+    --btn-border: var(--gray-300);
+    --btn-bg-hover: var(--blue-50);
+    --btn-fg-hover: var(--blue-800);
+    --btn-border-hover: var(--blue-400);
+  }
+
+  .btn--ghost {
+    --btn-bg: transparent;
+    --btn-fg: var(--blue-600);
+    --btn-border: transparent;
+    --btn-bg-hover: var(--blue-50);
+    --btn-fg-hover: var(--blue-700);
+    --btn-border-hover: transparent;
+    --btn-px: 0.85rem;
+  }
+
+  .btn--light {
+    --btn-bg: #ffffff;
+    --btn-fg: var(--blue-900);
+    --btn-border: #ffffff;
+    --btn-bg-hover: var(--blue-100);
+    --btn-fg-hover: var(--blue-950);
+    --btn-border-hover: var(--blue-100);
+  }
+
+  .btn--outline-light {
+    --btn-bg: transparent;
+    --btn-fg: #ffffff;
+    --btn-border: rgb(255 255 255 / 0.4);
+    --btn-bg-hover: rgb(255 255 255 / 0.1);
+    --btn-fg-hover: #ffffff;
+    --btn-border-hover: rgb(255 255 255 / 0.85);
+  }
+
+  .btn--light:focus-visible,
+  .btn--outline-light:focus-visible {
+    outline-color: var(--color-focus-inverse);
+  }
+</style>

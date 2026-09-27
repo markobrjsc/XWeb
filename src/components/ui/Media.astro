@@ -1,0 +1,109 @@
+---
+/**
+ * Media – zeigt ein Foto aus src/assets/images (automatisch optimiert als AVIF/WebP in passenden Größen).
+ * Existiert (noch) kein Foto mit diesem Namen, erscheint der Inhalt des Slots "fallback"
+ * (z. B. eine Illustration) – oder ein gestalteter Platzhalter mit Pflaster-Muster und Icon.
+ *
+ * <Media name="betrieb" alt="Unser Team vor dem Betriebsgelände" />
+ */
+import { Picture } from 'astro:assets';
+import { findImage } from '@/lib/images';
+import MediaPlaceholder from './MediaPlaceholder.astro';
+
+interface Props {
+  /** Dateiname ohne Endung, relativ zu src/assets/images */
+  name?: string;
+  alt: string;
+  /** Seitenverhältnis, z. B. "4 / 3" */
+  aspect?: string;
+  sizes?: string;
+  widths?: number[];
+  loading?: 'lazy' | 'eager';
+  priority?: boolean;
+  /** Icon des Platzhalters */
+  placeholderIcon?: string;
+  class?: string;
+}
+
+const {
+  name,
+  alt,
+  aspect = '4 / 3',
+  sizes = '(min-width: 64rem) 50vw, 100vw',
+  widths = [480, 720, 960, 1280, 1600],
+  loading = 'lazy',
+  priority = false,
+  placeholderIcon = 'image',
+  class: className,
+} = Astro.props;
+
+const image = findImage(name);
+const usableWidths = image ? widths.filter((w) => w <= image.width) : [];
+if (image && usableWidths.length === 0) usableWidths.push(image.width);
+---
+
+<div class:list={['media', className]} data-aspect={aspect}>
+  {
+    image ? (
+      <Picture
+        src={image}
+        alt={alt}
+        formats={['avif', 'webp']}
+        widths={usableWidths}
+        sizes={sizes}
+        loading={priority ? 'eager' : loading}
+        fetchpriority={priority ? 'high' : 'auto'}
+        decoding="async"
+        class="media__img"
+      />
+    ) : Astro.slots.has('fallback') ? (
+      <slot name="fallback" />
+    ) : (
+      <MediaPlaceholder icon={placeholderIcon} label={alt} />
+    )
+  }
+</div>
+
+<style>
+  .media {
+    position: relative;
+    width: 100%;
+    overflow: hidden;
+    background: var(--blue-50);
+  }
+
+  .media[data-aspect='4 / 3'] {
+    aspect-ratio: 4 / 3;
+  }
+  .media[data-aspect='3 / 2'] {
+    aspect-ratio: 3 / 2;
+  }
+  .media[data-aspect='16 / 9'] {
+    aspect-ratio: 16 / 9;
+  }
+  .media[data-aspect='1 / 1'] {
+    aspect-ratio: 1 / 1;
+  }
+  .media[data-aspect='3 / 4'] {
+    aspect-ratio: 3 / 4;
+  }
+  .media[data-aspect='auto'] {
+    aspect-ratio: auto;
+  }
+
+  .media :global(picture),
+  .media :global(.media__img) {
+    display: block;
+    width: 100%;
+    height: 100%;
+  }
+
+  .media :global(.media__img) {
+    object-fit: cover;
+  }
+
+  .media > :global(svg) {
+    width: 100%;
+    height: 100%;
+  }
+</style>

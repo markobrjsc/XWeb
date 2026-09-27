@@ -1,0 +1,138 @@
+---
+/**
+ * HatchPatterns – Schraffuren für technische Zeichnungen (in Anlehnung an übliche Plandarstellungen):
+ * gewachsener Boden, Oberboden, Schotter/Frostschutz, Sand/Splitt, Beton, Wurzelballen, Gebäude.
+ * Wird innerhalb eines <svg> eingebunden; `uid` macht die IDs pro Zeichnung eindeutig.
+ * Mit `use` werden nur die tatsächlich benötigten Muster ausgegeben (schlankeres HTML).
+ * Farben kommen aus den Design-Tokens (--draw-*), dadurch funktionieren die Zeichnungen
+ * auf hellem und dunklem Grund.
+ */
+export type Hatch = 'soil' | 'topsoil' | 'gravel' | 'gravel-fine' | 'sand' | 'concrete' | 'mesh' | 'building' | 'fade' | 'dot';
+
+interface Props {
+  uid: string;
+  use: Hatch[];
+}
+
+const { uid, use } = Astro.props;
+const has = (name: Hatch) => use.includes(name);
+---
+
+<defs>
+  {
+    has('soil') && (
+      <pattern id={`${uid}-soil`} width="12" height="12" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+        <line class="h-line" x1="0" y1="0" x2="0" y2="12" />
+        <circle class="h-dot" cx="6" cy="3" r="0.7" />
+        <circle class="h-dot" cx="6" cy="9" r="0.7" />
+      </pattern>
+    )
+  }
+  {
+    has('topsoil') && (
+      <pattern id={`${uid}-topsoil`} width="14" height="8" patternUnits="userSpaceOnUse">
+        <path class="h-line" d="M2 6 L5 2 M9 6 L12 2" />
+        <circle class="h-dot" cx="7" cy="7" r="0.6" />
+      </pattern>
+    )
+  }
+  {
+    has('gravel') && (
+      <pattern id={`${uid}-gravel`} width="26" height="20" patternUnits="userSpaceOnUse">
+        <path
+          class="h-stone"
+          d="M6 5a2 2 0 1 1-4 0a2 2 0 1 1 4 0 M14.4 3.5a1.4 1.4 0 1 1-2.8 0a1.4 1.4 0 1 1 2.8 0 M23.2 7a2.2 2.2 0 1 1-4.4 0a2.2 2.2 0 1 1 4.4 0 M9.6 13.5a1.6 1.6 0 1 1-3.2 0a1.6 1.6 0 1 1 3.2 0 M18.9 15a1.9 1.9 0 1 1-3.8 0a1.9 1.9 0 1 1 3.8 0 M3.6 18a1.1 1.1 0 1 1-2.2 0a1.1 1.1 0 1 1 2.2 0 M25.6 17.5a1.1 1.1 0 1 1-2.2 0a1.1 1.1 0 1 1 2.2 0"
+        />
+      </pattern>
+    )
+  }
+  {
+    has('gravel-fine') && (
+      <pattern id={`${uid}-gravel-fine`} width="16" height="12" patternUnits="userSpaceOnUse">
+        <path
+          class="h-stone"
+          d="M4.2 3a1.2 1.2 0 1 1-2.4 0a1.2 1.2 0 1 1 2.4 0 M10.9 2.5a0.9 0.9 0 1 1-1.8 0a0.9 0.9 0 1 1 1.8 0 M14.8 8a1.3 1.3 0 1 1-2.6 0a1.3 1.3 0 1 1 2.6 0 M7.5 9a1 1 0 1 1-2 0a1 1 0 1 1 2 0"
+        />
+      </pattern>
+    )
+  }
+  {
+    has('sand') && (
+      <pattern id={`${uid}-sand`} width="8" height="6" patternUnits="userSpaceOnUse">
+        <path class="h-grain" d="M1.5 1.5h.01 M5.5 2.5h.01 M3.5 4.8h.01 M7.2 5.2h.01" />
+      </pattern>
+    )
+  }
+  {
+    has('concrete') && (
+      <pattern id={`${uid}-concrete`} width="10" height="10" patternUnits="userSpaceOnUse" patternTransform="rotate(-45)">
+        <line class="h-line" x1="0" y1="0" x2="0" y2="10" />
+        <circle class="h-dot" cx="5" cy="5" r="0.7" />
+      </pattern>
+    )
+  }
+  {
+    has('mesh') && (
+      <pattern id={`${uid}-mesh`} width="7" height="7" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+        <path class="h-line" d="M0 0 V7 M0 0 H7" />
+      </pattern>
+    )
+  }
+  {
+    has('building') && (
+      <pattern id={`${uid}-building`} width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+        <line class="h-line" x1="0" y1="0" x2="0" y2="6" />
+      </pattern>
+    )
+  }
+  {
+    has('dot') && (
+      <marker id={`${uid}-dot`} viewBox="0 0 4 4" refX="2" refY="2" markerWidth="4" markerHeight="4" markerUnits="userSpaceOnUse">
+        <circle class="h-marker" cx="2" cy="2" r="1.7" />
+      </marker>
+    )
+  }
+  {
+    has('fade') && (
+      <>
+        <linearGradient id={`${uid}-fade`} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stop-color="#fff" stop-opacity="1" />
+          <stop offset="1" stop-color="#fff" stop-opacity="0" />
+        </linearGradient>
+        <mask id={`${uid}-fade-mask`} maskContentUnits="objectBoundingBox">
+          <rect width="1" height="1" fill={`url(#${uid}-fade)`} />
+        </mask>
+      </>
+    )
+  }
+</defs>
+
+<style>
+  .h-line {
+    fill: none;
+    stroke: var(--draw-hatch);
+    stroke-width: 0.7;
+  }
+
+  .h-dot {
+    fill: var(--draw-hatch);
+  }
+
+  .h-marker {
+    fill: var(--draw-text);
+  }
+
+  .h-stone {
+    fill: none;
+    stroke: var(--draw-hatch);
+    stroke-width: 0.75;
+  }
+
+  /* Punkte über runde Linienenden – ein Pfad statt vieler Kreise */
+  .h-grain {
+    fill: none;
+    stroke: var(--draw-hatch);
+    stroke-width: 1.1;
+    stroke-linecap: round;
+  }
+</style>

@@ -1,0 +1,57 @@
+---
+/**
+ * ServiceCard – eine einzelne Leistung mit Icon, Beschreibung und Stichpunkten.
+ */
+import type { Service } from '@/data/services';
+import Card from './Card.astro';
+import IconBadge from './IconBadge.astro';
+import CheckList from './CheckList.astro';
+
+interface Props {
+  service: Service;
+  headingLevel?: 'h3' | 'h4';
+  reveal?: boolean | 'up' | 'left' | 'right' | 'zoom' | 'fade';
+  class?: string;
+}
+
+const { service, headingLevel: Heading = 'h4', reveal = true, class: className } = Astro.props;
+---
+
+<Card as="article" interactive reveal={reveal} id={`leistung-${service.id}`} class:list={['service', className]}>
+  <div class="service__head">
+    <IconBadge name={service.icon} tone="soft" class="service__icon" />
+    <Heading class="service__title">{service.title}</Heading>
+  </div>
+  <p class="service__text">{service.description}</p>
+  <CheckList items={service.points} size="sm" class="service__points" />
+</Card>
+
+<style>
+  .service__head {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--space-4);
+    margin-bottom: var(--space-1);
+  }
+
+  .service__title {
+    min-width: 0;
+    font-size: var(--text-xl);
+    line-height: 1.2;
+    hyphens: manual;
+  }
+
+  .service__text {
+    font-size: var(--text-sm);
+    line-height: var(--leading-normal);
+    color: var(--color-text-muted);
+  }
+
+  .service :global(.service__points) {
+    margin-top: var(--space-2);
+    padding-top: var(--space-4);
+    border-top: 1px solid var(--color-border);
+  }
+
+</style>

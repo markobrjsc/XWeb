@@ -1,0 +1,96 @@
+---
+/**
+ * Section – Grundbaustein für jeden Seitenabschnitt: einheitliche Abstände,
+ * Hintergrundfarben (tone) und optionales technisches Raster.
+ *
+ * <Section id="leistungen" tone="subtle"> … </Section>
+ */
+import Container from './Container.astro';
+import TechGrid from './TechGrid.astro';
+
+interface Props {
+  id?: string;
+  /** Farbwelt: default (weiß) | subtle (hellgrau) | muted (hellblau) | dark (Nachtblau) | brand (Blau) */
+  tone?: 'default' | 'subtle' | 'muted' | 'dark' | 'brand';
+  /** Vertikaler Abstand */
+  space?: 'default' | 'sm' | 'none';
+  /** Innenabstand oben/unten gezielt entfernen */
+  flush?: 'top' | 'bottom';
+  container?: 'default' | 'narrow' | 'wide' | 'none';
+  /** Dezentes Raster im Hintergrund (wie technisches Zeichenpapier) */
+  pattern?: boolean;
+  /** Trennlinie oben */
+  divider?: boolean;
+  labelledby?: string;
+  class?: string;
+}
+
+const {
+  id,
+  tone = 'default',
+  space = 'default',
+  flush,
+  container = 'default',
+  pattern = false,
+  divider = false,
+  labelledby,
+  class: className,
+} = Astro.props;
+---
+
+<section
+  id={id}
+  class:list={['section', `section--space-${space}`, flush && `section--flush-${flush}`, { 'section--divider': divider }, className]}
+  data-tone={tone === 'default' ? undefined : tone}
+  aria-labelledby={labelledby}
+>
+  {pattern && <TechGrid class="section__pattern" tone={tone === 'dark' || tone === 'brand' ? 'light' : 'dark'} />}
+  {
+    container === 'none' ? (
+      <slot />
+    ) : (
+      <Container size={container} class="section__container">
+        <slot />
+      </Container>
+    )
+  }
+</section>
+
+<style>
+  .section {
+    position: relative;
+    isolation: isolate;
+    padding-block: var(--section-space);
+  }
+
+  .section--space-sm {
+    padding-block: var(--section-space-sm);
+  }
+
+  .section--space-none {
+    padding-block: 0;
+  }
+
+  .section--flush-top {
+    padding-top: 0;
+  }
+
+  .section--flush-bottom {
+    padding-bottom: 0;
+  }
+
+  .section--divider {
+    border-top: 1px solid var(--color-border);
+  }
+
+  .section :global(.section__pattern) {
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    mask-image: linear-gradient(to bottom, #000, transparent 85%);
+  }
+
+  .section :global(.section__container) {
+    position: relative;
+  }
+</style>
