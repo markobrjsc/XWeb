@@ -1,0 +1,131 @@
+---
+/**
+ * Technische Zeichnung „Regelquerschnitt Leitungsgraben“: Rohrleitung im Sandbett,
+ * Leitungszone, Trassenwarnband, Hauptverfüllung und Oberboden im gewachsenen Boden.
+ * Schematische Darstellung ohne Maßstab.
+ */
+import HatchPatterns from './HatchPatterns.astro';
+import { type Callout, drawingUid, leaderLeft, leaderRight, tick } from '@/lib/drawing';
+
+interface Props {
+  class?: string;
+}
+
+const { class: className } = Astro.props;
+const uid = drawingUid('tief');
+const url = (name: string) => `url(#${uid}-${name})`;
+
+// Geometrie
+const xL = 130; // linke Schnittkante
+const xR = 430; // rechte Schnittkante
+const gL = 290; // Grabenwand links
+const gR = 390; // Grabenwand rechts
+const y0 = 96; // Geländeoberkante
+const yB = 250; // Grabensohle
+const pipe = { x: 340, y: 222, r: 16 };
+
+const grass = [
+  ...Array.from({ length: 15 }, (_, i) => xL + 6 + i * 10.5),
+  ...Array.from({ length: 3 }, (_, i) => gR + 8 + i * 11),
+];
+
+const right: Callout[] = [
+  { x: 370, y: 140, ly: 120, text: 'Hauptverfüllung' },
+  { x: 378, y: 166, ly: 146, text: 'Trassenwarnband' },
+  { x: 372, y: 198, ly: 172, text: 'Leitungszone (Sand)' },
+  { x: pipe.x + pipe.r, y: pipe.y, ly: 198, text: 'Rohrleitung' },
+  { x: 376, y: 244, ly: 224, text: 'Rohrbettung' },
+];
+
+const left: Callout[] = [
+  { x: xL, y: 102, ly: 96, text: 'Oberboden' },
+  { x: xL, y: 196, ly: 196, text: 'Gewachsener Boden' },
+];
+---
+
+<svg
+  class:list={['drawing', className]}
+  viewBox="-14 30 620 270"
+  xmlns="http://www.w3.org/2000/svg"
+  role="img"
+  aria-label="Schematischer Regelquerschnitt eines Leitungsgrabens mit Rohrleitung im Sandbett"
+>
+  <HatchPatterns uid={uid} use={['soil', 'topsoil', 'gravel', 'sand', 'fade', 'dot']} />
+
+  <!-- Gewachsener Boden -->
+  <rect x={xL} y="108" width={xR - xL} height="168" fill={url('soil')} mask={url('fade-mask')} />
+
+  <!-- Oberboden -->
+  <rect class="d-fill" x={xL} y={y0} width={xR - xL} height="12" />
+  <rect x={xL} y={y0} width={xR - xL} height="12" fill={url('topsoil')} />
+
+  <!-- Grabenverfüllung -->
+  <rect class="d-paper" x={gL} y="108" width={gR - gL} height={yB - 108} />
+  <rect class="d-fill" x={gL} y="108" width={gR - gL} height="78" />
+  <rect x={gL} y="108" width={gR - gL} height="78" fill={url('gravel')} />
+  <rect class="d-fill" x={gL} y="186" width={gR - gL} height="52" />
+  <rect x={gL} y="186" width={gR - gL} height="52" fill={url('sand')} />
+  <rect class="d-fill-strong" x={gL} y="238" width={gR - gL} height={yB - 238} />
+  <rect x={gL} y="238" width={gR - gL} height={yB - 238} fill={url('sand')} />
+
+  <!-- Zonengrenzen und Trassenwarnband -->
+  <line class="d-thin" x1={gL} y1="186" x2={gR} y2="186" />
+  <line class="d-thin" x1={gL} y1="238" x2={gR} y2="238" />
+  <line class="d-soft d-dashed" x1={gL + 8} y1="166" x2={gR - 8} y2="166" />
+
+  <!-- Rohr -->
+  <circle class="d-solid-2" cx={pipe.x} cy={pipe.y} r={pipe.r} />
+  <circle class="d-paper" cx={pipe.x} cy={pipe.y} r={pipe.r - 3.5} />
+  <circle class="d-line" cx={pipe.x} cy={pipe.y} r={pipe.r} />
+  <circle class="d-thin" cx={pipe.x} cy={pipe.y} r={pipe.r - 3.5} />
+
+  <!-- Grabenkontur, Gelände -->
+  <path class="d-line" d={`M${gL} ${y0} V${yB} H${gR} V${y0}`} />
+  <line class="d-thin" x1={xL} y1="108" x2={gL} y2="108" />
+  <line class="d-thin" x1={gR} y1="108" x2={xR} y2="108" />
+  <line class="d-outline" x1={xL} y1={y0} x2={xR} y2={y0} />
+  <path class="d-thin" d={grass.map((x) => `M${x} ${y0} l3 -5`).join(' ')} />
+  <line class="d-line" x1={xL} y1={y0} x2={xL} y2="190" />
+  <line class="d-line" x1={xR} y1={y0} x2={xR} y2="190" />
+
+  <!-- Maße: Grabenbreite b, Grabentiefe t -->
+  <line class="d-dim" x1={gL} y1="66" x2={gR} y2="66" />
+  <line class="d-dim" x1={gL} y1="60" x2={gL} y2="90" />
+  <line class="d-dim" x1={gR} y1="60" x2={gR} y2="90" />
+  <path class="d-tick" d={tick(gL, 66)} />
+  <path class="d-tick" d={tick(gR, 66)} />
+  <text class="d-italic" x={(gL + gR) / 2} y="60" text-anchor="middle">b</text>
+
+  <line class="d-dim" x1="272" y1={y0} x2="272" y2={yB} />
+  <line class="d-dim" x1="266" y1={yB} x2={gL} y2={yB} />
+  <path class="d-tick" d={tick(272, y0)} />
+  <path class="d-tick" d={tick(272, yB)} />
+  <rect class="d-paper" x="262" y="164" width="20" height="16" />
+  <text class="d-italic" x="272" y="176" text-anchor="middle">t</text>
+
+  <!-- Beschriftung -->
+  {
+    right.map((c) => (
+      <>
+        <path class="d-leader" d={leaderRight(c, xR)} marker-start={url('dot')} />
+        <text class="d-label" x={xR + 26} y={c.ly + 3.5}>
+          {c.text}
+        </text>
+      </>
+    ))
+  }
+  {
+    left.map((c) => (
+      <>
+        <path class="d-leader" d={leaderLeft(c, xL)} marker-start={url('dot')} />
+        <text class="d-label" x={xL - 26} y={c.ly + 3.5} text-anchor="end">
+          {c.text}
+        </text>
+      </>
+    ))
+  }
+
+  <!-- Plankopf -->
+  <text class="d-title" x={xL} y="276">Regelquerschnitt Leitungsgraben</text>
+  <text class="d-note" x={xL} y="291">Schematische Darstellung · ohne Maßstab</text>
+</svg>

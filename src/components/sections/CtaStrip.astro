@@ -1,0 +1,78 @@
+---
+/**
+ * CtaStrip – schmaler Hinweis-Streifen mit Überschrift, kurzem Text und Aktionen (Slot).
+ * Z. B. „Initiativbewerbung“ oder „Mehr Einblicke auf Instagram“.
+ */
+import Container from '@/components/ui/Container.astro';
+import IconBadge from '@/components/ui/IconBadge.astro';
+
+interface Props {
+  title: string;
+  text?: string;
+  icon?: string;
+  id?: string;
+}
+
+const { title, text, icon, id } = Astro.props;
+---
+
+<section class="cta-strip" id={id} aria-label={title}>
+  <Container>
+    <div class="cta-strip__box" data-reveal>
+      {icon && <IconBadge name={icon} tone="primary" size="lg" />}
+      <div class="cta-strip__text">
+        <h2 class="cta-strip__title">{title}</h2>
+        {text && <p class="cta-strip__desc">{text}</p>}
+      </div>
+      <div class="cta-strip__actions">
+        <slot />
+      </div>
+    </div>
+  </Container>
+</section>
+
+<style>
+  .cta-strip {
+    padding-block: var(--section-space-sm);
+  }
+
+  .cta-strip__box {
+    display: grid;
+    gap: var(--space-6);
+    align-items: center;
+    padding: clamp(1.5rem, 1rem + 2vw, 2.5rem);
+    border: 1px solid var(--color-border);
+    border-left: 3px solid var(--blue-600);
+    border-radius: var(--radius-lg);
+    background: var(--color-bg-subtle);
+  }
+
+  @media (min-width: 52rem) {
+    .cta-strip__box {
+      grid-template-columns: auto minmax(0, 1fr) auto;
+      gap: var(--space-8);
+    }
+  }
+
+  .cta-strip__text {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+  }
+
+  .cta-strip__title {
+    font-size: var(--text-2xl);
+    line-height: 1.2;
+  }
+
+  .cta-strip__desc {
+    max-width: 42rem;
+    color: var(--color-text-muted);
+  }
+
+  .cta-strip__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-3);
+  }
+</style>

@@ -1,0 +1,79 @@
+---
+/**
+ * ReferencesTeaser – ausgewählte Referenzen (featured: true) auf der Startseite.
+ */
+import { getCollection } from 'astro:content';
+import Button from '@/components/ui/Button.astro';
+import ReferenceCard from '@/components/ui/ReferenceCard.astro';
+import Section from '@/components/ui/Section.astro';
+import SectionHeader from '@/components/ui/SectionHeader.astro';
+
+const references = (await getCollection('referenzen'))
+  .filter((entry) => entry.data.featured)
+  .sort((a, b) => a.data.order - b.data.order)
+  .slice(0, 3);
+---
+
+<Section labelledby="referenzen-titel" class="ref-teaser">
+  <div class="ref-teaser__head">
+    <SectionHeader
+      id="referenzen-titel"
+      eyebrow="Referenzen"
+      title={'Gebaut für Jahrzehnte – <span class="accent">ausgewählte Projekte.</span>'}
+      lead="Ein Auszug aus unserer Arbeit im Garten-, Tief- und Straßenbau im Landkreis Konstanz."
+    />
+    <Button href="/referenzen/" variant="secondary" icon="arrow-right" class="ref-teaser__all">Alle Referenzen</Button>
+  </div>
+
+  <ul class="ref-teaser__grid" role="list" data-reveal-group="120">
+    {
+      references.map((entry) => (
+        <li class="ref-teaser__item">
+          <ReferenceCard entry={entry} />
+        </li>
+      ))
+    }
+  </ul>
+</Section>
+
+<style>
+  .ref-teaser__head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: var(--space-6);
+    margin-bottom: var(--stack-space);
+  }
+
+  .ref-teaser__head :global(.section-header) {
+    margin-bottom: 0;
+  }
+
+  .ref-teaser__grid {
+    display: grid;
+    gap: var(--grid-gap);
+    margin: 0;
+    padding: 0;
+  }
+
+  @media (min-width: 40rem) {
+    .ref-teaser__grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+  }
+
+  @media (min-width: 64rem) {
+    .ref-teaser__grid {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+  }
+
+  .ref-teaser__item {
+    display: flex;
+  }
+
+  .ref-teaser__item > :global(*) {
+    flex: 1;
+  }
+</style>

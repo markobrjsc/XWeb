@@ -1,0 +1,82 @@
+---
+/**
+ * CheckList – Aufzählung mit Häkchen. Das Häkchen wird per CSS gezeichnet (kein zusätzliches SVG je Punkt).
+ */
+interface Props {
+  items: readonly string[];
+  columns?: 1 | 2;
+  size?: 'sm' | 'md';
+  class?: string;
+}
+
+const { items, columns = 1, size = 'md', class: className } = Astro.props;
+---
+
+<ul class:list={['checklist', `checklist--cols-${columns}`, `checklist--${size}`, className]} role="list">
+  {items.map((item) => <li class="checklist__item">{item}</li>)}
+</ul>
+
+<style>
+  .checklist {
+    /* Lucide-Icon „check“ als Maske */
+    --check-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M20 6 9 17l-5-5'/%3E%3C/svg%3E");
+    display: grid;
+    gap: var(--space-2) var(--space-5);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  @media (min-width: 30rem) {
+    .checklist--cols-2 {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+  }
+
+  .checklist__item {
+    --mark-size: 1.3rem;
+    position: relative;
+    padding-left: calc(var(--mark-size) + 0.65rem);
+    font-size: var(--text-base);
+    line-height: 1.45;
+    color: var(--color-text);
+  }
+
+  .checklist--sm .checklist__item {
+    --mark-size: 1.15rem;
+    font-size: var(--text-sm);
+  }
+
+  /* Hintergrund-Kästchen */
+  .checklist__item::before,
+  .checklist__item::after {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0.1rem;
+    width: var(--mark-size);
+    height: var(--mark-size);
+  }
+
+  .checklist__item::before {
+    border-radius: var(--radius-sm);
+    background: var(--blue-50);
+  }
+
+  /* Häkchen */
+  .checklist__item::after {
+    background: var(--blue-600);
+    -webkit-mask: var(--check-mask) center / 62% no-repeat;
+    mask: var(--check-mask) center / 62% no-repeat;
+  }
+
+  :global([data-tone='dark']) .checklist__item::before,
+  :global([data-tone='brand']) .checklist__item::before {
+    background: rgb(255 255 255 / 0.1);
+  }
+
+  :global([data-tone='dark']) .checklist__item::after,
+  :global([data-tone='brand']) .checklist__item::after {
+    background: var(--blue-200);
+  }
+</style>

@@ -1,0 +1,13 @@
+// Cloudflare-Konfiguration für das Deployment als statische Website
+// (Cloudflare Workers mit Static Assets). Deployment: `npm run deploy`
+// Alternativ kann das Repository direkt mit Cloudflare Pages verbunden werden – siehe README.md.
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "pflasterarbeiten-hildebrand",
+  "compatibility_date": "2026-09-01",
+  "assets": {
+    "directory": "./dist",
+    "html_handling": "force-trailing-slash",
+    "not_found_handling": "404-page"
+  }
+}

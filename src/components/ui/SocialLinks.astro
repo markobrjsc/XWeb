@@ -1,0 +1,61 @@
+---
+/**
+ * SocialLinks – Links zu Instagram und Facebook (reine Links, keine eingebetteten Inhalte → DSGVO-freundlich).
+ */
+import { site } from '@/config/site';
+import Icon from './Icon.astro';
+
+interface Props {
+  class?: string;
+}
+
+const { class: className } = Astro.props;
+
+const links = [
+  { label: 'Instagram', href: site.social.instagram, icon: 'instagram' },
+  { label: 'Facebook', href: site.social.facebook, icon: 'facebook' },
+];
+---
+
+<ul class:list={['social', className]} role="list">
+  {
+    links.map((link) => (
+      <li>
+        <a class="social__link" href={link.href} target="_blank" rel="noopener noreferrer">
+          <Icon name={link.icon} size="1.15em" />
+          <span class="visually-hidden">
+            {link.label} (öffnet in neuem Tab)
+          </span>
+        </a>
+      </li>
+    ))
+  }
+</ul>
+
+<style>
+  .social {
+    display: flex;
+    gap: var(--space-3);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .social__link {
+    display: inline-grid;
+    place-items: center;
+    width: 2.5rem;
+    height: 2.5rem;
+    border-radius: var(--radius-sm);
+    color: var(--color-heading);
+    background: var(--color-primary-soft);
+    transition:
+      background-color var(--duration-base) ease,
+      color var(--duration-base) ease;
+  }
+
+  .social__link:hover {
+    color: var(--blue-950);
+    background: #ffffff;
+  }
+</style>

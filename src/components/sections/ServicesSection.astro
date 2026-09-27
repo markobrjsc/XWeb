@@ -1,0 +1,180 @@
+---
+/**
+ * ServicesSection (id="leistungen") – alle Leistungen, gegliedert nach Fachbereich.
+ * Links bzw. rechts: technische Zeichnung (bleibt beim Scrollen stehen), daneben Beschreibung und Leistungen.
+ * Fotos: src/assets/images/gartenbau.jpg, tiefbau.jpg, strassenbau.jpg ersetzen die Zeichnungen automatisch.
+ */
+import GartenbauDrawing from '@/components/drawings/GartenbauDrawing.astro';
+import StrassenbauDrawing from '@/components/drawings/StrassenbauDrawing.astro';
+import TiefbauDrawing from '@/components/drawings/TiefbauDrawing.astro';
+import Eyebrow from '@/components/ui/Eyebrow.astro';
+import Media from '@/components/ui/Media.astro';
+import Section from '@/components/ui/Section.astro';
+import SectionHeader from '@/components/ui/SectionHeader.astro';
+import ServiceCard from '@/components/ui/ServiceCard.astro';
+import TechGrid from '@/components/ui/TechGrid.astro';
+import { pillars } from '@/data/services';
+
+const drawings = {
+  gartenbau: GartenbauDrawing,
+  tiefbau: TiefbauDrawing,
+  strassenbau: StrassenbauDrawing,
+};
+---
+
+<Section id="leistungen" tone="subtle" labelledby="leistungen-titel" class="services">
+  <SectionHeader
+    id="leistungen-titel"
+    eyebrow="Unsere Leistungen"
+    title={'Vom ersten Spatenstich <span class="accent">bis zur fertigen Fläche.</span>'}
+    lead="Unsere Leistungen im Überblick – ausgeführt von unserem eigenen Team, abgestimmt auf Ihr Projekt und aus einer Hand koordiniert."
+  />
+
+  <div class="services__rows">
+    {
+      pillars.map((pillar, index) => {
+        const Drawing = drawings[pillar.id];
+        const reverse = index % 2 === 1;
+        return (
+          <article id={pillar.id} class:list={['pillar-row', { 'pillar-row--reverse': reverse }]} aria-labelledby={`${pillar.id}-titel`}>
+            <div class="pillar-row__visual" data-reveal="fade">
+              <figure class="pillar-row__frame">
+                <TechGrid tone="dark" class="pillar-row__grid" />
+                <Media
+                  name={pillar.id}
+                  alt={`${pillar.title}: Projekt von Pflasterarbeiten Hildebrand`}
+                  aspect="auto"
+                  sizes="(min-width: 64rem) 45vw, 100vw"
+                  class="pillar-row__media"
+                >
+                  <Drawing slot="fallback" class="pillar-row__drawing" />
+                </Media>
+              </figure>
+            </div>
+
+            <div class="pillar-row__content">
+              <div class="pillar-row__intro" data-reveal>
+                <Eyebrow icon={pillar.icon}>
+                  {pillar.number} · {pillar.subtitle}
+                </Eyebrow>
+                <h3 class="pillar-row__title" id={`${pillar.id}-titel`}>
+                  {pillar.title}
+                </h3>
+                <p class="pillar-row__text">{pillar.description}</p>
+              </div>
+              <div class="pillar-row__services" data-reveal-group="90">
+                {pillar.services.map((service) => (
+                  <ServiceCard service={service} />
+                ))}
+              </div>
+            </div>
+          </article>
+        );
+      })
+    }
+  </div>
+</Section>
+
+<style>
+  .services__rows {
+    display: grid;
+    gap: clamp(4.5rem, 3rem + 5vw, 7.5rem);
+  }
+
+  .pillar-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--space-10);
+    scroll-margin-top: calc(var(--header-height-compact) + var(--space-6));
+  }
+
+  @media (min-width: 64rem) {
+    .pillar-row {
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+      gap: clamp(2.5rem, 1rem + 4vw, 4.5rem);
+      align-items: start;
+    }
+
+    .pillar-row--reverse .pillar-row__visual {
+      order: 2;
+    }
+
+    .pillar-row__visual {
+      position: sticky;
+      top: calc(var(--header-height-compact) + var(--space-8));
+    }
+  }
+
+  .pillar-row__frame {
+    position: relative;
+    isolation: isolate;
+    margin: 0;
+    overflow: hidden;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+    background: #ffffff;
+    box-shadow: var(--shadow-sm);
+  }
+
+  .pillar-row__frame :global(.pillar-row__grid) {
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+  }
+
+  .pillar-row__frame :global(.pillar-row__media) {
+    background: transparent;
+  }
+
+  .pillar-row__frame :global(.pillar-row__drawing) {
+    padding: clamp(1rem, 0.5rem + 2vw, 2rem) clamp(0.5rem, 0.2rem + 1vw, 1rem);
+  }
+
+  .pillar-row__frame :global(.media__img) {
+    aspect-ratio: 3 / 2;
+  }
+
+  .pillar-row__content {
+    display: grid;
+    gap: var(--space-8);
+  }
+
+  .pillar-row__intro {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--space-4);
+  }
+
+  .pillar-row__title {
+    font-size: var(--text-4xl);
+    line-height: 1.05;
+  }
+
+  .pillar-row__text {
+    max-width: 38rem;
+    font-size: var(--text-lg);
+    line-height: var(--leading-relaxed);
+    color: var(--color-text-muted);
+  }
+
+  .pillar-row__services {
+    display: grid;
+    gap: var(--grid-gap);
+  }
+
+  @media (min-width: 40rem) {
+    .pillar-row__services {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    /* Ungerade Anzahl: letzte Karte über die volle Breite, Stichpunkte zweispaltig */
+    .pillar-row__services > :global(:last-child:nth-child(odd)) {
+      grid-column: 1 / -1;
+    }
+
+    .pillar-row__services > :global(:last-child:nth-child(odd) .checklist) {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+  }
+</style>

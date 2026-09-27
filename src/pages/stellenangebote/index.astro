@@ -1,0 +1,152 @@
+---
+/**
+ * Stellenangebote – offene Stellen, Vorteile und Bewerbungsablauf.
+ * Stellen werden in src/content/stellenangebote gepflegt (active: false blendet eine Stelle aus).
+ */
+import { getCollection } from 'astro:content';
+import BaseLayout from '@/layouts/BaseLayout.astro';
+import CtaStrip from '@/components/sections/CtaStrip.astro';
+import PageHero from '@/components/sections/PageHero.astro';
+import ProcessSection from '@/components/sections/ProcessSection.astro';
+import Button from '@/components/ui/Button.astro';
+import FactList from '@/components/ui/FactList.astro';
+import FeatureCard from '@/components/ui/FeatureCard.astro';
+import JobCard from '@/components/ui/JobCard.astro';
+import Section from '@/components/ui/Section.astro';
+import SectionHeader from '@/components/ui/SectionHeader.astro';
+import { site } from '@/config/site';
+import { applicationSteps, benefits } from '@/data/company';
+
+const jobs = (await getCollection('stellenangebote'))
+  .filter((job) => job.data.active)
+  .sort((a, b) => a.data.order - b.data.order);
+
+const breadcrumbs = [
+  { label: 'Start', href: '/' },
+  { label: 'Stellenangebote', href: '/stellenangebote/' },
+];
+
+const highlights = [
+  { label: 'Urlaub', value: '30 Tage im Jahr', icon: 'sun' },
+  { label: 'Arbeitszeit', value: 'Keine Überstunden', icon: 'clock' },
+  { label: 'Extras', value: 'Monatliche Tankgutscheine', icon: 'fuel' },
+  { label: 'Arbeitsort', value: 'Landkreis Konstanz', icon: 'map-pin' },
+];
+
+const mailto = `mailto:${site.contact.email}?subject=${encodeURIComponent('Bewerbung')}`;
+---
+
+<BaseLayout
+  title="Stellenangebote & Ausbildung"
+  description="Jobs in Radolfzell: Straßenbauer, Landschaftsgärtner, Bauhelfer und Ausbildung (m/w/d) im Familienbetrieb – 30 Tage Urlaub, keine Überstunden."
+  pageType="CollectionPage"
+  breadcrumbs={breadcrumbs}
+  contactTitle={'Fragen zur <span class="accent">Bewerbung?</span>'}
+  contactText="Rufen Sie uns einfach an oder schreiben Sie uns eine E-Mail – wir beantworten Ihre Fragen gerne und freuen uns darauf, Sie kennenzulernen."
+>
+  <PageHero
+    breadcrumbs={breadcrumbs}
+    eyebrow="Karriere"
+    title={'Stellenangebote: Werden Sie Teil <span class="accent">unseres Teams.</span>'}
+    lead="Wir suchen Verstärkung für unser Team im Garten-, Tief- und Straßenbau – mit Berufserfahrung, als Quereinsteiger oder als Auszubildende. Bei uns arbeiten Sie in einem Familienbetrieb mit echtem Zusammenhalt."
+  >
+    <Button href="#stellen" variant="light" icon="arrow-down">Offene Stellen</Button>
+    <Button href={mailto} variant="outline-light">Initiativ bewerben</Button>
+    <FactList slot="aside" title="Das erwartet Sie" facts={highlights} />
+  </PageHero>
+
+  <Section id="stellen" labelledby="stellen-titel">
+    <SectionHeader
+      id="stellen-titel"
+      eyebrow="Offene Stellen"
+      title={jobs.length === 0
+        ? 'Aktuell sind alle Stellen <span class="accent">besetzt.</span>'
+        : `${jobs.length} ${jobs.length === 1 ? 'Stelle ist' : 'Stellen sind'} <span class="accent">aktuell zu besetzen.</span>`}
+      lead={jobs.length === 0
+        ? 'Initiativbewerbungen sind trotzdem jederzeit willkommen.'
+        : 'Klicken Sie auf eine Stelle für alle Details zu Aufgaben, Anforderungen und Bewerbung.'}
+    />
+    <ul class="jobs" role="list" data-reveal-group="90">
+      {
+        jobs.map((job) => (
+          <li>
+            <JobCard job={job} />
+          </li>
+        ))
+      }
+    </ul>
+  </Section>
+
+  <Section tone="subtle" labelledby="vorteile-titel">
+    <SectionHeader
+      id="vorteile-titel"
+      eyebrow="Ihre Vorteile"
+      title={'Was wir Ihnen <span class="accent">bieten.</span>'}
+      lead="Gute Arbeit braucht gute Bedingungen. Darauf können Sie sich bei uns verlassen."
+    />
+    <ul class="benefits" role="list" data-reveal-group="70">
+      {
+        benefits.map((benefit) => (
+          <li class="benefits__item">
+            <FeatureCard icon={benefit.icon} title={benefit.title} text={benefit.text} layout="inline" />
+          </li>
+        ))
+      }
+    </ul>
+  </Section>
+
+  <ProcessSection
+    id="bewerbung"
+    steps={applicationSteps}
+    eyebrow="Bewerbung"
+    title={'In drei Schritten <span class="accent">zu uns.</span>'}
+    lead="Unkompliziert und persönlich – so läuft Ihre Bewerbung bei uns ab."
+  />
+
+  <CtaStrip
+    icon="mail"
+    title="Keine passende Stelle dabei?"
+    text="Wir freuen uns auch über Initiativbewerbungen – ob Fachkraft, Quereinsteiger oder Praktikant. Erzählen Sie uns, was Sie mitbringen."
+  >
+    <Button href={`mailto:${site.contact.email}?subject=${encodeURIComponent('Initiativbewerbung')}`} variant="primary" icon="mail" iconPosition="start">
+      Initiativbewerbung senden
+    </Button>
+    <Button href={site.contact.phoneHref} variant="secondary" icon="phone" iconPosition="start">{site.contact.phone}</Button>
+  </CtaStrip>
+</BaseLayout>
+
+<style>
+  .jobs {
+    display: grid;
+    gap: var(--space-4);
+    margin: 0;
+    padding: 0;
+  }
+
+  .benefits {
+    display: grid;
+    gap: var(--grid-gap);
+    margin: 0;
+    padding: 0;
+  }
+
+  @media (min-width: 40rem) {
+    .benefits {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+  }
+
+  @media (min-width: 64rem) {
+    .benefits {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+  }
+
+  .benefits__item {
+    display: flex;
+  }
+
+  .benefits__item > :global(*) {
+    flex: 1;
+  }
+</style>

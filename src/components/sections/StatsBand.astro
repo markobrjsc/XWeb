@@ -1,0 +1,53 @@
+---
+/**
+ * StatsBand – Kennzahlen des Betriebs, die beim Scrollen hochzählen.
+ */
+import Section from '@/components/ui/Section.astro';
+import StatCounter from '@/components/ui/StatCounter.astro';
+import { yearsInBusiness } from '@/config/site';
+import { allServices, pillars } from '@/data/services';
+
+const stats = [
+  { value: yearsInBusiness, label: 'Jahre Erfahrung als Familienbetrieb', from: 0 },
+  { value: pillars.length, label: 'Fachbereiche unter einem Dach: Garten-, Tief- und Straßenbau', from: 0 },
+  { value: allServices.length, label: 'Leistungen aus einer Hand – koordiniert von einem Ansprechpartner', from: 0 },
+];
+---
+
+<Section tone="dark" space="sm" pattern class="stats-band">
+  <h2 class="visually-hidden">Pflasterarbeiten Hildebrand in Zahlen</h2>
+  <ul class="stats" role="list" data-reveal-group="120">
+    {
+      stats.map((stat) => (
+        <li class="stats__item" data-reveal>
+          <StatCounter value={stat.value} label={stat.label} from={stat.from} />
+        </li>
+      ))
+    }
+  </ul>
+</Section>
+
+<style>
+  .stats {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--space-10) var(--grid-gap);
+    margin: 0;
+    padding: 0;
+  }
+
+  @media (min-width: 48rem) {
+    .stats {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+  }
+
+  .stats__item {
+    padding-left: var(--space-5);
+    border-left: 1px solid var(--color-border-strong);
+  }
+
+  .stats__item :global(.stat__label) {
+    max-width: 18rem;
+  }
+</style>

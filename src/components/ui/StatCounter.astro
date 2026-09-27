@@ -1,0 +1,60 @@
+---
+/**
+ * StatCounter – Kennzahl, die beim Sichtbarwerden hochzählt.
+ * Ohne JavaScript (oder bei reduzierter Bewegung) steht sofort der Endwert da.
+ */
+interface Props {
+  value: number;
+  label: string;
+  prefix?: string;
+  suffix?: string;
+  /** Startwert der Zähl-Animation */
+  from?: number;
+  class?: string;
+}
+
+const { value, label, prefix = '', suffix = '', from = 0, class: className } = Astro.props;
+---
+
+<div class:list={['stat', className]}>
+  <p class="stat__value">
+    {prefix && <span class="stat__affix">{prefix}</span>}
+    <span data-count-to={value} data-count-from={from}>{value}</span>
+    {suffix && <span class="stat__affix">{suffix}</span>}
+  </p>
+  <p class="stat__label">{label}</p>
+</div>
+
+<style>
+  .stat {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+  }
+
+  .stat__value {
+    display: flex;
+    align-items: baseline;
+    gap: 0.15em;
+    font-size: var(--text-5xl);
+    font-weight: var(--weight-bold);
+    font-stretch: 92%;
+    line-height: 1;
+    letter-spacing: var(--tracking-tighter);
+    color: var(--color-heading);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .stat__affix {
+    font-size: 0.5em;
+    font-weight: var(--weight-semibold);
+    color: var(--color-accent);
+  }
+
+  .stat__label {
+    font-size: var(--text-sm);
+    font-weight: var(--weight-medium);
+    line-height: 1.35;
+    color: var(--color-text-muted);
+  }
+</style>

@@ -1,0 +1,108 @@
+---
+/**
+ * BaseLayout – Grundgerüst jeder Seite: <head> mit SEO, Header, Inhalt, Kontaktbereich, Footer.
+ *
+ * <BaseLayout title="Referenzen" description="…" breadcrumbs={[…]}> … </BaseLayout>
+ */
+import '@/styles/global.css';
+import Footer from '@/components/layout/Footer.astro';
+import Header from '@/components/layout/Header.astro';
+import ContactSection from '@/components/sections/ContactSection.astro';
+import SEOHead from '@/components/seo/SEOHead.astro';
+import { site } from '@/config/site';
+import { type BreadcrumbItem, graph, organizationSchema, webPageSchema, websiteSchema } from '@/lib/seo';
+
+interface Props {
+  /** Seitentitel – wird zu „Titel | Pflasterarbeiten Hildebrand“ ergänzt */
+  title: string;
+  /** Vollständiger Titel ohne Zusatz (z. B. für die Startseite) */
+  fullTitle?: string;
+  /** Meta-Beschreibung (ca. 120–160 Zeichen) */
+  description: string;
+  image?: string;
+  /** schema.org-Seitentyp, z. B. AboutPage, CollectionPage */
+  pageType?: string;
+  breadcrumbs?: BreadcrumbItem[];
+  noindex?: boolean;
+  /** Zusätzliche strukturierte Daten (z. B. JobPosting) */
+  schema?: Record<string, unknown>[];
+  /** Kontaktbereich am Seitenende anzeigen */
+  showContact?: boolean;
+  contactTitle?: string;
+  contactText?: string;
+}
+
+const {
+  title,
+  fullTitle,
+  description,
+  image,
+  pageType = 'WebPage',
+  breadcrumbs,
+  noindex = false,
+  schema = [],
+  showContact = true,
+  contactTitle,
+  contactText,
+} = Astro.props;
+
+const origin = (Astro.site ?? Astro.url).origin;
+const canonical = new URL(Astro.url.pathname, origin);
+const pageTitle = fullTitle ?? `${title} | Pflasterarbeiten Hildebrand`;
+
+const jsonLd = graph([
+  organizationSchema(origin),
+  websiteSchema(origin),
+  webPageSchema({ origin, url: canonical.href, title: pageTitle, description, type: pageType, breadcrumbs }),
+  ...schema,
+]);
+---
+
+<!doctype html>
+<html lang={site.language}>
+  <head>
+    <SEOHead title={pageTitle} description={description} canonical={canonical} image={image} noindex={noindex} jsonLd={jsonLd} />
+  </head>
+  <body>
+    <a class="skip-link" href="#main">Zum Inhalt springen</a>
+    <Header />
+    <main id="main" tabindex="-1">
+      <slot />
+      {showContact && <ContactSection title={contactTitle} text={contactText} />}
+    </main>
+    <Footer />
+
+    <script>
+      import '@/scripts/site.ts';
+    </script>
+  </body>
+</html>
+
+<style is:global>
+  .skip-link {
+    position: fixed;
+    top: var(--space-3);
+    left: var(--space-3);
+    z-index: var(--z-skip);
+    padding: var(--space-3) var(--space-5);
+    font-weight: var(--weight-bold);
+    color: #ffffff;
+    background: var(--blue-700);
+    border-radius: var(--radius-button);
+    box-shadow: var(--shadow-lg);
+    transform: translateY(-160%);
+    transition: transform var(--duration-base) var(--ease-out);
+  }
+
+  .skip-link:focus {
+    transform: none;
+  }
+
+  main:focus {
+    outline: none;
+  }
+
+  html.menu-open {
+    overflow: hidden;
+  }
+</style>

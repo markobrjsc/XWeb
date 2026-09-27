@@ -1,0 +1,96 @@
+---
+/**
+ * Impressum (Anbieterkennzeichnung nach § 5 DDG). Alle Firmendaten kommen aus src/config/site.ts.
+ * Hinweis: Bitte vor dem Livegang vom Kunden prüfen lassen (Firmierung, Registernummer, USt-IdNr.).
+ */
+import BaseLayout from '@/layouts/BaseLayout.astro';
+import PageHero from '@/components/sections/PageHero.astro';
+import Section from '@/components/ui/Section.astro';
+import { site } from '@/config/site';
+
+const breadcrumbs = [
+  { label: 'Start', href: '/' },
+  { label: 'Impressum', href: '/impressum/' },
+];
+---
+
+<BaseLayout
+  title="Impressum"
+  description={`Impressum der ${site.legalName}, ${site.address.street}, ${site.address.postalCode} ${site.address.city}.`}
+  breadcrumbs={breadcrumbs}
+>
+  <PageHero breadcrumbs={breadcrumbs} title="Impressum" size="sm" />
+
+  <Section container="narrow">
+    <div class="prose">
+      <h2>Angaben gemäß § 5 DDG</h2>
+      <address>
+        <strong>{site.legalName}</strong><br />
+        {site.address.street}<br />
+        {`${site.address.postalCode} ${site.address.city}`}<br />
+        {site.address.countryName}
+      </address>
+
+      <h3>Vertreten durch</h3>
+      <p>Geschäftsführer: {site.managingDirector}</p>
+
+      <h3>Kontakt</h3>
+      <p>
+        Telefon: <a href={site.contact.phoneHref}>{site.contact.phone}</a><br />
+        Telefax: {site.contact.fax}<br />
+        E-Mail: <a href={`mailto:${site.contact.email}`}>{site.contact.email}</a>
+      </p>
+
+      <h3>Registereintrag</h3>
+      <p>
+        Eintragung im Handelsregister<br />
+        Registergericht: {site.register.court}<br />
+        Registernummer: {site.register.number}
+      </p>
+
+      <h3>Umsatzsteuer-ID</h3>
+      <p>
+        Umsatzsteuer-Identifikationsnummer gemäß § 27a Umsatzsteuergesetz:<br />
+        {site.register.vatId}
+      </p>
+
+      <h3>Verantwortlich für den Inhalt</h3>
+      <p>{site.managingDirector}, Anschrift wie oben</p>
+
+      <h2>Verbraucherstreitbeilegung</h2>
+      <p>
+        Wir sind nicht bereit oder verpflichtet, an Streitbeilegungsverfahren vor einer Verbraucherschlichtungsstelle
+        teilzunehmen.
+      </p>
+
+      <h2>Haftung für Inhalte</h2>
+      <p>
+        Die Inhalte dieser Website wurden mit größter Sorgfalt erstellt. Für die Richtigkeit, Vollständigkeit und
+        Aktualität der Inhalte können wir jedoch keine Gewähr übernehmen. Als Diensteanbieter sind wir für eigene Inhalte
+        auf diesen Seiten nach den allgemeinen Gesetzen verantwortlich. Wir sind jedoch nicht verpflichtet, übermittelte
+        oder gespeicherte fremde Informationen zu überwachen oder nach Umständen zu forschen, die auf eine rechtswidrige
+        Tätigkeit hinweisen. Verpflichtungen zur Entfernung oder Sperrung der Nutzung von Informationen nach den
+        allgemeinen Gesetzen bleiben hiervon unberührt. Eine diesbezügliche Haftung ist erst ab dem Zeitpunkt der
+        Kenntnis einer konkreten Rechtsverletzung möglich. Bei Bekanntwerden entsprechender Rechtsverletzungen werden wir
+        diese Inhalte umgehend entfernen.
+      </p>
+
+      <h2>Haftung für Links</h2>
+      <p>
+        Unsere Website enthält Links zu externen Websites Dritter (z. B. Instagram, Facebook, Google Maps), auf deren
+        Inhalte wir keinen Einfluss haben. Für die Inhalte der verlinkten Seiten ist stets der jeweilige Anbieter oder
+        Betreiber verantwortlich. Die verlinkten Seiten wurden zum Zeitpunkt der Verlinkung auf mögliche Rechtsverstöße
+        überprüft; rechtswidrige Inhalte waren zu diesem Zeitpunkt nicht erkennbar. Bei Bekanntwerden von
+        Rechtsverletzungen werden wir derartige Links umgehend entfernen.
+      </p>
+
+      <h2>Urheberrecht</h2>
+      <p>
+        Die durch den Seitenbetreiber erstellten Inhalte und Werke auf dieser Website – insbesondere Texte, Fotos,
+        Zeichnungen und das Logo – unterliegen dem deutschen Urheberrecht. Vervielfältigung, Bearbeitung, Verbreitung und
+        jede Art der Verwertung außerhalb der Grenzen des Urheberrechts bedürfen der schriftlichen Zustimmung des
+        jeweiligen Autors bzw. Erstellers.
+      </p>
+    </div>
+  </Section>
+</BaseLayout>

@@ -1,0 +1,53 @@
+---
+/**
+ * Icon – rendert ein Icon aus dem Lucide-Set (https://lucide.dev/icons) als Inline-SVG.
+ * Die Icons werden beim Build eingebettet, es wird nichts nachgeladen.
+ *
+ * <Icon name="phone" />                    dekorativ (für Screenreader ausgeblendet)
+ * <Icon name="phone" label="Telefon" />    mit Bedeutung (wird vorgelesen)
+ */
+import { getIconData, iconToSVG } from '@iconify/utils';
+import type { IconifyJSON } from '@iconify/types';
+import lucide from '@iconify-json/lucide/icons.json';
+
+interface Props {
+  name: string;
+  /** Größe als CSS-Wert, Standard: 1.25em (skaliert mit der Schriftgröße). */
+  size?: number | string;
+  /** Zugängliche Beschriftung. Ohne Label gilt das Icon als rein dekorativ. */
+  label?: string;
+  strokeWidth?: number;
+  class?: string;
+}
+
+const { name, size = '1.25em', label, strokeWidth, class: className } = Astro.props;
+
+const data = getIconData(lucide as IconifyJSON, name);
+if (!data) {
+  throw new Error(`Icon „${name}“ gibt es im Lucide-Set nicht. Übersicht: https://lucide.dev/icons`);
+}
+
+const { attributes, body } = iconToSVG(data);
+const svgBody = strokeWidth ? body.replaceAll('stroke-width="2"', `stroke-width="${strokeWidth}"`) : body;
+const content = label ? `<title>${label}</title>${svgBody}` : svgBody;
+---
+
+<svg
+  xmlns="http://www.w3.org/2000/svg"
+  viewBox={attributes.viewBox}
+  width={size}
+  height={size}
+  class:list={['icon', className]}
+  aria-hidden={label ? undefined : 'true'}
+  role={label ? 'img' : undefined}
+  focusable="false"
+  set:html={content}
+/>
+
+<style>
+  .icon {
+    flex-shrink: 0;
+    display: inline-block;
+    vertical-align: middle;
+  }
+</style>

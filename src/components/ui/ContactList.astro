@@ -1,0 +1,172 @@
+---
+/**
+ * ContactList – Kontaktangaben mit Icons. Daten kommen zentral aus src/config/site.ts.
+ * Wird im Kontaktbereich, im Footer, im mobilen Menü und auf der Karriereseite verwendet.
+ */
+import { site } from '@/config/site';
+import Icon from './Icon.astro';
+
+type Item = 'phone' | 'email' | 'fax' | 'address' | 'hours';
+
+interface Props {
+  items?: Item[];
+  size?: 'sm' | 'md';
+  class?: string;
+}
+
+const { items = ['phone', 'email', 'address', 'hours'], size = 'md', class: className } = Astro.props;
+const { contact, address, openingHours } = site;
+const [emailLocal, emailDomain] = contact.email.split('@');
+---
+
+<ul class:list={['contact-list', `contact-list--${size}`, className]} role="list">
+  {
+    items.map((item) => {
+      switch (item) {
+        case 'phone':
+          return (
+            <li class="contact-list__item">
+              <span class="contact-list__icon"><Icon name="phone" size="1em" /></span>
+              <span class="contact-list__body">
+                <span class="contact-list__label">Telefon</span>
+                <a class="contact-list__value" href={contact.phoneHref}>{contact.phone}</a>
+              </span>
+            </li>
+          );
+        case 'email':
+          return (
+            <li class="contact-list__item">
+              <span class="contact-list__icon"><Icon name="mail" size="1em" /></span>
+              <span class="contact-list__body">
+                <span class="contact-list__label">E-Mail</span>
+                <a class="contact-list__value contact-list__value--wrap" href={`mailto:${contact.email}`}>
+                  {emailLocal}@<wbr />{emailDomain}
+                </a>
+              </span>
+            </li>
+          );
+        case 'fax':
+          return (
+            <li class="contact-list__item">
+              <span class="contact-list__icon"><Icon name="printer" size="1em" /></span>
+              <span class="contact-list__body">
+                <span class="contact-list__label">Fax</span>
+                <span class="contact-list__value">{contact.fax}</span>
+              </span>
+            </li>
+          );
+        case 'address':
+          return (
+            <li class="contact-list__item">
+              <span class="contact-list__icon"><Icon name="map-pin" size="1em" /></span>
+              <span class="contact-list__body">
+                <span class="contact-list__label">Adresse</span>
+                <address class="contact-list__value">
+                  {address.street}
+                  <br />
+                  {address.postalCode} {address.city}
+                </address>
+              </span>
+            </li>
+          );
+        case 'hours':
+          return (
+            <li class="contact-list__item">
+              <span class="contact-list__icon"><Icon name="clock" size="1em" /></span>
+              <span class="contact-list__body">
+                <span class="contact-list__label">Bürozeiten</span>
+                <span class="contact-list__value">{openingHours.label}</span>
+              </span>
+            </li>
+          );
+      }
+    })
+  }
+</ul>
+
+<style>
+  .contact-list {
+    display: grid;
+    gap: var(--space-5);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .contact-list--sm {
+    gap: var(--space-4);
+  }
+
+  .contact-list__item {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--space-4);
+  }
+
+  .contact-list__icon {
+    display: inline-grid;
+    place-items: center;
+    flex-shrink: 0;
+    width: 2.6rem;
+    height: 2.6rem;
+    font-size: 1.15rem;
+    border-radius: var(--radius-md);
+    background: var(--blue-50);
+    color: var(--blue-700);
+    box-shadow: inset 0 0 0 1px var(--blue-100);
+  }
+
+  .contact-list--sm .contact-list__icon {
+    width: 2.2rem;
+    height: 2.2rem;
+    font-size: 1rem;
+    border-radius: var(--radius-sm);
+  }
+
+  :global([data-tone='dark']) .contact-list__icon,
+  :global([data-tone='brand']) .contact-list__icon {
+    background: rgb(255 255 255 / 0.08);
+    color: var(--blue-200);
+    box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.1);
+  }
+
+  .contact-list__body {
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+    min-width: 0;
+  }
+
+  .contact-list__label {
+    font-size: var(--text-2xs);
+    font-weight: var(--weight-bold);
+    letter-spacing: var(--tracking-wide);
+    text-transform: uppercase;
+    color: var(--color-text-subtle);
+  }
+
+  .contact-list__value {
+    font-size: var(--text-base);
+    font-weight: var(--weight-semibold);
+    font-style: normal;
+    line-height: 1.4;
+    color: var(--color-heading);
+  }
+
+  .contact-list--sm .contact-list__value {
+    font-size: var(--text-sm);
+  }
+
+  .contact-list__value--wrap {
+    overflow-wrap: normal;
+  }
+
+  a.contact-list__value {
+    text-decoration: none;
+  }
+
+  a.contact-list__value:hover {
+    color: var(--color-link);
+    text-decoration: underline;
+  }
+</style>

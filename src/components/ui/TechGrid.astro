@@ -1,0 +1,46 @@
+---
+/**
+ * TechGrid – feines Raster wie auf technischem Zeichenpapier. Dezenter Hintergrund für
+ * Seitenköpfe, dunkle Bereiche und Zeichnungsflächen.
+ *
+ * <TechGrid tone="light" />  helle Linien – für dunkle Flächen
+ * <TechGrid tone="dark" />   dunkle Linien – für helle Flächen
+ */
+interface Props {
+  tone?: 'light' | 'dark';
+  class?: string;
+}
+
+const { tone = 'light', class: className } = Astro.props;
+---
+
+<div class:list={['tech-grid', `tech-grid--${tone}`, className]} aria-hidden="true"></div>
+
+<style>
+  .tech-grid {
+    --grid-minor: 24px;
+    --grid-major: 120px;
+    pointer-events: none;
+    background-image:
+      linear-gradient(to bottom, var(--grid-major-color) 1px, transparent 1px),
+      linear-gradient(to right, var(--grid-major-color) 1px, transparent 1px),
+      linear-gradient(to bottom, var(--grid-minor-color) 1px, transparent 1px),
+      linear-gradient(to right, var(--grid-minor-color) 1px, transparent 1px);
+    background-size:
+      var(--grid-major) var(--grid-major),
+      var(--grid-major) var(--grid-major),
+      var(--grid-minor) var(--grid-minor),
+      var(--grid-minor) var(--grid-minor);
+    background-position: -1px -1px;
+  }
+
+  .tech-grid--light {
+    --grid-major-color: rgb(255 255 255 / 0.07);
+    --grid-minor-color: rgb(255 255 255 / 0.03);
+  }
+
+  .tech-grid--dark {
+    --grid-major-color: rgb(18 54 94 / 0.08);
+    --grid-minor-color: rgb(18 54 94 / 0.04);
+  }
+</style>

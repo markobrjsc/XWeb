@@ -1,0 +1,415 @@
+/* ==========================================================================
+   GLOBALE STYLES
+   Reset, Grundtypografie, Hilfsklassen und das Scroll-Animationssystem.
+   Komponenten-spezifische Styles liegen direkt in der jeweiligen Komponente.
+   ========================================================================== */
+@import './tokens.css';
+@import './drawing.css';
+
+/* ---------------------------------------------------------------------------
+   Reset
+   --------------------------------------------------------------------------- */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+* {
+  margin: 0;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+  scroll-padding-top: calc(var(--header-height-compact) + var(--space-4));
+  color-scheme: light;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  html {
+    scroll-behavior: smooth;
+  }
+}
+
+body {
+  min-height: 100vh;
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  font-family: var(--font-sans);
+  font-size: var(--text-base);
+  font-stretch: var(--stretch-body);
+  line-height: var(--leading-normal);
+  color: var(--color-text);
+  background-color: var(--color-bg);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+  overflow-x: clip;
+}
+
+main {
+  flex: 1 0 auto;
+}
+
+img,
+picture,
+video,
+canvas,
+svg {
+  display: block;
+  max-width: 100%;
+}
+
+img {
+  height: auto;
+}
+
+input,
+button,
+textarea,
+select {
+  font: inherit;
+  color: inherit;
+}
+
+button {
+  cursor: pointer;
+}
+
+p,
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  overflow-wrap: break-word;
+}
+
+ul[role='list'],
+ol[role='list'] {
+  list-style: none;
+  padding: 0;
+}
+
+[hidden] {
+  display: none !important;
+}
+
+/* ---------------------------------------------------------------------------
+   Typografie
+   --------------------------------------------------------------------------- */
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  font-family: var(--font-display);
+  font-stretch: var(--stretch-display);
+  font-weight: var(--weight-extrabold);
+  line-height: var(--leading-snug);
+  letter-spacing: var(--tracking-tight);
+  color: var(--color-heading);
+  text-wrap: balance;
+  overflow-wrap: anywhere;
+  hyphens: auto;
+  hyphenate-limit-chars: 12 5 5;
+}
+
+h1 {
+  font-size: var(--text-5xl);
+  line-height: var(--leading-tight);
+  letter-spacing: var(--tracking-tighter);
+}
+
+h2 {
+  font-size: var(--text-4xl);
+  line-height: 1.1;
+}
+
+h3 {
+  font-size: var(--text-xl);
+}
+
+h4 {
+  font-size: var(--text-lg);
+}
+
+p {
+  text-wrap: pretty;
+}
+
+a {
+  color: var(--color-link);
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.18em;
+  transition: color var(--duration-fast) ease;
+}
+
+a:hover {
+  color: var(--color-link-hover);
+}
+
+strong,
+b {
+  font-weight: var(--weight-bold);
+}
+
+::selection {
+  background: var(--blue-200);
+  color: var(--blue-950);
+}
+
+/* ---------------------------------------------------------------------------
+   Farbwelten (data-tone)
+   Ein Bereich mit data-tone="dark" oder "brand" definiert die semantischen
+   Farben neu – alle Komponenten darin passen sich automatisch an.
+   --------------------------------------------------------------------------- */
+[data-tone='dark'],
+[data-tone='brand'] {
+  --color-heading: var(--color-text-inverse);
+  --color-text: var(--color-text-inverse-muted);
+  --color-text-muted: var(--color-text-inverse-subtle);
+  --color-text-subtle: var(--color-text-inverse-subtle);
+  --color-border: var(--color-border-inverse);
+  --color-border-strong: rgb(255 255 255 / 0.24);
+  --color-link: var(--blue-200);
+  --color-link-hover: #ffffff;
+  --color-focus: var(--color-focus-inverse);
+  --color-surface: rgb(255 255 255 / 0.05);
+  --color-surface-raised: rgb(255 255 255 / 0.08);
+  --color-primary-soft: rgb(255 255 255 / 0.1);
+  --color-primary-softer: rgb(255 255 255 / 0.06);
+  color: var(--color-text);
+}
+
+[data-tone='dark'] {
+  background-color: var(--color-bg-dark);
+}
+
+[data-tone='brand'] {
+  background-color: var(--color-bg-brand);
+}
+
+[data-tone='subtle'] {
+  background-color: var(--color-bg-subtle);
+}
+
+[data-tone='muted'] {
+  background-color: var(--color-bg-muted);
+}
+
+/* ---------------------------------------------------------------------------
+   Fokus – gut sichtbar für Tastaturnutzer, unsichtbar für Mausklicks
+   --------------------------------------------------------------------------- */
+:focus-visible {
+  outline: 3px solid var(--color-focus);
+  outline-offset: 3px;
+  border-radius: var(--radius-xs);
+}
+
+.on-dark :focus-visible,
+[data-tone='dark'] :focus-visible,
+[data-tone='brand'] :focus-visible {
+  outline-color: var(--color-focus-inverse);
+}
+
+/* ---------------------------------------------------------------------------
+   Hilfsklassen
+   --------------------------------------------------------------------------- */
+.visually-hidden {
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  padding: 0 !important;
+  margin: -1px !important;
+  overflow: hidden !important;
+  clip-path: inset(50%) !important;
+  white-space: nowrap !important;
+  border: 0 !important;
+}
+
+.text-balance {
+  text-wrap: balance;
+}
+
+.text-center {
+  text-align: center;
+}
+
+.accent {
+  color: var(--color-primary);
+}
+
+[data-tone='dark'] .accent,
+[data-tone='brand'] .accent {
+  color: var(--color-accent);
+}
+
+/* Fließtext-Bereich, z. B. für Impressum & Datenschutz */
+.prose {
+  --prose-space: var(--space-5);
+  max-width: 72ch;
+  color: var(--color-text);
+}
+
+.prose > * + * {
+  margin-top: var(--prose-space);
+}
+
+.prose h2 {
+  font-size: var(--text-2xl);
+  margin-top: var(--space-12);
+}
+
+.prose h3 {
+  font-size: var(--text-lg);
+  margin-top: var(--space-8);
+}
+
+.prose h2 + *,
+.prose h3 + * {
+  margin-top: var(--space-3);
+}
+
+.prose ul,
+.prose ol {
+  padding-left: 1.25em;
+}
+
+.prose li + li {
+  margin-top: var(--space-2);
+}
+
+.prose li::marker {
+  color: var(--color-primary);
+}
+
+.prose a {
+  font-weight: var(--weight-medium);
+  overflow-wrap: anywhere;
+}
+
+.prose address {
+  font-style: normal;
+}
+
+/* ---------------------------------------------------------------------------
+   Scroll-Animationen
+   Elemente mit data-reveal werden beim Scrollen sanft eingeblendet.
+   Aktiv nur, wenn JavaScript läuft (Klasse .js am <html>) und der Nutzer keine
+   reduzierte Bewegung eingestellt hat – sonst ist alles sofort sichtbar.
+   Varianten: data-reveal="up" (Standard) | "down" | "left" | "right" | "zoom" | "fade"
+   --------------------------------------------------------------------------- */
+/* Technik: Animationen auf den Einzel-Eigenschaften translate/scale – so bleiben
+   Hover-Effekte (transform) und Übergänge (transition) der Komponenten unberührt. */
+@media (prefers-reduced-motion: no-preference) {
+  .js [data-reveal]:not(.is-revealed) {
+    opacity: 0;
+  }
+
+  .js [data-reveal].is-revealed {
+    animation: reveal-up var(--duration-reveal) var(--ease-out) var(--reveal-delay, 0ms) both;
+  }
+
+  .js [data-reveal='down'].is-revealed {
+    animation-name: reveal-down;
+  }
+
+  .js [data-reveal='left'].is-revealed {
+    animation-name: reveal-left;
+  }
+
+  .js [data-reveal='right'].is-revealed {
+    animation-name: reveal-right;
+  }
+
+  .js [data-reveal='zoom'].is-revealed {
+    animation-name: reveal-zoom;
+  }
+
+  .js [data-reveal='fade'].is-revealed {
+    animation-name: reveal-fade;
+  }
+}
+
+@keyframes reveal-up {
+  from {
+    opacity: 0;
+    translate: 0 var(--reveal-distance);
+  }
+  to {
+    opacity: 1;
+    translate: 0 0;
+  }
+}
+
+@keyframes reveal-down {
+  from {
+    opacity: 0;
+    translate: 0 calc(var(--reveal-distance) * -1);
+  }
+  to {
+    opacity: 1;
+    translate: 0 0;
+  }
+}
+
+@keyframes reveal-left {
+  from {
+    opacity: 0;
+    translate: calc(var(--reveal-distance) * -1.5) 0;
+  }
+  to {
+    opacity: 1;
+    translate: 0 0;
+  }
+}
+
+@keyframes reveal-right {
+  from {
+    opacity: 0;
+    translate: calc(var(--reveal-distance) * 1.5) 0;
+  }
+  to {
+    opacity: 1;
+    translate: 0 0;
+  }
+}
+
+@keyframes reveal-zoom {
+  from {
+    opacity: 0;
+    scale: 0.92;
+  }
+  to {
+    opacity: 1;
+    scale: 1;
+  }
+}
+
+@keyframes reveal-fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* ---------------------------------------------------------------------------
+   Druck
+   --------------------------------------------------------------------------- */
+@media print {
+  [data-reveal] {
+    opacity: 1 !important;
+    transform: none !important;
+  }
+
+  .no-print {
+    display: none !important;
+  }
+}

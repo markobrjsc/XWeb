@@ -1,0 +1,263 @@
+---
+/**
+ * HomeHero – Startbildschirm der Startseite: Leistungsversprechen, Kontakt-Aktionen und
+ * ein Lageplan, der Garten-, Tief- und Straßenbau in einer Zeichnung verbindet.
+ * Liegt ein Foto unter src/assets/images/hero.(jpg|png|webp) vor, erscheint es automatisch
+ * als Hintergrund (abgedunkelt für gute Lesbarkeit).
+ */
+import { Picture } from 'astro:assets';
+import LageplanDrawing from '@/components/drawings/LageplanDrawing.astro';
+import Button from '@/components/ui/Button.astro';
+import Container from '@/components/ui/Container.astro';
+import Eyebrow from '@/components/ui/Eyebrow.astro';
+import TechGrid from '@/components/ui/TechGrid.astro';
+import { site } from '@/config/site';
+import { findImage } from '@/lib/images';
+
+const heroPhoto = findImage('hero');
+---
+
+<section class="hero" data-tone="dark" aria-labelledby="hero-titel">
+  <div class="hero__bg" aria-hidden="true">
+    {
+      heroPhoto && (
+        <Picture
+          src={heroPhoto}
+          alt=""
+          formats={['avif', 'webp']}
+          widths={[960, 1440, 1920, 2560].filter((w) => w <= heroPhoto.width)}
+          sizes="100vw"
+          loading="eager"
+          fetchpriority="high"
+          class="hero__photo"
+        />
+      )
+    }
+    <div class="hero__grid" data-parallax="0.15">
+      <TechGrid tone="light" />
+    </div>
+  </div>
+
+  <Container size="wide" class="hero__container">
+    <div class="hero__content">
+      <Eyebrow class="hero__eyebrow">{site.name} · Radolfzell am Bodensee</Eyebrow>
+
+      <h1 class="hero__title" id="hero-titel">
+        Gartenbau, Tiefbau und Straßenbau <span class="hero__title-accent">aus einer Hand.</span>
+      </h1>
+
+      <p class="hero__lead">
+        Seit {site.foundingYear} bauen wir Höfe, Wege, Gärten, Kanäle und Straßen im Landkreis Konstanz – für private
+        Bauherren, Gewerbebetriebe und öffentliche Auftraggeber. {site.claim}.
+      </p>
+
+      <div class="hero__actions">
+        <Button href="#leistungen" variant="light" size="lg" icon="arrow-right">Unsere Leistungen</Button>
+        <Button href="#kontakt" variant="outline-light" size="lg">Kontakt aufnehmen</Button>
+      </div>
+
+      <dl class="hero__facts">
+        <div class="hero__fact">
+          <dt>Familienbetrieb</dt>
+          <dd>seit {site.foundingYear}</dd>
+        </div>
+        <div class="hero__fact">
+          <dt>Einsatzgebiet</dt>
+          <dd>Landkreis Konstanz</dd>
+        </div>
+        <div class="hero__fact">
+          <dt>Telefon</dt>
+          <dd><a href={site.contact.phoneHref}>{site.contact.phone}</a></dd>
+        </div>
+      </dl>
+    </div>
+
+    <figure class="hero__plan">
+      <LageplanDrawing animate />
+    </figure>
+  </Container>
+</section>
+
+<style>
+  .hero {
+    position: relative;
+    isolation: isolate;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    min-height: max(36rem, min(88svh, 54rem));
+    padding-top: calc(var(--header-height) + var(--space-10));
+    padding-bottom: calc(var(--pillar-overlap) + clamp(2.5rem, 1.5rem + 3vw, 4.5rem));
+    overflow: hidden;
+    background: linear-gradient(160deg, var(--blue-950) 0%, var(--blue-900) 60%, #0e2b4d 100%);
+  }
+
+  /* Hintergrund */
+  .hero__bg {
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+  }
+
+  .hero__bg :global(.hero__photo) {
+    position: absolute;
+    inset: 0;
+  }
+
+  .hero__bg :global(.hero__photo img) {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    opacity: 0.28;
+    filter: grayscale(0.4);
+  }
+
+  .hero__grid {
+    position: absolute;
+    inset: -20% 0 0;
+    translate: 0 var(--parallax, 0px);
+    mask-image: radial-gradient(ellipse 75% 80% at 72% 35%, #000 15%, transparent 75%);
+  }
+
+  .hero__grid :global(.tech-grid) {
+    position: absolute;
+    inset: 0;
+  }
+
+  /* Raster */
+  .hero :global(.hero__container) {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--space-12);
+    align-items: center;
+  }
+
+  @media (min-width: 64rem) {
+    .hero :global(.hero__container) {
+      grid-template-columns: minmax(0, 1.1fr) minmax(0, 0.9fr);
+      gap: clamp(2.5rem, 1rem + 4vw, 5.5rem);
+    }
+  }
+
+  /* Text */
+  .hero__content {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--space-6);
+  }
+
+  .hero__content > :global(.hero__eyebrow) {
+    animation: hero-rise 700ms var(--ease-out) 100ms both;
+  }
+
+  .hero__title {
+    max-width: 17ch;
+    font-size: var(--text-6xl);
+    font-weight: var(--weight-bold);
+    line-height: 1.06;
+    letter-spacing: -0.022em;
+    color: #ffffff;
+    animation: hero-rise 800ms var(--ease-out) 180ms both;
+  }
+
+  .hero__title-accent {
+    color: var(--color-accent);
+  }
+
+  .hero__lead {
+    max-width: 36rem;
+    font-size: var(--text-lg);
+    line-height: var(--leading-relaxed);
+    animation: hero-rise 800ms var(--ease-out) 300ms both;
+  }
+
+  .hero__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-3);
+    animation: hero-rise 800ms var(--ease-out) 420ms both;
+  }
+
+  .hero__facts {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(9.5rem, 1fr));
+    gap: var(--space-5) var(--space-8);
+    width: 100%;
+    max-width: 38rem;
+    margin: var(--space-4) 0 0;
+    padding-top: var(--space-6);
+    border-top: 1px solid var(--color-border);
+    animation: hero-rise 800ms var(--ease-out) 540ms both;
+  }
+
+  .hero__fact {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
+  }
+
+  .hero__fact dt {
+    font-size: var(--text-2xs);
+    font-weight: var(--weight-semibold);
+    letter-spacing: var(--tracking-wider);
+    text-transform: uppercase;
+    color: var(--color-text-muted);
+  }
+
+  .hero__fact dd {
+    margin: 0;
+    font-size: var(--text-base);
+    font-weight: var(--weight-semibold);
+    color: #ffffff;
+  }
+
+  .hero__fact dd a {
+    color: inherit;
+    text-decoration: none;
+  }
+
+  .hero__fact dd a:hover {
+    text-decoration: underline;
+  }
+
+  /* Lageplan */
+  .hero__plan {
+    margin: 0;
+    padding: clamp(0.75rem, 0.5rem + 1vw, 1.25rem);
+    border-radius: var(--radius-lg);
+    background: rgb(7 23 44 / 0.6);
+    box-shadow:
+      inset 0 0 0 1px rgb(255 255 255 / 0.1),
+      0 30px 60px -30px rgb(0 0 0 / 0.6);
+    animation: hero-rise 900ms var(--ease-out) 250ms both;
+  }
+
+  @media (max-width: 63.99rem) {
+    .hero__plan {
+      max-width: 34rem;
+    }
+  }
+
+  @keyframes hero-rise {
+    from {
+      opacity: 0;
+      translate: 0 1rem;
+    }
+    to {
+      opacity: 1;
+      translate: 0 0;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .hero__content > :global(*),
+    .hero__title,
+    .hero__lead,
+    .hero__actions,
+    .hero__facts,
+    .hero__plan {
+      animation: none !important;
+    }
+  }
+</style>

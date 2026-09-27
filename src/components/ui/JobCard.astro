@@ -1,0 +1,102 @@
+---
+/**
+ * JobCard – eine Stelle aus src/content/stellenangebote als Listeneintrag mit Link zur Detailseite.
+ */
+import type { CollectionEntry } from 'astro:content';
+import Badge from './Badge.astro';
+import Card from './Card.astro';
+import Icon from './Icon.astro';
+import IconBadge from './IconBadge.astro';
+
+interface Props {
+  job: CollectionEntry<'stellenangebote'>;
+  class?: string;
+}
+
+const { job, class: className } = Astro.props;
+const { title, type, start, location, summary, icon } = job.data;
+---
+
+<Card interactive reveal="up" padding="lg" class:list={['job-card', className]}>
+  <div class="job-card__layout">
+    <IconBadge name={icon} tone="soft" size="lg" />
+    <div class="job-card__main">
+      <div class="job-card__meta">
+        <Badge tone="primary" size="sm">{type}</Badge>
+        <span class="job-card__detail"><Icon name="calendar" size="1em" /> {start}</span>
+        <span class="job-card__detail"><Icon name="map-pin" size="1em" /> {location}</span>
+      </div>
+      <h3 class="job-card__title">
+        <a class="card__link" href={`/stellenangebote/${job.id}/`}>{title}</a>
+      </h3>
+      <p class="job-card__summary">{summary}</p>
+    </div>
+    <span class="job-card__more" aria-hidden="true">
+      Details & Bewerbung <Icon name="arrow-right" size="1.05em" />
+    </span>
+  </div>
+</Card>
+
+<style>
+  .job-card__layout {
+    display: grid;
+    gap: var(--space-5);
+    align-items: center;
+  }
+
+  @media (min-width: 48rem) {
+    .job-card__layout {
+      grid-template-columns: auto minmax(0, 1fr) auto;
+      gap: var(--space-6);
+    }
+  }
+
+  .job-card__main {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+  }
+
+  .job-card__meta {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-2) var(--space-4);
+  }
+
+  .job-card__detail {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-1);
+    font-size: var(--text-xs);
+    color: var(--color-text-subtle);
+  }
+
+  .job-card__title {
+    font-size: var(--text-xl);
+    line-height: 1.25;
+  }
+
+  .job-card__summary {
+    font-size: var(--text-sm);
+    color: var(--color-text-muted);
+  }
+
+  .job-card__more {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+    font-size: var(--text-sm);
+    font-weight: var(--weight-semibold);
+    color: var(--blue-600);
+    white-space: nowrap;
+  }
+
+  .job-card__more :global(.icon) {
+    transition: transform var(--duration-base) var(--ease-out);
+  }
+
+  :global(.job-card:hover) .job-card__more :global(.icon) {
+    transform: translateX(3px);
+  }
+</style>

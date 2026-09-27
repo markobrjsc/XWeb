@@ -1,0 +1,345 @@
+---
+/**
+ * Detailseite einer Stelle – mit strukturierten Daten (JobPosting) für Google for Jobs.
+ */
+import { getCollection, render, type CollectionEntry } from 'astro:content';
+import BaseLayout from '@/layouts/BaseLayout.astro';
+import PageHero from '@/components/sections/PageHero.astro';
+import Badge from '@/components/ui/Badge.astro';
+import Button from '@/components/ui/Button.astro';
+import CheckList from '@/components/ui/CheckList.astro';
+import ContactList from '@/components/ui/ContactList.astro';
+import Icon from '@/components/ui/Icon.astro';
+import Section from '@/components/ui/Section.astro';
+import { site } from '@/config/site';
+import { benefits } from '@/data/company';
+import { organizationId, postalAddress, truncate } from '@/lib/seo';
+
+export async function getStaticPaths() {
+  const jobs = (await getCollection('stellenangebote')).filter((job) => job.data.active);
+  return jobs.map((job) => ({ params: { slug: job.id }, props: { job } }));
+}
+
+interface Props {
+  job: CollectionEntry<'stellenangebote'>;
+}
+
+const { job } = Astro.props;
+const { Content } = await render(job);
+const { title, type, start, location, summary, tasks, profile, datePosted, validThrough, employmentType, icon } = job.data;
+
+const otherJobs = (await getCollection('stellenangebote'))
+  .filter((entry) => entry.data.active && entry.id !== job.id)
+  .sort((a, b) => a.data.order - b.data.order);
+
+const breadcrumbs = [
+  { label: 'Start', href: '/' },
+  { label: 'Stellenangebote', href: '/stellenangebote/' },
+  { label: title, href: `/stellenangebote/${job.id}/` },
+];
+
+const mailto = `mailto:${site.contact.email}?subject=${encodeURIComponent(`Bewerbung: ${title}`)}`;
+const origin = (Astro.site ?? Astro.url).origin;
+const escapeHtml = (text: string) => text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+const intro = job.body?.trim() ?? '';
+
+const jobPosting = {
+  '@type': 'JobPosting',
+  '@id': `${origin}/stellenangebote/${job.id}/#job`,
+  title,
+  description: [
+    `<p>${escapeHtml(summary)}</p>`,
+    intro ? `<p>${escapeHtml(intro)}</p>` : '',
+    `<h3>Ihre Aufgaben</h3><ul>${tasks.map((t) => `<li>${escapeHtml(t)}</li>`).join('')}</ul>`,
+    `<h3>Ihr Profil</h3><ul>${profile.map((p) => `<li>${escapeHtml(p)}</li>`).join('')}</ul>`,
+    `<h3>Wir bieten</h3><ul>${benefits.map((b) => `<li>${escapeHtml(b.title)}</li>`).join('')}</ul>`,
+  ].join(''),
+  datePosted: datePosted.toISOString().slice(0, 10),
+  ...(validThrough ? { validThrough: validThrough.toISOString() } : {}),
+  employmentType,
+  directApply: false,
+  industry: 'Bauwesen',
+  hiringOrganization: {
+    '@type': 'Organization',
+    '@id': organizationId(origin),
+    name: site.name,
+    sameAs: `${origin}/`,
+    logo: `${origin}/logo-512.png`,
+  },
+  jobLocation: {
+    '@type': 'Place',
+    address: postalAddress(),
+  },
+  jobBenefits: benefits.map((b) => b.title).join(', '),
+  identifier: {
+    '@type': 'PropertyValue',
+    name: site.name,
+    value: job.id,
+  },
+};
+---
+
+<BaseLayout
+  title={title}
+  description={truncate(`${title} in Radolfzell: ${summary}`)}
+  breadcrumbs={breadcrumbs}
+  schema={[jobPosting]}
+  contactTitle={'Fragen zur <span class="accent">Stelle?</span>'}
+  contactText="Rufen Sie uns einfach an oder schreiben Sie uns eine E-Mail – wir beantworten Ihre Fragen gerne."
+>
+  <PageHero breadcrumbs={breadcrumbs} eyebrow={`Stellenangebot · ${type}`} eyebrowIcon={icon} title={title} lead={summary}>
+    <Button href={mailto} variant="light" icon="mail" iconPosition="start">Jetzt bewerben</Button>
+    <Button href={site.contact.phoneHref} variant="outline-light" icon="phone" iconPosition="start">{site.contact.phone}</Button>
+  </PageHero>
+
+  <Section>
+    <div class="job">
+      <article class="job__main">
+        <ul class="job__meta" role="list">
+          <li><Badge tone="primary">{type}</Badge></li>
+          <li><Icon name="calendar" size="1.05em" /> Beginn: {start}</li>
+          <li><Icon name="map-pin" size="1.05em" /> {location}</li>
+        </ul>
+
+        {
+          intro && (
+            <div class="job__intro" data-reveal>
+              <Content />
+            </div>
+          )
+        }
+
+        <section class="job__block" aria-labelledby="aufgaben" data-reveal>
+          <h2 class="job__heading" id="aufgaben">Ihre Aufgaben</h2>
+          <CheckList items={tasks} />
+        </section>
+
+        <section class="job__block" aria-labelledby="profil" data-reveal>
+          <h2 class="job__heading" id="profil">Ihr Profil</h2>
+          <CheckList items={profile} />
+        </section>
+
+        <section class="job__block" aria-labelledby="angebot" data-reveal>
+          <h2 class="job__heading" id="angebot">Wir bieten</h2>
+          <ul class="job__benefits" role="list">
+            {
+              benefits.map((benefit) => (
+                <li>
+                  <span class="job__benefit-icon" aria-hidden="true">
+                    <Icon name={benefit.icon} size="1.1em" strokeWidth={1.75} />
+                  </span>
+                  <span>
+                    <strong>{benefit.title}</strong>
+                    <span class="job__benefit-text">{benefit.text}</span>
+                  </span>
+                </li>
+              ))
+            }
+          </ul>
+        </section>
+      </article>
+
+      <aside class="job__aside" aria-label="Bewerbung">
+        <div class="apply" data-reveal>
+          <h2 class="apply__title">So bewerben Sie sich</h2>
+          <p class="apply__text">
+            Senden Sie uns Ihre Unterlagen per E-Mail oder rufen Sie uns an. Wir melden uns schnellstmöglich bei Ihnen.
+          </p>
+          <ContactList items={['phone', 'email']} size="sm" />
+          <Button href={mailto} variant="primary" block icon="mail" iconPosition="start">Bewerbung per E-Mail</Button>
+        </div>
+
+        {
+          otherJobs.length > 0 && (
+            <nav class="more" aria-labelledby="weitere-stellen">
+              <h2 class="more__title" id="weitere-stellen">
+                Weitere Stellen
+              </h2>
+              <ul class="more__list" role="list">
+                {otherJobs.map((entry) => (
+                  <li>
+                    <a href={`/stellenangebote/${entry.id}/`}>
+                      <span>{entry.data.title}</span>
+                      <Icon name="arrow-right" size="1em" />
+                    </a>
+                  </li>
+                ))}
+              </ul>
+              <a class="more__all" href="/stellenangebote/">
+                Alle Stellenangebote
+              </a>
+            </nav>
+          )
+        }
+      </aside>
+    </div>
+  </Section>
+</BaseLayout>
+
+<style>
+  .job {
+    display: grid;
+    gap: var(--space-12);
+  }
+
+  @media (min-width: 64rem) {
+    .job {
+      grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr);
+      gap: clamp(3rem, 1rem + 5vw, 6rem);
+      align-items: start;
+    }
+
+    .job__aside {
+      position: sticky;
+      top: calc(var(--header-height-compact) + var(--space-8));
+    }
+  }
+
+  .job__main {
+    display: grid;
+    gap: var(--space-12);
+  }
+
+  .job__meta {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-3) var(--space-6);
+    margin: 0;
+    padding: 0 0 var(--space-6);
+    border-bottom: 1px solid var(--color-border);
+    font-size: var(--text-sm);
+    color: var(--color-text-muted);
+  }
+
+  .job__meta li {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+  }
+
+  .job__intro {
+    font-size: var(--text-lg);
+    line-height: var(--leading-relaxed);
+    color: var(--color-text);
+  }
+
+  .job__block {
+    display: grid;
+    gap: var(--space-5);
+  }
+
+  .job__heading {
+    font-size: var(--text-2xl);
+  }
+
+  .job__benefits {
+    display: grid;
+    gap: var(--space-5) var(--space-8);
+    margin: 0;
+    padding: 0;
+  }
+
+  @media (min-width: 40rem) {
+    .job__benefits {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+  }
+
+  .job__benefits li {
+    display: flex;
+    gap: var(--space-4);
+    align-items: flex-start;
+  }
+
+  .job__benefits strong {
+    display: block;
+    color: var(--color-heading);
+  }
+
+  .job__benefit-icon {
+    display: inline-grid;
+    place-items: center;
+    flex-shrink: 0;
+    width: 2.4rem;
+    height: 2.4rem;
+    border-radius: var(--radius-md);
+    background: var(--blue-50);
+    color: var(--blue-700);
+    box-shadow: inset 0 0 0 1px var(--blue-100);
+  }
+
+  .job__benefit-text {
+    display: block;
+    font-size: var(--text-sm);
+    color: var(--color-text-muted);
+  }
+
+  .job__aside {
+    display: grid;
+    gap: var(--space-6);
+  }
+
+  .apply {
+    display: grid;
+    gap: var(--space-5);
+    padding: clamp(1.5rem, 1rem + 1.5vw, 2rem);
+    border: 1px solid var(--color-border);
+    border-top: 3px solid var(--blue-600);
+    border-radius: var(--radius-lg);
+    background: #ffffff;
+    box-shadow: var(--shadow-md);
+  }
+
+  .apply__title {
+    font-size: var(--text-xl);
+  }
+
+  .apply__text {
+    font-size: var(--text-sm);
+    color: var(--color-text-muted);
+  }
+
+  .more {
+    display: grid;
+    gap: var(--space-3);
+    padding: clamp(1.25rem, 1rem + 1vw, 1.75rem);
+    border-radius: var(--radius-lg);
+    background: var(--color-bg-subtle);
+  }
+
+  .more__title {
+    font-size: var(--text-2xs);
+    font-weight: var(--weight-semibold);
+    letter-spacing: var(--tracking-wider);
+    text-transform: uppercase;
+    color: var(--color-text-muted);
+  }
+
+  .more__list {
+    margin: 0;
+    padding: 0;
+  }
+
+  .more__list a {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-3);
+    padding: var(--space-3) 0;
+    font-size: var(--text-sm);
+    font-weight: var(--weight-semibold);
+    color: var(--color-heading);
+    text-decoration: none;
+    border-bottom: 1px solid var(--color-border);
+  }
+
+  .more__list a:hover {
+    color: var(--color-link);
+  }
+
+  .more__all {
+    font-size: var(--text-sm);
+    font-weight: var(--weight-semibold);
+  }
+</style>

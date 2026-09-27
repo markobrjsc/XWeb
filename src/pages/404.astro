@@ -1,0 +1,89 @@
+---
+/**
+ * 404 – Seite nicht gefunden. Cloudflare liefert diese Seite automatisch für unbekannte Adressen aus.
+ */
+import BaseLayout from '@/layouts/BaseLayout.astro';
+import PageHero from '@/components/sections/PageHero.astro';
+import Button from '@/components/ui/Button.astro';
+import Card from '@/components/ui/Card.astro';
+import Icon from '@/components/ui/Icon.astro';
+import Section from '@/components/ui/Section.astro';
+import { mainNav } from '@/config/navigation';
+
+const links = mainNav.filter((item) => item.href !== '/');
+---
+
+<BaseLayout
+  title="Seite nicht gefunden"
+  description="Die gewünschte Seite wurde nicht gefunden. Hier geht es zurück zur Startseite der Pflasterarbeiten Hildebrand GmbH."
+  noindex
+>
+  <PageHero
+    eyebrow="Fehler 404"
+    title={'Diese Seite gibt es <span class="accent">leider nicht.</span>'}
+    lead="Vielleicht hat sich die Adresse geändert oder es hat sich ein Tippfehler eingeschlichen. Über die folgenden Links finden Sie schnell weiter."
+  >
+    <Button href="/" variant="light" icon="arrow-right">Zur Startseite</Button>
+    <Button href="#kontakt" variant="outline-light">Kontakt</Button>
+  </PageHero>
+
+  <Section space="sm">
+    <ul class="links" role="list">
+      {
+        links.map((item) => (
+          <li>
+            <Card interactive padding="md">
+              <a class="card__link links__link" href={item.href}>
+                <span>
+                  <span class="links__label">{item.label}</span>
+                  {item.description && <span class="links__desc">{item.description}</span>}
+                </span>
+                <Icon name="arrow-right" size="1.1em" />
+              </a>
+            </Card>
+          </li>
+        ))
+      }
+    </ul>
+  </Section>
+</BaseLayout>
+
+<style>
+  .links {
+    display: grid;
+    gap: var(--grid-gap);
+    margin: 0;
+    padding: 0;
+  }
+
+  @media (min-width: 40rem) {
+    .links {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+  }
+
+  @media (min-width: 64rem) {
+    .links {
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+  }
+
+  .links__link {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-4);
+  }
+
+  .links__label {
+    display: block;
+    font-weight: var(--weight-semibold);
+    color: var(--color-heading);
+  }
+
+  .links__desc {
+    display: block;
+    font-size: var(--text-xs);
+    color: var(--color-text-muted);
+  }
+</style>
