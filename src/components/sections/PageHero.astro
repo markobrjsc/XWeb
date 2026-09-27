@@ -3,11 +3,14 @@
  * PageHero – dunkler Seitenkopf der Unterseiten mit Brotkrumen, Überschrift und Einleitung.
  * Slot "aside": optionaler Inhalt rechts (z. B. Kennzahlen oder eine Zeichnung).
  * Slot default: optionale Buttons unter dem Text.
+ * `image`: Name eines Fotos aus src/assets/images (z. B. "betrieb/team/01") – erscheint abgedunkelt im Hintergrund.
  */
+import { Picture } from 'astro:assets';
 import Breadcrumbs, { type Crumb } from '@/components/ui/Breadcrumbs.astro';
 import Container from '@/components/ui/Container.astro';
 import Eyebrow from '@/components/ui/Eyebrow.astro';
 import TechGrid from '@/components/ui/TechGrid.astro';
+import { findImage } from '@/lib/images';
 
 interface Props {
   title: string;
@@ -16,13 +19,35 @@ interface Props {
   lead?: string;
   breadcrumbs?: Crumb[];
   size?: 'md' | 'sm';
+  image?: string;
+  /** Bildausschnitt, z. B. "50% 40%" */
+  imagePosition?: 'center' | 'top' | 'bottom';
 }
 
-const { title, eyebrow, eyebrowIcon, lead, breadcrumbs, size = 'md' } = Astro.props;
+const { title, eyebrow, eyebrowIcon, lead, breadcrumbs, size = 'md', image, imagePosition = 'center' } = Astro.props;
+const photo = findImage(image);
 const hasAside = Astro.slots.has('aside');
 ---
 
-<section class:list={['page-hero', `page-hero--${size}`, { 'page-hero--aside': hasAside }]} data-tone="dark">
+<section
+  class:list={['page-hero', `page-hero--${size}`, { 'page-hero--aside': hasAside, 'page-hero--photo': photo }]}
+  data-tone="dark"
+>
+  {
+    photo && (
+      <div class="page-hero__photo" aria-hidden="true" data-position={imagePosition}>
+        <Picture
+          src={photo}
+          alt=""
+          formats={['avif', 'webp']}
+          widths={[960, 1440, 1920].filter((w) => w <= photo.width)}
+          sizes="100vw"
+          loading="eager"
+          fetchpriority="high"
+        />
+      </div>
+    )
+  }
   <div class="page-hero__bg" aria-hidden="true" data-parallax="0.12">
     <TechGrid tone="light" class="page-hero__grid" />
   </div>
@@ -60,6 +85,44 @@ const hasAside = Astro.slots.has('aside');
     padding-bottom: clamp(3.5rem, 2rem + 5vw, 6rem);
     background: linear-gradient(165deg, var(--blue-950) 0%, var(--blue-900) 100%);
     border-bottom: 1px solid rgb(255 255 255 / 0.06);
+  }
+
+  .page-hero__photo {
+    position: absolute;
+    inset: 0;
+    z-index: -2;
+  }
+
+  .page-hero__photo :global(picture),
+  .page-hero__photo :global(img) {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  .page-hero__photo[data-position='top'] :global(img) {
+    object-position: 50% 25%;
+  }
+
+  .page-hero__photo[data-position='bottom'] :global(img) {
+    object-position: 50% 75%;
+  }
+
+  .page-hero__photo::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(90deg, rgb(7 23 44 / 0.94) 0%, rgb(7 23 44 / 0.8) 50%, rgb(7 23 44 / 0.55) 100%);
+  }
+
+  .page-hero--photo {
+    background: var(--blue-950);
+  }
+
+  .page-hero--photo .page-hero__bg {
+    opacity: 0.5;
   }
 
   .page-hero--sm {

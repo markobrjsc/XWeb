@@ -1,6 +1,7 @@
 ---
 /**
- * Kontaktbereich (id="kontakt") – steht am Ende jeder Seite. Der „Kontakt“-Button im Header springt hierher.
+ * Kontaktbereich (id="kontakt") – Hauptinhalt der Seite /kontakt/: Telefon, E-Mail, Adresse,
+ * Bürozeiten, Routenplanung und Einsatzgebiet.
  */
 import { site } from '@/config/site';
 import Button from '@/components/ui/Button.astro';
@@ -58,8 +59,7 @@ const {
   .contact {
     position: relative;
     z-index: 2;
-    padding-block: var(--section-space-sm) 0;
-    margin-bottom: calc(var(--footer-overlap) * -1);
+    padding-block: var(--section-space-sm) var(--section-space);
   }
 
   .contact__card {

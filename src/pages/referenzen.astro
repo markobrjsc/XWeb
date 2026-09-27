@@ -1,8 +1,8 @@
 ---
 /**
  * Referenzen – alle Projekte aus src/content/referenzen, filterbar nach Fachbereich.
- * Neue Referenz: Markdown-Datei in src/content/referenzen anlegen, Foto unter
- * src/assets/images/referenzen/<dateiname>.jpg ablegen.
+ * Neue Referenz: Markdown-Datei in src/content/referenzen anlegen und die Fotos in den Ordner
+ * src/assets/images/referenzen/<dateiname>/ legen (01.jpg, 02.jpg … – erscheinen als Galerie).
  */
 import { getCollection } from 'astro:content';
 import BaseLayout from '@/layouts/BaseLayout.astro';
@@ -35,7 +35,7 @@ const breadcrumbs = [
 
 <BaseLayout
   title="Referenzen"
-  description="Referenzen der Pflasterarbeiten Hildebrand GmbH: Hofeinfahrten, Gärten, Kanal- und Leitungsbau, Straßen und Parkplätze im Landkreis Konstanz."
+  description="Referenzen der Pflasterarbeiten Hildebrand GmbH mit Fotos: Hofeinfahrten, Natursteinmauern, Gärten, Pflanzungen, Leitungsbau und Asphaltbau."
   pageType="CollectionPage"
   breadcrumbs={breadcrumbs}
 >
@@ -43,7 +43,8 @@ const breadcrumbs = [
     breadcrumbs={breadcrumbs}
     eyebrow="Referenzen"
     title={'Projekte aus Garten-, Tief- <span class="accent">und Straßenbau.</span>'}
-    lead="Ein Auszug aus unserer Arbeit im Landkreis Konstanz – von der Hofeinfahrt bis zur Erschließungsstraße. Aktuelle Einblicke von unseren Baustellen zeigen wir auch auf Instagram."
+    lead="Ein Auszug aus unserer Arbeit im Landkreis Konstanz – von der Hofeinfahrt bis zur Erschließungsstraße. Wischen Sie durch die Fotos der einzelnen Projekte – aktuelle Einblicke zeigen wir auch auf Instagram."
+    image="referenzen/garten-holzdeck-wasserspiel/01"
   >
     <Button href={site.social.instagram} variant="outline-light" icon="instagram" iconPosition="start" external>
       Instagram
@@ -71,9 +72,9 @@ const breadcrumbs = [
 
     <ul class="refs" role="list">
       {
-        references.map((entry) => (
+        references.map((entry, index) => (
           <li class="refs__item" data-category={entry.data.category}>
-            <ReferenceCard entry={entry} headingLevel="h3" />
+            <ReferenceCard entry={entry} headingLevel="h3" eager={index < 3} />
           </li>
         ))
       }
@@ -188,7 +189,7 @@ const breadcrumbs = [
   }
 
   .filter__btn[aria-pressed='true'] .filter__count {
-    background: rgb(255 255 255 / 0.2);
+    background: var(--blue-800);
     color: #ffffff;
   }
 

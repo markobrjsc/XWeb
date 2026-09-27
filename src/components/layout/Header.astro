@@ -1,11 +1,12 @@
 ---
 /**
  * Header mit Hauptnavigation.
- * – Über dem dunklen Seitenkopf transparent, beim Scrollen kompakt und weiß („eingeklappt“).
+ * – Immer mit hellem, deckendem Hintergrund – klar vom Seitenkopf bzw. Startbild abgesetzt.
+ * – Bleibt bei Seitenwechseln stehen, während der Inhalt seitlich hinein- bzw. hinausgleitet.
  * – Unterhalb von 1100 px Breite: Menü-Button, der ein Vollbild-Menü aus- und einklappt.
  * Menüpunkte kommen aus src/config/navigation.ts, das Verhalten aus src/scripts/site.ts.
  */
-import { contactNavItem, mainNav } from '@/config/navigation';
+import { contactNavItem, mainNav, navOrder } from '@/config/navigation';
 import { site } from '@/config/site';
 import Button from '@/components/ui/Button.astro';
 import ContactList from '@/components/ui/ContactList.astro';
@@ -15,7 +16,6 @@ import TechGrid from '@/components/ui/TechGrid.astro';
 
 const currentPath = Astro.url.pathname;
 const isCurrent = (href: string) => {
-  if (href.includes('#')) return false;
   if (href === '/') return currentPath === '/';
   return currentPath.startsWith(href);
 };
@@ -49,7 +49,13 @@ const isCurrent = (href: string) => {
           <span class="site-header__phone-number">{site.contact.phone}</span>
           <span class="visually-hidden site-header__phone-sr">Anrufen: {site.contact.phone}</span>
         </a>
-        <Button href={contactNavItem.href} variant="light" size="sm" class="site-header__cta">
+        <Button
+          href={contactNavItem.href}
+          variant="primary"
+          size="sm"
+          class="site-header__cta"
+          aria-current={isCurrent(contactNavItem.href) ? 'page' : undefined}
+        >
           {contactNavItem.label}
         </Button>
         <button class="menu-toggle" type="button" aria-expanded="false" aria-controls="mobile-menu" data-menu-toggle>
@@ -67,7 +73,7 @@ const isCurrent = (href: string) => {
       <nav aria-label="Mobile Navigation">
         <ul class="mobile-menu__list" role="list">
           {
-            mainNav.map((item, index) => (
+            navOrder.map((item, index) => (
               <li class="mobile-menu__item">
                 <a class="mobile-menu__link" href={item.href} aria-current={isCurrent(item.href) ? 'page' : undefined}>
                   <span class="mobile-menu__index" aria-hidden="true">
@@ -94,29 +100,21 @@ const isCurrent = (href: string) => {
 
 <style>
   .site-header {
-    /* Farben im Zustand „oben“ (transparent über dem dunklen Seitenkopf) */
-    --header-fg: #ffffff;
-    --header-fg-muted: rgb(255 255 255 / 0.7);
-    --header-bg: transparent;
-    --header-border: rgb(255 255 255 / 0.08);
-    --header-shadow: none;
-    --header-accent: var(--blue-300);
+    /* Deckender, heller Header – klar vom dunklen Startbild bzw. Seitenkopf abgesetzt */
+    --header-fg: var(--blue-950);
+    --header-fg-muted: var(--gray-600);
+    --header-bg: #ffffff;
+    --header-border: var(--gray-200);
+    --header-shadow: 0 1px 0 rgb(7 23 44 / 0.04), 0 10px 30px -18px rgb(7 23 44 / 0.35);
+    --header-accent: var(--blue-600);
     --header-h: var(--header-height);
     --color-heading: var(--header-fg);
     --color-text-muted: var(--header-fg-muted);
     position: fixed;
     inset: 0 0 auto;
     z-index: var(--z-header);
-  }
-
-  .site-header[data-scrolled='true'] {
-    --header-fg: var(--blue-950);
-    --header-fg-muted: var(--gray-600);
-    --header-bg: rgb(255 255 255 / 0.94);
-    --header-border: var(--gray-200);
-    --header-shadow: 0 8px 24px -16px rgb(7 23 44 / 0.25);
-    --header-accent: var(--blue-600);
-    --header-h: var(--header-height-compact);
+    /* Eigene Ebene im Seitenübergang: Der Header gleitet nicht mit */
+    view-transition-name: site-header;
   }
 
   .site-header[data-menu-open='true'] {
@@ -134,17 +132,10 @@ const isCurrent = (href: string) => {
     background: var(--header-bg);
     border-bottom: 1px solid var(--header-border);
     box-shadow: var(--header-shadow);
-    -webkit-backdrop-filter: saturate(1.4) blur(12px);
-    backdrop-filter: saturate(1.4) blur(12px);
     transition:
       background-color var(--duration-slow) var(--ease-out),
       box-shadow var(--duration-slow) var(--ease-out),
       border-color var(--duration-slow) var(--ease-out);
-  }
-
-  .site-header[data-scrolled='false']:not([data-menu-open='true']) .site-header__bar {
-    -webkit-backdrop-filter: none;
-    backdrop-filter: none;
   }
 
   /* Lesefortschritt als feine Linie unter dem Header */
@@ -183,10 +174,6 @@ const isCurrent = (href: string) => {
     color: var(--header-fg);
     text-decoration: none;
     border-radius: var(--radius-sm);
-  }
-
-  .site-header[data-scrolled='true']:not([data-menu-open='true']) .site-header__brand :global(.logo) {
-    --logo-height: 2.6rem;
   }
 
   /* Desktop-Navigation */
@@ -286,18 +273,23 @@ const isCurrent = (href: string) => {
     letter-spacing: 0.01em;
   }
 
-  /* Kontakt-Button: weiß über dem Seitenkopf, blau im kompakten Zustand */
+  /* Kontakt-Button */
   .site-header :global(.site-header__cta) {
     display: none;
   }
 
-  .site-header[data-scrolled='true']:not([data-menu-open='true']) :global(.site-header__cta.btn) {
-    --btn-bg: var(--blue-600);
-    --btn-fg: #ffffff;
-    --btn-border: var(--blue-600);
-    --btn-bg-hover: var(--blue-700);
-    --btn-fg-hover: #ffffff;
-    --btn-border-hover: var(--blue-700);
+  .site-header :global(.site-header__cta[aria-current='page']) {
+    --btn-bg: var(--blue-800);
+    --btn-border: var(--blue-800);
+  }
+
+  .site-header[data-menu-open='true'] :global(.site-header__cta.btn) {
+    --btn-bg: #ffffff;
+    --btn-fg: var(--blue-950);
+    --btn-border: #ffffff;
+    --btn-bg-hover: var(--blue-100);
+    --btn-fg-hover: var(--blue-950);
+    --btn-border-hover: var(--blue-100);
   }
 
   /* Menü-Button (Hamburger ↔ X) */

@@ -5,7 +5,7 @@
  */
 import { Font } from 'astro:assets';
 import { site } from '@/config/site';
-import { JS_DETECT_SCRIPT } from '@/lib/inline-scripts.mjs';
+import { JS_DETECT_SCRIPT, PAGE_TRANSITION_SCRIPT } from '@/lib/inline-scripts.mjs';
 
 interface Props {
   title: string;
@@ -36,6 +36,7 @@ const jsonLdString = jsonLd ? JSON.stringify(jsonLd).replace(/</g, '\\u003c') : 
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 <script is:inline set:html={JS_DETECT_SCRIPT} />
+<script is:inline set:html={PAGE_TRANSITION_SCRIPT} />
 <title>{title}</title>
 <meta name="description" content={description} />
 {!noindex && <link rel="canonical" href={canonical.href} />}

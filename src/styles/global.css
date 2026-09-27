@@ -413,3 +413,80 @@ b {
     display: none !important;
   }
 }
+
+/* ---------------------------------------------------------------------------
+   Seitenübergänge (View Transitions zwischen Seiten)
+   Der Header bleibt stehen; der Seiteninhalt gleitet je nach Position des Ziels im Menü
+   von rechts bzw. links herein. Richtung: PAGE_TRANSITION_SCRIPT in src/lib/inline-scripts.mjs.
+   Browser ohne Unterstützung wechseln die Seite einfach wie gewohnt.
+   --------------------------------------------------------------------------- */
+@view-transition {
+  navigation: auto;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  @view-transition {
+    navigation: none;
+  }
+}
+
+::view-transition-group(root) {
+  animation-duration: var(--duration-page, 560ms);
+  animation-timing-function: var(--ease-in-out);
+}
+
+/* Header ohne Animation – er gehört zu beiden Seiten */
+::view-transition-group(site-header),
+::view-transition-old(site-header),
+::view-transition-new(site-header) {
+  animation: none;
+}
+
+::view-transition-old(site-header) {
+  display: none;
+}
+
+html:active-view-transition-type(page-forward)::view-transition-old(root) {
+  animation: page-out-left var(--duration-page, 560ms) var(--ease-in-out) both;
+}
+
+html:active-view-transition-type(page-forward)::view-transition-new(root) {
+  animation: page-in-right var(--duration-page, 560ms) var(--ease-in-out) both;
+}
+
+html:active-view-transition-type(page-back)::view-transition-old(root) {
+  animation: page-out-right var(--duration-page, 560ms) var(--ease-in-out) both;
+}
+
+html:active-view-transition-type(page-back)::view-transition-new(root) {
+  animation: page-in-left var(--duration-page, 560ms) var(--ease-in-out) both;
+}
+
+html:active-view-transition-type(page-fade)::view-transition-old(root),
+html:active-view-transition-type(page-fade)::view-transition-new(root) {
+  animation-duration: 260ms;
+}
+
+@keyframes page-out-left {
+  to {
+    translate: -100% 0;
+  }
+}
+
+@keyframes page-in-right {
+  from {
+    translate: 100% 0;
+  }
+}
+
+@keyframes page-out-right {
+  to {
+    translate: 100% 0;
+  }
+}
+
+@keyframes page-in-left {
+  from {
+    translate: -100% 0;
+  }
+}

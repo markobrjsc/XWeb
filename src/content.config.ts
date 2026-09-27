@@ -12,16 +12,18 @@ const referenzen = defineCollection({
     title: z.string(),
     /** Fachbereich: gartenbau | tiefbau | strassenbau */
     category: z.enum(['gartenbau', 'tiefbau', 'strassenbau']),
-    location: z.string(),
+    /** Ort, z. B. „Radolfzell-Böhringen“ (optional) */
+    location: z.string().optional(),
     year: z.number().int().optional(),
     summary: z.string(),
     services: z.array(z.string()).default([]),
     /** Icon für den Platzhalter, solange kein Foto vorhanden ist */
     icon: z.string().default('image'),
-    /** Foto-Name in src/assets/images – Standard: referenzen/<Dateiname> */
-    image: z.string().optional(),
-    /** Auf der Startseite zeigen */
-    featured: z.boolean().default(false),
+    /**
+     * Fotoordner in src/assets/images – Standard: referenzen/<Dateiname>.
+     * Alle Fotos darin (01.jpg, 02.jpg …) erscheinen als Galerie, das erste ist das Titelbild.
+     */
+    gallery: z.string().optional(),
     /** Beispiel-Eintrag: zeigt ein „Beispiel“-Etikett, bis echte Projektdaten eingetragen sind */
     placeholder: z.boolean().default(false),
     order: z.number().default(100),
