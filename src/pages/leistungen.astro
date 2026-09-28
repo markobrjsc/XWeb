@@ -9,9 +9,7 @@ import PageHero from '@/components/sections/PageHero.astro';
 import ProcessSection from '@/components/sections/ProcessSection.astro';
 import ServicesSection from '@/components/sections/ServicesSection.astro';
 import Button from '@/components/ui/Button.astro';
-import Icon from '@/components/ui/Icon.astro';
 import { processSteps } from '@/data/company';
-import { pillars } from '@/data/services';
 
 const breadcrumbs = [
   { label: 'Start', href: '/' },
@@ -26,36 +24,16 @@ const breadcrumbs = [
   breadcrumbs={breadcrumbs}
 >
   <PageHero
+    size="compact"
     breadcrumbs={breadcrumbs}
     eyebrow="Unsere Leistungen"
     eyebrowIcon="hard-hat"
     title={'Vom ersten Spatenstich <span class="accent">bis zur fertigen Fläche.</span>'}
-    lead="Gartenbau, Tiefbau und Straßenbau – ausgeführt von unserem eigenen Team, abgestimmt auf Ihr Projekt und aus einer Hand koordiniert. Zu jeder Leistung zeigen wir Ihnen ein Projekt aus unserer Arbeit."
+    lead="Gartenbau, Tiefbau und Straßenbau – ausgeführt von unserem eigenen Team und aus einer Hand koordiniert. Wählen Sie unten einen Fachbereich."
     image="referenzen/terrassengarten-trockenmauern/08"
-  >
-    <Fragment slot="aside">
-      <ul class="jump" role="list" aria-label="Direkt zum Fachbereich">
-        {
-          pillars.map((pillar) => (
-            <li>
-              <a class="jump__link" href={`#${pillar.id}`}>
-                <span class="jump__icon" aria-hidden="true">
-                  <Icon name={pillar.icon} size="1.2rem" />
-                </span>
-                <span class="jump__text">
-                  <span class="jump__title">{pillar.title}</span>
-                  <span class="jump__sub">{pillar.subtitle}</span>
-                </span>
-                <Icon name="arrow-down" size="1rem" class="jump__arrow" />
-              </a>
-            </li>
-          ))
-        }
-      </ul>
-    </Fragment>
-  </PageHero>
+  />
 
-  <ServicesSection showHeader={false} />
+  <ServicesSection showHeader={false} tabs />
 
   <ProcessSection
     steps={processSteps}
@@ -73,62 +51,3 @@ const breadcrumbs = [
   </CtaStrip>
 </BaseLayout>
 
-<style>
-  .jump {
-    display: grid;
-    gap: var(--space-3);
-    margin: 0;
-    padding: 0;
-  }
-
-  .jump__link {
-    display: flex;
-    align-items: center;
-    gap: var(--space-4);
-    padding: var(--space-4) var(--space-5);
-    color: #ffffff;
-    text-decoration: none;
-    border-radius: var(--radius-card);
-    background: rgb(7 23 44 / 0.6);
-    box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.12);
-    transition:
-      background-color var(--duration-base) ease,
-      box-shadow var(--duration-base) ease;
-  }
-
-  .jump__link:hover {
-    background: rgb(22 72 140 / 0.7);
-    box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.3);
-  }
-
-  .jump__icon {
-    display: grid;
-    place-items: center;
-    width: 2.75rem;
-    height: 2.75rem;
-    flex: none;
-    border-radius: 50%;
-    background: var(--blue-600);
-  }
-
-  .jump__text {
-    display: flex;
-    flex-direction: column;
-    flex: 1;
-    min-width: 0;
-  }
-
-  .jump__title {
-    font-size: var(--text-lg);
-    font-weight: var(--weight-bold);
-  }
-
-  .jump__sub {
-    font-size: var(--text-sm);
-    color: rgb(255 255 255 / 0.72);
-  }
-
-  .jump :global(.jump__arrow) {
-    color: var(--blue-200);
-  }
-</style>

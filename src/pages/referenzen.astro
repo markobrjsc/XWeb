@@ -40,13 +40,14 @@ const breadcrumbs = [
   breadcrumbs={breadcrumbs}
 >
   <PageHero
+    size="compact"
     breadcrumbs={breadcrumbs}
     eyebrow="Referenzen"
     title={'Projekte aus Garten-, Tief- <span class="accent">und Straßenbau.</span>'}
-    lead="Ein Auszug aus unserer Arbeit im Landkreis Konstanz – von der Hofeinfahrt bis zur Erschließungsstraße. Wischen Sie durch die Fotos der einzelnen Projekte – aktuelle Einblicke zeigen wir auch auf Instagram."
+    lead="Ein Auszug aus unserer Arbeit im Landkreis Konstanz – von der Hofeinfahrt bis zur Erschließungsstraße. Aktuelle Einblicke zeigen wir auch auf Instagram."
     image="referenzen/garten-holzdeck-wasserspiel/01"
   >
-    <Button href={site.social.instagram} variant="outline-light" icon="instagram" iconPosition="start" external>
+    <Button href={site.social.instagram} variant="outline-light" size="sm" icon="instagram" iconPosition="start" external>
       Instagram
     </Button>
   </PageHero>
@@ -55,7 +56,7 @@ const breadcrumbs = [
     <h2 id="projekte-titel" class="visually-hidden">Projektübersicht</h2>
 
     <div class="filter" data-filter hidden>
-      <p class="filter__label" id="filter-label">Nach Fachbereich filtern:</p>
+      <p class="visually-hidden" id="filter-label">Nach Fachbereich filtern:</p>
       <div class="filter__buttons" role="group" aria-labelledby="filter-label">
         {
           filters.map((filter, index) => (
@@ -111,8 +112,23 @@ const breadcrumbs = [
       if (status) status.textContent = `${visible} ${visible === 1 ? 'Projekt' : 'Projekte'} angezeigt`;
     };
 
+    // Leiste klebt unter dem Header: nach dem Umschalten wieder am Anfang der Liste beginnen
+    const stickyTop = () => parseFloat(getComputedStyle(filter).top) || 0;
+    const sentinel = document.createElement('div');
+    sentinel.setAttribute('aria-hidden', 'true');
+    filter.before(sentinel);
+    const updateStuck = () => filter.classList.toggle('is-stuck', sentinel.getBoundingClientRect().top < stickyTop() - 1);
+    window.addEventListener('scroll', updateStuck, { passive: true });
+    updateStuck();
+
     buttons.forEach((button) => {
-      button.addEventListener('click', () => apply(button.dataset.filterValue ?? 'alle'));
+      button.addEventListener('click', () => {
+        apply(button.dataset.filterValue ?? 'alle');
+        if (filter.classList.contains('is-stuck')) {
+          const y = sentinel.getBoundingClientRect().top + window.scrollY - stickyTop();
+          window.scrollTo({ top: y, behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
+        }
+      });
     });
 
     // Direkter Link auf einen Fachbereich, z. B. /referenzen/?bereich=tiefbau
@@ -122,59 +138,71 @@ const breadcrumbs = [
 </script>
 
 <style>
+  /* Filterleiste – klebt beim Scrollen unter dem Header (wie die Auswahl auf der Leistungsseite) */
   .filter {
+    position: sticky;
+    top: calc(var(--header-height-compact) + var(--space-2));
+    z-index: 5;
     display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: var(--space-3) var(--space-5);
+    justify-content: center;
     margin-bottom: var(--stack-space);
-    padding-bottom: var(--space-6);
-    border-bottom: 1px solid var(--color-border);
   }
 
   .filter[hidden] {
     display: none;
   }
 
-  .filter__label {
-    font-size: var(--text-sm);
-    font-weight: var(--weight-semibold);
-    color: var(--color-text-muted);
-  }
-
   .filter__buttons {
     display: flex;
-    flex-wrap: wrap;
-    gap: var(--space-2);
+    gap: var(--space-1);
+    max-width: 100%;
+    padding: var(--space-1);
+    overflow-x: auto;
+    scrollbar-width: none;
+    border-radius: var(--radius-full);
+    background: rgb(255 255 255 / 0.88);
+    box-shadow:
+      inset 0 0 0 1px var(--color-border),
+      var(--shadow-xs);
+    -webkit-backdrop-filter: blur(12px);
+    backdrop-filter: blur(12px);
+    transition: box-shadow var(--duration-base) ease;
+  }
+
+  .filter.is-stuck .filter__buttons {
+    box-shadow:
+      inset 0 0 0 1px var(--color-border),
+      var(--shadow-md);
   }
 
   .filter__btn {
     display: inline-flex;
+    flex: none;
     align-items: center;
     gap: var(--space-2);
     min-height: 2.6rem;
-    padding: 0.45rem 0.9rem;
+    padding: 0.45rem 1.1rem;
     font-size: var(--text-sm);
     font-weight: var(--weight-medium);
     color: var(--gray-700);
-    background: #ffffff;
-    border: 1px solid var(--gray-300);
-    border-radius: var(--radius-button);
+    white-space: nowrap;
+    background: transparent;
+    border: 0;
+    border-radius: var(--radius-full);
+    cursor: pointer;
     transition:
       background-color var(--duration-base) ease,
-      border-color var(--duration-base) ease,
       color var(--duration-base) ease;
   }
 
   .filter__btn:hover {
-    border-color: var(--blue-400);
     color: var(--blue-800);
+    background: var(--blue-50);
   }
 
   .filter__btn[aria-pressed='true'] {
     color: #ffffff;
     background: var(--blue-600);
-    border-color: var(--blue-600);
   }
 
   .filter__count {
@@ -183,7 +211,7 @@ const breadcrumbs = [
     font-size: var(--text-2xs);
     font-weight: var(--weight-semibold);
     text-align: center;
-    border-radius: var(--radius-sm);
+    border-radius: var(--radius-full);
     background: var(--gray-100);
     color: var(--gray-600);
   }

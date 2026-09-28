@@ -1,6 +1,7 @@
 ---
 /**
  * ProcessSection – Ablauf in Schritten. Die Verbindungslinie füllt sich beim Scrollen.
+ * Ab Tablet: Kreise mittig über dem zentrierten Text, die Linie läuft von Kreismitte zu Kreismitte.
  */
 import Section from '@/components/ui/Section.astro';
 import SectionHeader from '@/components/ui/SectionHeader.astro';
@@ -128,30 +129,26 @@ const { steps, eyebrow, title, lead, id = 'ablauf', tone = 'default' } = Astro.p
 
   @media (min-width: 56rem) {
     .process__list {
-      grid-template-columns: repeat(var(--cols, 4), minmax(0, 1fr));
+      grid-template-columns: repeat(var(--cols), minmax(0, 1fr));
       gap: var(--grid-gap);
     }
 
-    .process--3 .process__list {
+    .process {
+      --cols: 4;
+    }
+
+    .process--3 {
       --cols: 3;
     }
 
     .process__track {
       top: calc(var(--num-size) / 2 - 1.5px);
       bottom: auto;
-      left: calc(var(--num-size) / 2);
-      right: calc(var(--num-size) / 2);
+      /* Linie von der Mitte der ersten bis zur Mitte der letzten Spalte: je eine halbe Spaltenbreite Abstand */
+      left: calc((100% - (var(--cols) - 1) * var(--grid-gap)) / var(--cols) / 2);
+      right: calc((100% - (var(--cols) - 1) * var(--grid-gap)) / var(--cols) / 2);
       width: auto;
       height: 3px;
-    }
-
-    /* Linie endet in der Mitte des letzten Kreises: Spaltenbreite minus halber Kreis */
-    .process--4 .process__track {
-      right: calc(25% - var(--grid-gap) * 0.75 - var(--num-size) / 2);
-    }
-
-    .process--3 .process__track {
-      right: calc(33.333% - var(--grid-gap) * 0.6667 - var(--num-size) / 2);
     }
 
     .process__fill {
@@ -162,12 +159,19 @@ const { steps, eyebrow, title, lead, id = 'ablauf', tone = 'default' } = Astro.p
 
     .process__step {
       grid-template-columns: 1fr;
+      justify-items: center;
       gap: var(--space-5);
+      text-align: center;
     }
 
     .process__body {
+      align-items: center;
       padding-top: 0;
-      padding-right: var(--space-4);
+      padding-inline: var(--space-2);
+    }
+
+    .process__text {
+      max-width: 22rem;
     }
   }
 

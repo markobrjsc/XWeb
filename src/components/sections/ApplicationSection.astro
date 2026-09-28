@@ -1,0 +1,334 @@
+---
+/**
+ * ApplicationSection – Bewerbungsformular mit Unterlagen-Upload (Anschreiben, Lebenslauf, Zeugnisse, Weiteres).
+ * Links eine kompakte Karte zur Stelle und zum Ablauf, rechts das Formular. Versand per E-Mail wie beim Kontakt.
+ *
+ * Mit `job`: Bewerbung auf eine bestimmte Stelle · ohne: Initiativbewerbung mit Auswahl des Bereichs
+ */
+import type { CollectionEntry } from 'astro:content';
+import Choice from '@/components/forms/Choice.astro';
+import Field from '@/components/forms/Field.astro';
+import FileField from '@/components/forms/FileField.astro';
+import Fieldset from '@/components/forms/Fieldset.astro';
+import Form from '@/components/forms/Form.astro';
+import Badge from '@/components/ui/Badge.astro';
+import Button from '@/components/ui/Button.astro';
+import Container from '@/components/ui/Container.astro';
+import Icon from '@/components/ui/Icon.astro';
+import TechGrid from '@/components/ui/TechGrid.astro';
+import { site } from '@/config/site';
+import { applicationSteps } from '@/data/company';
+import { employmentTypes, licenseClasses } from '@/lib/forms';
+
+interface Props {
+  job?: CollectionEntry<'stellenangebote'>;
+  /** Für die Initiativbewerbung: offene Stellen zur Auswahl */
+  jobs?: CollectionEntry<'stellenangebote'>[];
+}
+
+const { job, jobs = [] } = Astro.props;
+const interestOptions = [
+  ...jobs.map((entry) => ({ value: `Initiativbewerbung – ${entry.data.title}`, label: entry.data.title })),
+  { value: 'Initiativbewerbung – anderer Bereich', label: 'Anderer Bereich / noch offen' },
+];
+---
+
+<section class="apply" aria-labelledby="bewerbung-titel">
+  <Container>
+    <div class="apply__layout">
+      <aside class="apply__info" data-tone="brand" aria-label={job ? 'Zur Stelle' : 'Initiativbewerbung'}>
+        <TechGrid tone="light" class="apply__pattern" />
+        {
+          job ? (
+            <div class="apply__job">
+              <span class="apply__job-icon" aria-hidden="true">
+                <Icon name={job.data.icon} size="1.35rem" />
+              </span>
+              <div>
+                <p class="apply__kicker">Ihre Bewerbung als</p>
+                <p class="apply__job-title">{job.data.title}</p>
+              </div>
+            </div>
+          ) : (
+            <div class="apply__job">
+              <span class="apply__job-icon" aria-hidden="true">
+                <Icon name="sparkles" size="1.35rem" />
+              </span>
+              <div>
+                <p class="apply__kicker">Keine passende Stelle dabei?</p>
+                <p class="apply__job-title">Initiativbewerbung</p>
+              </div>
+            </div>
+          )
+        }
+        {
+          job && (
+            <ul class="apply__meta" role="list">
+              <li>
+                <Badge tone="light" size="sm">{job.data.type}</Badge>
+              </li>
+              <li>
+                <Icon name="calendar" size="1em" /> {job.data.start}
+              </li>
+              <li>
+                <Icon name="map-pin" size="1em" /> {job.data.location}
+              </li>
+            </ul>
+          )
+        }
+
+        <div class="apply__steps">
+          <h2 class="apply__steps-title">So geht es weiter</h2>
+          <ol class="apply__steps-list" role="list">
+            {
+              applicationSteps.map((step, index) => (
+                <li>
+                  <span class="apply__step-num" aria-hidden="true">{index + 1}</span>
+                  <span>
+                    <strong>{step.title}</strong>
+                    <span class="apply__step-text">{step.text}</span>
+                  </span>
+                </li>
+              ))
+            }
+          </ol>
+        </div>
+
+        <div class="apply__contact">
+          <p>Fragen vorab? Rufen Sie uns an:</p>
+          <Button href={site.contact.phoneHref} variant="light" size="sm" icon="phone" iconPosition="start">{site.contact.phone}</Button>
+        </div>
+      </aside>
+
+      <div class="apply__form">
+        <header class="apply__form-head">
+          <h2 class="apply__title" id="bewerbung-titel">Jetzt online bewerben</h2>
+          <p class="apply__lead">
+            In wenigen Minuten erledigt: Kontaktdaten eintragen, Unterlagen anhängen, absenden. Kein Lebenslauf zur Hand?
+            Kein Problem – schicken Sie uns einfach Ihre Kontaktdaten, wir melden uns.
+          </p>
+        </header>
+
+        <Form
+          form="bewerbung"
+          submitLabel="Bewerbung absenden"
+          successTitle="Vielen Dank für Ihre Bewerbung!"
+          successText="Ihre Unterlagen sind bei uns angekommen. Wir sehen sie uns genau an und melden uns so schnell wie möglich bei Ihnen."
+          consentText="Ich bin einverstanden, dass meine Angaben und Unterlagen für das Bewerbungsverfahren gespeichert und verwendet werden."
+        >
+          <Fieldset legend={job ? 'Stelle' : 'Ihr Interesse'} step={1}>
+            {
+              job ? (
+                <Field name="stelle" label="Sie bewerben sich als" value={job.data.title} readonly />
+              ) : (
+                <>
+                  <Field name="stelle" label="Bereich" as="select" options={interestOptions} required />
+                  <Choice name="art" label="Gewünschte Anstellung" options={employmentTypes} />
+                </>
+              )
+            }
+          </Fieldset>
+
+          <Fieldset legend="Persönliche Daten" step={2}>
+            <Field name="vorname" label="Vorname" required autocomplete="given-name" span="half" maxlength={80} />
+            <Field name="nachname" label="Nachname" required autocomplete="family-name" span="half" maxlength={80} />
+            <Field name="email" label="E-Mail" type="email" required autocomplete="email" span="half" maxlength={200} />
+            <Field name="telefon" label="Telefon" type="tel" required autocomplete="tel" span="half" maxlength={40} />
+            <Field name="strasse" label="Straße und Hausnummer" autocomplete="street-address" maxlength={160} />
+            <Field name="plz" label="PLZ" required autocomplete="postal-code" inputmode="numeric" span="third" maxlength={10} />
+            <Field name="wohnort" label="Wohnort" required autocomplete="address-level2" span="two-thirds" maxlength={120} />
+          </Fieldset>
+
+          <Fieldset legend="Zu Ihnen" step={3}>
+            <Field name="eintritt" label="Frühester Eintritt" placeholder="z. B. ab sofort oder 01.03." span="half" maxlength={100} />
+            <Choice name="fuehrerschein" label="Führerschein" options={licenseClasses} multiple />
+            <Field
+              name="nachricht"
+              label="Kurz zu Ihnen"
+              as="textarea"
+              rows={4}
+              maxlength={5000}
+              placeholder="Berufserfahrung, Qualifikationen, Fragen an uns …"
+            />
+          </Fieldset>
+
+          <Fieldset legend="Unterlagen" step={4} hint="PDF, Word oder Foto – auch ein Handyfoto Ihrer Zeugnisse genügt.">
+            <FileField name="anschreiben" label="Anschreiben" />
+            <FileField name="lebenslauf" label="Lebenslauf" icon="user-round" />
+            <FileField name="zeugnisse" label="Zeugnisse" max={5} icon="award" />
+            <FileField name="weitere" label="Weitere Unterlagen" max={5} icon="paperclip" hint="z. B. Zertifikate" />
+          </Fieldset>
+        </Form>
+      </div>
+    </div>
+  </Container>
+</section>
+
+<style>
+  .apply {
+    padding-block: var(--section-space-sm) var(--section-space);
+  }
+
+  .apply__layout {
+    display: grid;
+    gap: var(--space-8);
+    align-items: start;
+  }
+
+  @media (min-width: 64rem) {
+    .apply__layout {
+      grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.6fr);
+      gap: clamp(2rem, 1rem + 2.5vw, 3.5rem);
+    }
+
+    .apply__layout > .apply__info {
+      position: sticky;
+      top: calc(var(--header-height-compact) + var(--space-6));
+    }
+  }
+
+  .apply__info {
+    position: relative;
+    isolation: isolate;
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-5);
+    padding: clamp(1.5rem, 1rem + 1.5vw, 2.25rem);
+    overflow: hidden;
+    border-radius: var(--radius-xl);
+    background: linear-gradient(150deg, var(--blue-800) 0%, var(--blue-900) 100%);
+    box-shadow: var(--shadow-lg);
+  }
+
+  .apply__info :global(.apply__pattern) {
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    mask-image: linear-gradient(160deg, transparent 30%, #000 100%);
+  }
+
+  .apply__job {
+    display: flex;
+    align-items: center;
+    gap: var(--space-4);
+  }
+
+  .apply__job-icon {
+    display: grid;
+    place-items: center;
+    flex: none;
+    width: 3rem;
+    height: 3rem;
+    border-radius: 50%;
+    background: rgb(255 255 255 / 0.12);
+    box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.2);
+  }
+
+  .apply__kicker {
+    font-size: var(--text-xs);
+    color: var(--blue-200);
+  }
+
+  .apply__job-title {
+    font-size: var(--text-xl);
+    font-weight: var(--weight-bold);
+    line-height: 1.2;
+    color: #ffffff;
+  }
+
+  .apply__meta {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-2) var(--space-4);
+    margin: 0;
+    padding: 0;
+    font-size: var(--text-xs);
+  }
+
+  .apply__meta li {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-1);
+  }
+
+  .apply__steps {
+    padding-top: var(--space-5);
+    border-top: 1px solid var(--color-border);
+  }
+
+  .apply__steps-title {
+    margin-bottom: var(--space-3);
+    font-size: var(--text-2xs);
+    font-weight: var(--weight-bold);
+    letter-spacing: var(--tracking-wider);
+    text-transform: uppercase;
+    color: var(--blue-200);
+  }
+
+  .apply__steps-list {
+    display: grid;
+    gap: var(--space-3);
+    margin: 0;
+    padding: 0;
+    font-size: var(--text-sm);
+  }
+
+  .apply__steps-list li {
+    display: flex;
+    gap: var(--space-3);
+  }
+
+  .apply__steps-list strong {
+    display: block;
+    color: #ffffff;
+  }
+
+  .apply__step-num {
+    display: grid;
+    place-items: center;
+    flex: none;
+    width: 1.6rem;
+    height: 1.6rem;
+    font-size: var(--text-xs);
+    font-weight: var(--weight-bold);
+    border-radius: 50%;
+    background: rgb(255 255 255 / 0.12);
+  }
+
+  .apply__step-text {
+    font-size: var(--text-xs);
+    color: var(--color-text-muted);
+  }
+
+  .apply__contact {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--space-2);
+    padding-top: var(--space-5);
+    border-top: 1px solid var(--color-border);
+    font-size: var(--text-sm);
+  }
+
+  .apply__form {
+    display: grid;
+    gap: var(--space-5);
+    min-width: 0;
+  }
+
+  .apply__form-head {
+    display: grid;
+    gap: var(--space-2);
+  }
+
+  .apply__title {
+    font-size: var(--text-3xl);
+  }
+
+  .apply__lead {
+    max-width: 44rem;
+    color: var(--color-text-muted);
+    line-height: var(--leading-relaxed);
+  }
+</style>

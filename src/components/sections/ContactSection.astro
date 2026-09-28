@@ -1,55 +1,95 @@
 ---
 /**
- * Kontaktbereich (id="kontakt") – Hauptinhalt der Seite /kontakt/: Telefon, E-Mail, Adresse,
- * Bürozeiten, Routenplanung und Einsatzgebiet.
+ * Kontaktbereich (id="kontakt") – Hauptinhalt der Seite /kontakt/:
+ * links alle Kontaktdaten kompakt auf einer Karte, rechts das Anfrageformular (Versand per E-Mail).
  */
 import { site } from '@/config/site';
+import Choice from '@/components/forms/Choice.astro';
+import Field from '@/components/forms/Field.astro';
+import FileField from '@/components/forms/FileField.astro';
+import Fieldset from '@/components/forms/Fieldset.astro';
+import Form from '@/components/forms/Form.astro';
 import Button from '@/components/ui/Button.astro';
 import ContactList from '@/components/ui/ContactList.astro';
 import Container from '@/components/ui/Container.astro';
-import Eyebrow from '@/components/ui/Eyebrow.astro';
 import TechGrid from '@/components/ui/TechGrid.astro';
-
-interface Props {
-  title?: string;
-  text?: string;
-}
-
-const {
-  title = 'Ihr Projekt in <span class="accent">guten Händen.</span>',
-  text = 'Ob neue Hofeinfahrt, Hausanschluss oder Erschließungsstraße: Rufen Sie uns an oder schreiben Sie uns. Wir beraten Sie gerne und erstellen Ihnen ein individuelles Angebot.',
-} = Astro.props;
+import { ACCEPT_IMAGES, contactAreas, contactChannels, contactTimeframes, contactTopics } from '@/lib/forms';
 ---
 
 <section id="kontakt" class="contact" aria-labelledby="kontakt-titel">
   <Container>
-    <div class="contact__card" data-tone="brand" data-reveal="zoom">
-      <TechGrid tone="light" class="contact__pattern" />
-
-      <div class="contact__intro">
-        <Eyebrow icon="message-square">Kontakt</Eyebrow>
-        <h2 class="contact__title" id="kontakt-titel" set:html={title} />
-        <p class="contact__text">{text}</p>
-        <div class="contact__actions">
-          <Button href={site.contact.phoneHref} variant="light" size="lg" icon="phone" iconPosition="start">
-            {site.contact.phone}
-          </Button>
-          <Button href={`mailto:${site.contact.email}`} variant="outline-light" size="lg" icon="mail" iconPosition="start">
-            E-Mail schreiben
-          </Button>
-        </div>
-      </div>
-
-      <div class="contact__details">
-        <ContactList items={['address', 'hours', 'fax']} />
-        <Button href={site.mapsUrl} variant="light" icon="navigation" iconPosition="start" external>Route planen</Button>
+    <div class="contact__layout">
+      <aside class="contact__info" data-tone="brand" aria-labelledby="kontakt-daten">
+        <TechGrid tone="light" class="contact__pattern" />
+        <h2 class="contact__info-title" id="kontakt-daten">So erreichen Sie uns</h2>
+        <Button href={site.contact.phoneHref} variant="light" icon="phone" iconPosition="start" block>
+          {site.contact.phone}
+        </Button>
+        <ContactList items={['email', 'address', 'hours', 'fax']} size="sm" />
+        <Button href={site.mapsUrl} variant="outline-light" size="sm" icon="navigation" iconPosition="start" external>
+          Route planen
+        </Button>
         <div class="contact__area">
-          <h3 class="contact__area-title">Unser Einsatzgebiet</h3>
+          <h3 class="contact__area-title">Einsatzgebiet</h3>
           <ul class="contact__places" role="list">
             {site.serviceArea.places.map((place) => <li>{place}</li>)}
             <li class="contact__places-more">und Umgebung</li>
           </ul>
         </div>
+      </aside>
+
+      <div class="contact__form">
+        <header class="contact__form-head">
+          <h2 class="contact__title" id="kontakt-titel">Anfrage senden</h2>
+          <p class="contact__lead">
+            Beschreiben Sie kurz Ihr Vorhaben – wir melden uns zeitnah, beraten Sie persönlich und erstellen Ihnen ein
+            individuelles Angebot.
+          </p>
+        </header>
+
+        <Form
+          form="kontakt"
+          submitLabel="Anfrage senden"
+          successTitle="Vielen Dank für Ihre Anfrage!"
+          successText="Ihre Nachricht ist bei uns angekommen. Wir melden uns so schnell wie möglich – in der Regel innerhalb von ein bis zwei Werktagen."
+        >
+          <Fieldset legend="Worum geht es?" step={1}>
+            <Choice name="anliegen" label="Ihr Anliegen" options={contactTopics} required value={contactTopics[0]} />
+            <Choice name="bereiche" label="Fachbereich" options={contactAreas} multiple />
+          </Fieldset>
+
+          <Fieldset legend="Ihr Projekt" step={2}>
+            <Field
+              name="nachricht"
+              label="Beschreibung"
+              as="textarea"
+              required
+              maxlength={5000}
+              placeholder="z. B. Neue Hofeinfahrt mit Betonpflaster, ca. 80 m², inklusive Entwässerung …"
+            />
+            <Field name="projektort" label="Ort der Baustelle" span="half" placeholder="z. B. Radolfzell-Böhringen" maxlength={200} />
+            <Field name="zeitraum" label="Gewünschter Zeitraum" as="select" options={contactTimeframes} span="half" />
+            <FileField
+              name="fotos"
+              label="Fotos oder Pläne"
+              hint="Bilder oder PDF"
+              max={8}
+              accept={ACCEPT_IMAGES}
+              icon="image"
+              span="full"
+            />
+          </Fieldset>
+
+          <Fieldset legend="Ihre Kontaktdaten" step={3}>
+            <Field name="name" label="Name" required autocomplete="name" span="half" maxlength={120} />
+            <Field name="firma" label="Firma / Gemeinde" autocomplete="organization" span="half" maxlength={160} />
+            <Field name="email" label="E-Mail" type="email" required autocomplete="email" span="half" maxlength={200} />
+            <Field name="telefon" label="Telefon" type="tel" autocomplete="tel" span="half" maxlength={40} />
+            <Field name="adresse" label="Straße und Hausnummer" autocomplete="street-address" span="half" maxlength={160} />
+            <Field name="ort" label="PLZ und Ort" autocomplete="address-level2" span="half" maxlength={120} />
+            <Choice name="kontaktweg" label="Wie dürfen wir Sie erreichen?" options={contactChannels} value="E-Mail" />
+          </Fieldset>
+        </Form>
       </div>
     </div>
   </Container>
@@ -58,79 +98,56 @@ const {
 <style>
   .contact {
     position: relative;
-    z-index: 2;
     padding-block: var(--section-space-sm) var(--section-space);
   }
 
-  .contact__card {
-    position: relative;
-    isolation: isolate;
+  .contact__layout {
     display: grid;
-    gap: var(--space-12);
-    padding: clamp(1.75rem, 1rem + 4vw, 4.5rem);
-    overflow: hidden;
-    border-radius: var(--radius-2xl);
-    background: linear-gradient(135deg, var(--blue-800) 0%, var(--blue-900) 100%);
-    box-shadow: var(--shadow-xl);
+    gap: var(--space-8);
+    align-items: start;
   }
 
-  @media (min-width: 60rem) {
-    .contact__card {
-      grid-template-columns: 1.25fr 1fr;
-      align-items: start;
+  @media (min-width: 64rem) {
+    .contact__layout {
+      grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.6fr);
+      gap: clamp(2rem, 1rem + 2.5vw, 3.5rem);
+    }
+
+    .contact__layout > .contact__info {
+      position: sticky;
+      top: calc(var(--header-height-compact) + var(--space-6));
     }
   }
 
-  .contact__card :global(.contact__pattern) {
-    position: absolute;
-    inset: 0;
-    z-index: -1;
-    mask-image: linear-gradient(115deg, transparent 25%, #000 100%);
-  }
-
-  .contact__intro {
+  /* Kontaktdaten kompakt auf einer blauen Karte */
+  .contact__info {
+    position: relative;
+    isolation: isolate;
     display: flex;
     flex-direction: column;
     align-items: flex-start;
     gap: var(--space-5);
+    padding: clamp(1.5rem, 1rem + 1.5vw, 2.25rem);
+    overflow: hidden;
+    border-radius: var(--radius-xl);
+    background: linear-gradient(150deg, var(--blue-800) 0%, var(--blue-900) 100%);
+    box-shadow: var(--shadow-lg);
   }
 
-  .contact__title {
-    font-size: var(--text-4xl);
-    line-height: 1.1;
+  .contact__info :global(.contact__pattern) {
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    mask-image: linear-gradient(160deg, transparent 30%, #000 100%);
   }
 
-  .contact__title :global(.accent) {
-    color: var(--color-accent);
-  }
-
-  .contact__text {
-    max-width: 34rem;
-    font-size: var(--text-lg);
-    line-height: var(--leading-relaxed);
-  }
-
-  .contact__actions {
-    display: flex;
-    flex-wrap: wrap;
-    gap: var(--space-3);
-    margin-top: var(--space-3);
-  }
-
-  .contact__details {
-    display: flex;
-    flex-direction: column;
-    align-items: flex-start;
-    gap: var(--space-6);
-    padding: clamp(1.5rem, 1rem + 2vw, 2.25rem);
-    border-radius: var(--radius-lg);
-    background: rgb(7 23 44 / 0.45);
-    box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.1);
+  .contact__info-title {
+    font-size: var(--text-xl);
   }
 
   .contact__area {
     width: 100%;
-    padding-top: var(--space-6);
+    padding-top: var(--space-5);
     border-top: 1px solid var(--color-border);
   }
 
@@ -138,7 +155,6 @@ const {
     margin-bottom: var(--space-3);
     font-size: var(--text-2xs);
     font-weight: var(--weight-bold);
-    font-stretch: 100%;
     letter-spacing: var(--tracking-wider);
     text-transform: uppercase;
     color: var(--blue-200);
@@ -147,22 +163,43 @@ const {
   .contact__places {
     display: flex;
     flex-wrap: wrap;
-    gap: var(--space-2);
+    gap: var(--space-1);
     margin: 0;
     padding: 0;
   }
 
   .contact__places li {
-    padding: 0.3em 0.75em;
-    font-size: var(--text-xs);
+    padding: 0.2em 0.7em;
+    font-size: var(--text-2xs);
     font-weight: var(--weight-medium);
     color: #ffffff;
-    border-radius: var(--radius-sm);
+    border-radius: var(--radius-full);
     background: rgb(255 255 255 / 0.08);
   }
 
   .contact__places .contact__places-more {
     background: transparent;
     color: var(--color-text-muted);
+  }
+
+  .contact__form {
+    display: grid;
+    gap: var(--space-5);
+    min-width: 0;
+  }
+
+  .contact__form-head {
+    display: grid;
+    gap: var(--space-2);
+  }
+
+  .contact__title {
+    font-size: var(--text-3xl);
+  }
+
+  .contact__lead {
+    max-width: 44rem;
+    color: var(--color-text-muted);
+    line-height: var(--leading-relaxed);
   }
 </style>

@@ -91,6 +91,15 @@ export default defineConfig({
     defaultStrategy: 'hover',
   },
 
+  // Lokale Entwicklung: Formular-Schnittstelle /api/* an den Worker weiterreichen (`npm run dev:api` parallel starten)
+  vite: {
+    server: {
+      proxy: {
+        '/api': 'http://127.0.0.1:8787',
+      },
+    },
+  },
+
   devToolbar: {
     enabled: false,
   },

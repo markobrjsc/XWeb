@@ -1,0 +1,190 @@
+---
+/**
+ * FileField – Datei-Upload als Ablagefläche (klicken oder Dateien hineinziehen) mit Dateiliste.
+ * Auswahl sammeln, einzelne Dateien entfernen und Größen prüfen: src/scripts/forms.ts
+ */
+import Icon from '@/components/ui/Icon.astro';
+import { ACCEPT_DOCUMENTS, UPLOAD_LIMITS, formatBytes } from '@/lib/forms';
+
+interface Props {
+  name: string;
+  label: string;
+  hint?: string;
+  /** Wie viele Dateien höchstens (1 = Einzeldatei) */
+  max?: number;
+  accept?: string;
+  icon?: string;
+  span?: 'full' | 'half';
+}
+
+const { name, label, hint, max = 1, accept = ACCEPT_DOCUMENTS, icon = 'file-text', span = 'half' } = Astro.props;
+const id = `datei-${name}`;
+const limit = `${max > 1 ? `bis zu ${max} Dateien, ` : ''}max. ${formatBytes(UPLOAD_LIMITS.fileBytes)} pro Datei`;
+---
+
+<div class="file" data-span={span} data-file-field data-max={max}>
+  <span class="file__label" id={`${id}-label`}>{label} <span class="file__optional">(optional)</span></span>
+  <div class="file__drop">
+    <input
+      class="file__input"
+      type="file"
+      id={id}
+      name={name}
+      accept={accept}
+      multiple={max > 1}
+      aria-labelledby={`${id}-label`}
+      aria-describedby={`${id}-hinweis`}
+    />
+    <span class="file__icon" aria-hidden="true"><Icon name={icon} size="1.2rem" /></span>
+    <span class="file__text">
+      <span class="file__cta">{max > 1 ? 'Dateien auswählen' : 'Datei auswählen'}</span>
+      <span class="file__hint" id={`${id}-hinweis`}>{hint ? `${hint} · ` : ''}{limit}</span>
+    </span>
+  </div>
+  <ul class="file__list" role="list" data-file-list></ul>
+</div>
+
+<style>
+  .file {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+    min-width: 0;
+  }
+
+  .file__label {
+    font-size: var(--text-sm);
+    font-weight: var(--weight-semibold);
+    color: var(--color-heading);
+  }
+
+  .file__optional {
+    margin-left: 0.2em;
+    font-weight: var(--weight-regular);
+    color: var(--color-text-subtle);
+  }
+
+  .file__drop {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    min-height: 4.25rem;
+    padding: var(--space-3) var(--space-4);
+    border: 1.5px dashed var(--color-border-strong);
+    border-radius: var(--radius-md);
+    background: var(--color-bg-subtle);
+    transition:
+      border-color var(--duration-base) ease,
+      background-color var(--duration-base) ease;
+  }
+
+  .file__drop:hover,
+  .file[data-dragover] .file__drop {
+    border-color: var(--blue-400);
+    background: var(--blue-50);
+  }
+
+  .file__drop:has(.file__input:focus-visible) {
+    outline: 3px solid var(--color-focus);
+    outline-offset: 2px;
+  }
+
+  /* Unsichtbares Eingabefeld über der ganzen Fläche – nimmt Klicks und hineingezogene Dateien an */
+  .file__input {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    opacity: 0;
+    cursor: pointer;
+  }
+
+  .file__icon {
+    display: grid;
+    place-items: center;
+    flex: none;
+    width: 2.5rem;
+    height: 2.5rem;
+    color: var(--blue-700);
+    border-radius: 50%;
+    background: #ffffff;
+    box-shadow: inset 0 0 0 1px var(--color-border);
+  }
+
+  .file__text {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+  }
+
+  .file__cta {
+    font-size: var(--text-sm);
+    font-weight: var(--weight-semibold);
+    color: var(--blue-700);
+  }
+
+  .file__hint {
+    font-size: var(--text-2xs);
+    color: var(--color-text-subtle);
+  }
+
+  .file__list {
+    display: grid;
+    gap: var(--space-1);
+    margin: 0;
+    padding: 0;
+  }
+
+  .file__list:empty {
+    display: none;
+  }
+
+  .file__list :global(li) {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    padding: 0.35rem 0.4rem 0.35rem 0.8rem;
+    font-size: var(--text-xs);
+    border-radius: var(--radius-full);
+    background: var(--blue-50);
+  }
+
+  .file__list :global(.file__name) {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    font-weight: var(--weight-medium);
+    color: var(--color-heading);
+    white-space: nowrap;
+    text-overflow: ellipsis;
+  }
+
+  .file__list :global(.file__size) {
+    color: var(--color-text-subtle);
+    white-space: nowrap;
+  }
+
+  .file__list :global(.file__remove) {
+    display: grid;
+    place-items: center;
+    flex: none;
+    width: 1.6rem;
+    height: 1.6rem;
+    padding: 0;
+    color: var(--gray-600);
+    border: 0;
+    border-radius: 50%;
+    background: #ffffff;
+    cursor: pointer;
+  }
+
+  .file__list :global(.file__remove:hover) {
+    color: var(--color-danger);
+  }
+
+  .file__list :global(li[data-error]) {
+    color: var(--color-danger);
+    background: var(--color-danger-soft);
+  }
+</style>

@@ -92,6 +92,21 @@ const moreHref = `/referenzen/?bereich=${pillar}`;
     gap: var(--space-3);
     padding-top: var(--space-4);
     border-top: 1px solid var(--color-border);
+    container-type: inline-size;
+  }
+
+  /* Breite Karte: Referenzfoto links, Text rechts – statt eines hohen Bildes über die ganze Breite */
+  @container (min-width: 26rem) {
+    .service__ref-link {
+      flex-direction: row;
+      align-items: center;
+      padding: var(--space-2);
+    }
+
+    .service__ref-media {
+      flex: none;
+      width: 42%;
+    }
   }
 
   .service__ref-link {

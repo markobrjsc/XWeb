@@ -1,13 +1,36 @@
-// Cloudflare-Konfiguration für das Deployment als statische Website
-// (Cloudflare Workers mit Static Assets). Deployment: `npm run deploy`
-// Alternativ kann das Repository direkt mit Cloudflare Pages verbunden werden – siehe README.md.
+// Cloudflare-Konfiguration: statische Website (Cloudflare Workers mit Static Assets)
+// plus ein kleiner Worker für die Formulare unter /api/* (worker/index.ts).
+// Deployment: `npm run deploy` · Einrichtung des E-Mail-Versands: README.md → „Formulare & E-Mail-Versand“
 {
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "pflasterarbeiten-hildebrand",
+  "main": "worker/index.ts",
   "compatibility_date": "2026-09-01",
   "assets": {
     "directory": "./dist",
+    "binding": "ASSETS",
     "html_handling": "force-trailing-slash",
-    "not_found_handling": "404-page"
+    "not_found_handling": "404-page",
+    // Nur die Formular-Schnittstelle läuft durch den Worker – alle Seiten kommen direkt aus ./dist
+    "run_worker_first": ["/api/*"]
+  },
+  // Kurzzeit-Speicher für Bewerbungsunterlagen und Fotos (verfallen automatisch nach 6 Stunden).
+  // Einmalig anlegen: `npx wrangler kv namespace create UPLOADS` und die ausgegebene id hier eintragen.
+  "kv_namespaces": [
+    {
+      "binding": "UPLOADS",
+      "id": "e721d87e38634628b392871c965ef479"
+    }
+  ],
+  "vars": {
+    // TESTPHASE: Absender von Resend (funktioniert ohne bestätigte Domain) und Test-Empfänger.
+    // Für den Livegang: MAIL_FROM auf "Website Hildebrand <website@pflasterarbeiten-hildebrand.de>" setzen
+    // (Domain muss bei Resend bestätigt sein) und die Zeile MAIL_TO löschen – dann geht alles an die
+    // E-Mail aus src/config/site.ts.
+    "MAIL_FROM": "Website Hildebrand <onboarding@resend.dev>",
+    "MAIL_TO": "lallaklellek@gmail.com"
+  },
+  "observability": {
+    "enabled": true
   }
 }

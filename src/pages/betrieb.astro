@@ -42,98 +42,122 @@ const facts = [
   breadcrumbs={breadcrumbs}
 >
   <PageHero
+    size="compact"
     breadcrumbs={breadcrumbs}
     eyebrow="Unser Betrieb"
     title={'Ein Familienbetrieb mit <span class="accent">festem Fundament.</span>'}
-    lead={`Seit ${site.foundingYear} bauen wir im Landkreis Konstanz – mit eigenem Team, moderner Ausstattung und dem Anspruch, jedes Projekt so sorgfältig auszuführen, als wäre es unser eigenes.`}
     image="betrieb/team/01"
-  >
-    <FactList slot="aside" title="Auf einen Blick" facts={facts} />
-  </PageHero>
+  />
 
-  <Section labelledby="ueber-uns-titel">
-    <div class="about">
-      <div class="about__text" data-reveal>
-        <SectionHeader
-          id="ueber-uns-titel"
-          eyebrow="Über uns"
-          title={'Qualität, die man sieht – <span class="accent">und die hält.</span>'}
-          reveal={false}
-        />
-        <div class="about__prose">
-          <p>
-            Die {site.name} ist ein inhabergeführter Familienbetrieb mit Sitz in Radolfzell-Liggeringen. Unter der Leitung
-            von {site.managingDirector} planen und bauen wir Höfe, Gärten, Leitungen und Verkehrsflächen im gesamten
-            Landkreis Konstanz – in Radolfzell, Singen, Konstanz und den umliegenden Gemeinden.
-          </p>
-          <p>
-            Unser Name steht für saubere Pflasterarbeiten – und für weit mehr: Als Fachbetrieb für Garten-, Tief- und
-            Straßenbau übernehmen wir Projekte vom Bauaushub über Kanal- und Leitungsarbeiten bis zur fertigen Pflaster-
-            oder Asphaltfläche und der abschließenden Bepflanzung.
-          </p>
-          <p>
-            Wir arbeiten eng mit unseren Kundinnen und Kunden und auf Wunsch mit Landschaftsarchitekten und Planern
-            zusammen. So fließen Ihre Vorstellungen von Anfang an in die Planung ein – und Sie haben während der gesamten
-            Bauzeit einen festen Ansprechpartner.
-          </p>
+  <Section labelledby="ueberblick-titel">
+    <div class="rows">
+      <div class="split">
+        <div class="split__text" data-reveal>
+          <SectionHeader
+            id="ueberblick-titel"
+            eyebrow="Auf einen Blick"
+            title={`Seit ${site.foundingYear} im <span class="accent">Landkreis Konstanz.</span>`}
+            reveal={false}
+          />
+          <div class="split__prose">
+            <p>
+              Seit {site.foundingYear} bauen wir im Landkreis Konstanz – mit eigenem Team, moderner Ausstattung und dem
+              Anspruch, jedes Projekt so sorgfältig auszuführen, als wäre es unser eigenes.
+            </p>
+          </div>
         </div>
-        <CheckList
-          columns={2}
-          items={['Kompetente Fachkräfte', 'Faire, transparente Preise', 'Professioneller Service', 'Ehrlichkeit und Verlässlichkeit']}
-        />
+        <div class="split__aside" data-reveal="fade">
+          <FactList facts={facts} class="split__facts" />
+        </div>
       </div>
 
-      <figure class="about__media" data-reveal="fade">
-        <Carousel images={teamPhotos} label="Unser Team bei der Arbeit" sizes="(min-width: 64rem) 45vw, 100vw" />
-        <figcaption class="about__caption">Unser Team bei der Arbeit – vom Pflastern bis zum Steinschnitt</figcaption>
-      </figure>
+      <div class="split split--reverse">
+        <div class="split__text" data-reveal>
+          <SectionHeader
+            id="ueber-uns-titel"
+            eyebrow="Über uns"
+            title={'Qualität, die man sieht – <span class="accent">und die hält.</span>'}
+            reveal={false}
+          />
+          <div class="split__prose">
+            <p>
+              Die {site.name} ist ein inhabergeführter Familienbetrieb mit Sitz in Radolfzell-Liggeringen. Unter der Leitung
+              von {site.managingDirector} planen und bauen wir Höfe, Gärten, Leitungen und Verkehrsflächen im gesamten
+              Landkreis Konstanz – in Radolfzell, Singen, Konstanz und den umliegenden Gemeinden.
+            </p>
+            <p>
+              Unser Name steht für saubere Pflasterarbeiten – und für weit mehr: Als Fachbetrieb für Garten-, Tief- und
+              Straßenbau übernehmen wir Projekte vom Bauaushub über Kanal- und Leitungsarbeiten bis zur fertigen Pflaster-
+              oder Asphaltfläche und der abschließenden Bepflanzung.
+            </p>
+            <p>
+              Wir arbeiten eng mit unseren Kundinnen und Kunden und auf Wunsch mit Landschaftsarchitekten und Planern
+              zusammen. So fließen Ihre Vorstellungen von Anfang an in die Planung ein – und Sie haben während der gesamten
+              Bauzeit einen festen Ansprechpartner.
+            </p>
+          </div>
+          <CheckList
+            columns={2}
+            items={['Kompetente Fachkräfte', 'Faire, transparente Preise', 'Professioneller Service', 'Ehrlichkeit und Verlässlichkeit']}
+          />
+        </div>
+        <figure class="split__aside split__media" data-reveal="fade">
+          <Carousel images={teamPhotos} label="Unser Team bei der Arbeit" sizes="(min-width: 64rem) 45vw, 100vw" />
+          <figcaption class="split__caption">Unser Team bei der Arbeit – vom Pflastern bis zum Steinschnitt</figcaption>
+        </figure>
+      </div>
     </div>
   </Section>
 
   <StatsBand />
 
-  <Section labelledby="kunden-titel">
-    <SectionHeader
-      id="kunden-titel"
-      eyebrow="Unsere Auftraggeber"
-      title={'Für wen wir <span class="accent">arbeiten.</span>'}
-      lead="Vom Einfamilienhaus bis zur Gemeindestraße: Wir bringen für jede Aufgabe die passende Erfahrung mit."
-    />
-    <ul class="clients" role="list" data-reveal-group="90">
-      {
-        clientGroups.map((group) => (
-          <li class="clients__item">
-            <FeatureCard icon={group.icon} title={group.title} text={group.text} />
-          </li>
-        ))
-      }
-    </ul>
-  </Section>
-
-  <Section tone="subtle" labelledby="geschichte-titel">
-    <div class="about about--reverse">
-      <figure class="about__media" data-reveal="fade">
-        <Carousel images={historyPhotos} label="Fotos aus der Firmengeschichte" sizes="(min-width: 64rem) 45vw, 100vw" />
-        <figcaption class="about__caption">Aus unserem Fotoarchiv</figcaption>
-      </figure>
-      <div class="about__text" data-reveal>
-        <SectionHeader
-          id="geschichte-titel"
-          eyebrow="Firmengeschichte"
-          title={'Gewachsen mit <span class="accent">der Region.</span>'}
-          reveal={false}
-        />
-        <div class="about__prose">
-          <p>
-            Angefangen hat alles mit Pflasterarbeiten – von Hand verlegt, Stein für Stein. Über die Jahrzehnte sind neue
-            Aufgaben, Maschinen und Mitarbeitende dazugekommen: vom ersten eigenen Kleinbagger bis zum heutigen Fuhrpark für
-            Garten-, Tief- und Straßenbau.
-          </p>
-          <p>
-            Geblieben ist der Anspruch, jede Fläche so zu bauen, dass sie Jahrzehnte hält – und das Vertrauen unserer
-            Kundinnen und Kunden im Landkreis Konstanz, von denen uns viele seit Langem begleiten.
-          </p>
+  <Section tone="subtle" labelledby="kunden-titel">
+    <div class="rows">
+      <div class="split">
+        <div class="split__text" data-reveal>
+          <SectionHeader
+            id="kunden-titel"
+            eyebrow="Unsere Auftraggeber"
+            title={'Für wen wir <span class="accent">arbeiten.</span>'}
+            lead="Vom Einfamilienhaus bis zur Gemeindestraße: Wir bringen für jede Aufgabe die passende Erfahrung mit."
+            reveal={false}
+          />
         </div>
+        <ul class="split__aside clients" role="list" data-reveal-group="90">
+          {
+            clientGroups.map((group) => (
+              <li class="clients__item">
+                <FeatureCard icon={group.icon} title={group.title} text={group.text} />
+              </li>
+            ))
+          }
+        </ul>
+      </div>
+
+      <div class="split split--reverse">
+        <div class="split__text" data-reveal>
+          <SectionHeader
+            id="geschichte-titel"
+            eyebrow="Firmengeschichte"
+            title={'Gewachsen mit <span class="accent">der Region.</span>'}
+            reveal={false}
+          />
+          <div class="split__prose">
+            <p>
+              Angefangen hat alles mit Pflasterarbeiten – von Hand verlegt, Stein für Stein. Über die Jahrzehnte sind neue
+              Aufgaben, Maschinen und Mitarbeitende dazugekommen: vom ersten eigenen Kleinbagger bis zum heutigen Fuhrpark für
+              Garten-, Tief- und Straßenbau.
+            </p>
+            <p>
+              Geblieben ist der Anspruch, jede Fläche so zu bauen, dass sie Jahrzehnte hält – und das Vertrauen unserer
+              Kundinnen und Kunden im Landkreis Konstanz, von denen uns viele seit Langem begleiten.
+            </p>
+          </div>
+        </div>
+        <figure class="split__aside split__media" data-reveal="fade">
+          <Carousel images={historyPhotos} label="Fotos aus der Firmengeschichte" sizes="(min-width: 64rem) 45vw, 100vw" />
+          <figcaption class="split__caption">Aus unserem Fotoarchiv</figcaption>
+        </figure>
       </div>
     </div>
   </Section>
@@ -142,36 +166,41 @@ const facts = [
 </BaseLayout>
 
 <style>
-  .about {
+  /* Abwechselnd: Text auf der einen, Bild oder Karte auf der anderen Seite */
+  .rows {
     display: grid;
-    gap: var(--space-12);
+    gap: clamp(2.5rem, 2rem + 2.5vw, 4rem);
+  }
+
+  .split {
+    display: grid;
+    gap: var(--space-8);
     align-items: center;
   }
 
   @media (min-width: 64rem) {
-    .about {
-      grid-template-columns: minmax(0, 1.05fr) minmax(0, 0.95fr);
-      gap: clamp(3rem, 1rem + 5vw, 6rem);
+    .split {
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+      gap: clamp(2.5rem, 1rem + 4vw, 4.5rem);
+    }
+
+    /* Bild bzw. Karte links, Text rechts */
+    .split--reverse .split__aside {
+      order: -1;
     }
   }
 
-  @media (min-width: 64rem) {
-    .about--reverse {
-      grid-template-columns: minmax(0, 0.95fr) minmax(0, 1.05fr);
-    }
-  }
-
-  .about__text {
+  .split__text {
     display: flex;
     flex-direction: column;
-    gap: var(--space-6);
+    gap: var(--space-5);
   }
 
-  .about__text :global(.section-header) {
+  .split__text :global(.section-header) {
     margin-bottom: 0;
   }
 
-  .about__prose {
+  .split__prose {
     display: grid;
     gap: var(--space-4);
     max-width: 40rem;
@@ -179,7 +208,13 @@ const facts = [
     line-height: var(--leading-relaxed);
   }
 
-  .about__media {
+  .split__aside :global(.split__facts) {
+    box-shadow:
+      inset 0 0 0 1px var(--color-border),
+      var(--shadow-md);
+  }
+
+  .split__media {
     margin: 0;
     overflow: hidden;
     border: 1px solid var(--color-border);
@@ -187,7 +222,7 @@ const facts = [
     box-shadow: var(--shadow-md);
   }
 
-  .about__caption {
+  .split__caption {
     padding: var(--space-3) var(--space-5);
     font-size: var(--text-xs);
     color: var(--color-text-subtle);
@@ -208,12 +243,6 @@ const facts = [
     }
   }
 
-  @media (min-width: 72rem) {
-    .clients {
-      grid-template-columns: repeat(4, minmax(0, 1fr));
-    }
-  }
-
   .clients__item {
     display: flex;
   }
@@ -221,5 +250,4 @@ const facts = [
   .clients__item > :global(*) {
     flex: 1;
   }
-
 </style>

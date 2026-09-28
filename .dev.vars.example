@@ -1,0 +1,8 @@
+# Lokale Umgebungsvariablen für `npm run dev:api` (wrangler dev).
+# Kopieren nach .dev.vars – diese Datei wird nicht eingecheckt.
+
+# 1 = nichts verschicken, die E-Mail nur im Terminal ausgeben
+MAIL_DRY_RUN=1
+
+# Zum echten Testen: Dry-Run auf 0 setzen und den Schlüssel von resend.com eintragen
+# RESEND_API_KEY=re_xxxxxxxx

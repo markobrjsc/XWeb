@@ -81,6 +81,12 @@
   --color-focus: var(--blue-500);
   --color-focus-inverse: var(--blue-200);
 
+  /* Rückmeldungen in Formularen */
+  --color-danger: #b42318;
+  --color-danger-soft: #fef3f2;
+  --color-success: #067647;
+  --color-success-soft: #ecfdf3;
+
   /* Technische Zeichnungen (Querschnitte, Lageplan) */
   --draw-line: var(--blue-800);
   --draw-line-soft: var(--blue-400);
@@ -147,9 +153,9 @@
   --space-24: 6rem;
   --space-32: 8rem;
 
-  --section-space: clamp(4.5rem, 2.8rem + 6vw, 8rem);
-  --section-space-sm: clamp(3rem, 2.2rem + 3.5vw, 5rem);
-  --stack-space: clamp(2.5rem, 1.8rem + 3vw, 4rem);
+  --section-space: clamp(2.75rem, 2rem + 3vw, 4.5rem);
+  --section-space-sm: clamp(2rem, 1.6rem + 2vw, 3.25rem);
+  --stack-space: clamp(1.5rem, 1.2rem + 1.5vw, 2.25rem);
 
   /* ---------------------------------------------------------------------
      Layout
@@ -171,20 +177,21 @@
   --pillar-overlap: clamp(4rem, 3rem + 3vw, 6rem);
 
   /* ---------------------------------------------------------------------
-     Radien – klare, präzise Kanten
+     Radien – weich gerundete Flächen (Karten, Bilder), voll gerundet (Pill) für
+     interaktive Elemente und Labels – passend zum Startbildschirm
      --------------------------------------------------------------------- */
   --radius-xs: 2px;
-  --radius-sm: 4px;
-  --radius-md: 6px;
-  --radius-lg: 8px;
-  --radius-xl: 10px;
-  --radius-2xl: 12px;
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 18px;
+  --radius-xl: 22px;
+  --radius-2xl: 28px;
   --radius-full: 999px;
 
-  --radius-button: var(--radius-sm);
+  --radius-button: var(--radius-full);
   --radius-card: var(--radius-lg);
   --radius-media: var(--radius-lg);
-  --radius-badge: var(--radius-sm);
+  --radius-badge: var(--radius-full);
 
   /* ---------------------------------------------------------------------
      Schatten (dezent, blau getönt)

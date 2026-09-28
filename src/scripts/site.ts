@@ -6,6 +6,8 @@
  *  Zähler ........... [data-count-to] zählt beim Sichtbarwerden hoch
  *  Scroll-Effekte ... [data-parallax] Parallaxe, [data-progress] Fortschrittslinie
  *  Galerien ......... [data-carousel] Zähler „2/13“, Punkte und Pfeile (Instagram-Stil)
+ *  Nach oben ........ [data-scroll-top] scrollt sanft an den Seitenanfang
+ *  Vollbild-Kopf .... [data-hero-snap] erster Scroll nach unten gleitet direkt unter den Kopf
  *
  * Alle Effekte respektieren „Bewegung reduzieren“ im Betriebssystem.
  */
@@ -259,8 +261,99 @@ function initCarousels() {
 }
 
 /* ------------------------------------------------------------------------ */
+/* Nach oben                                                                 */
+/* ------------------------------------------------------------------------ */
+function initScrollTop() {
+  document.querySelectorAll<HTMLAnchorElement>('[data-scroll-top]').forEach((link) => {
+    link.addEventListener('click', (event) => {
+      event.preventDefault();
+      window.scrollTo({ top: 0, behavior: reducedMotion.matches ? 'auto' : 'smooth' });
+      // Tastaturfokus mitnehmen, ohne den Sprung zu stören
+      document.querySelector<HTMLElement>('#main')?.focus({ preventScroll: true });
+    });
+  });
+}
+
+/* ------------------------------------------------------------------------ */
+/* Vollbild-Seitenkopf: vom Kopf direkt zum Inhalt darunter gleiten          */
+/* ------------------------------------------------------------------------ */
+function initHeroSnap() {
+  const hero = document.querySelector<HTMLElement>('[data-hero-snap]');
+  if (!hero) return;
+  const header = document.querySelector<HTMLElement>('[data-site-header]');
+  const content = hero.nextElementSibling instanceof HTMLElement ? hero.nextElementSibling : null;
+
+  // Ziel: Unterkante des Kopfes schließt mit dem (schwebenden) Header ab
+  const target = () => hero.offsetTop + hero.offsetHeight - (header?.getBoundingClientRect().bottom ?? 0);
+  const inHero = () => window.scrollY < target() - 4;
+  let busyUntil = 0;
+  const busy = () => performance.now() < busyUntil;
+
+  const glide = () => {
+    busyUntil = performance.now() + (reducedMotion.matches ? 100 : 900);
+    window.scrollTo({ top: target(), behavior: reducedMotion.matches ? 'auto' : 'smooth' });
+    if (content) {
+      content.tabIndex = -1;
+      content.focus({ preventScroll: true });
+    }
+  };
+
+  // Mausrad / Touchpad – nachlaufende Ereignisse während der Animation schlucken
+  window.addEventListener(
+    'wheel',
+    (event) => {
+      if (busy()) {
+        event.preventDefault();
+        return;
+      }
+      if (event.deltaY <= 0 || event.ctrlKey || !inHero()) return;
+      event.preventDefault();
+      glide();
+    },
+    { passive: false },
+  );
+
+  // Wischen auf dem Handy
+  let touchY = 0;
+  window.addEventListener('touchstart', (event) => (touchY = event.touches[0].clientY), { passive: true });
+  window.addEventListener(
+    'touchmove',
+    (event) => {
+      if (busy()) {
+        event.preventDefault();
+        return;
+      }
+      if (touchY - event.touches[0].clientY < 12 || !inHero()) return;
+      event.preventDefault();
+      glide();
+    },
+    { passive: false },
+  );
+
+  // Tastatur
+  document.addEventListener('keydown', (event) => {
+    if (!['ArrowDown', 'PageDown', ' '].includes(event.key) || !inHero()) return;
+    if ((event.target as HTMLElement).closest('input, textarea, select, button, [contenteditable]')) return;
+    event.preventDefault();
+    glide();
+  });
+
+  // Pfeil und Links auf den Inhalt direkt unter dem Kopf („Alle Stellen ansehen“)
+  const selectors = ['[data-hero-scroll]'];
+  if (content?.id) selectors.push(`a[href="#${content.id}"]`);
+  document.querySelectorAll<HTMLAnchorElement>(selectors.join(',')).forEach((link) => {
+    link.addEventListener('click', (event) => {
+      event.preventDefault();
+      glide();
+    });
+  });
+}
+
+/* ------------------------------------------------------------------------ */
 initHeader();
 initReveal();
 initCounters();
 initScrollEffects();
 initCarousels();
+initScrollTop();
+initHeroSnap();

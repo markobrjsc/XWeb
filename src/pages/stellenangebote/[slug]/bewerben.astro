@@ -1,0 +1,44 @@
+---
+/**
+ * Online-Bewerbung auf eine Stelle – /stellenangebote/<stelle>/bewerben/
+ */
+import { getCollection, type CollectionEntry } from 'astro:content';
+import BaseLayout from '@/layouts/BaseLayout.astro';
+import ApplicationSection from '@/components/sections/ApplicationSection.astro';
+import PageHero from '@/components/sections/PageHero.astro';
+
+export async function getStaticPaths() {
+  const jobs = (await getCollection('stellenangebote')).filter((job) => job.data.active);
+  return jobs.map((job) => ({ params: { slug: job.id }, props: { job } }));
+}
+
+interface Props {
+  job: CollectionEntry<'stellenangebote'>;
+}
+
+const { job } = Astro.props;
+const { title } = job.data;
+
+const breadcrumbs = [
+  { label: 'Start', href: '/' },
+  { label: 'Stellenangebote', href: '/stellenangebote/' },
+  { label: title, href: `/stellenangebote/${job.id}/` },
+  { label: 'Bewerbung', href: `/stellenangebote/${job.id}/bewerben/` },
+];
+---
+
+<BaseLayout
+  title={`Bewerbung: ${title}`}
+  description={`Jetzt online als ${title} bei der Pflasterarbeiten Hildebrand GmbH in Radolfzell bewerben – Lebenslauf und Zeugnisse direkt hochladen.`}
+  breadcrumbs={breadcrumbs}
+>
+  <PageHero
+    size="compact"
+    breadcrumbs={breadcrumbs}
+    title={`Bewerbung als <span class="accent">${title}</span>`}
+    image="betrieb/team/10"
+    imagePosition="top"
+  />
+
+  <ApplicationSection job={job} />
+</BaseLayout>

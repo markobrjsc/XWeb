@@ -1,6 +1,6 @@
 ---
 /**
- * Kontakt – Telefon, E-Mail, Adresse, Bürozeiten, Routenplanung und Einsatzgebiet.
+ * Kontakt – links Telefon, E-Mail, Adresse, Bürozeiten, Route und Einsatzgebiet, rechts das Anfrageformular.
  */
 import BaseLayout from '@/layouts/BaseLayout.astro';
 import ContactSection from '@/components/sections/ContactSection.astro';
@@ -15,23 +15,18 @@ const breadcrumbs = [
 
 <BaseLayout
   title="Kontakt"
-  description={`Kontakt zur Pflasterarbeiten Hildebrand GmbH in Radolfzell-Liggeringen: Telefon ${site.contact.phone}, E-Mail, Adresse, Bürozeiten und Anfahrt.`}
+  description={`Kontakt zur Pflasterarbeiten Hildebrand GmbH in Radolfzell-Liggeringen: Telefon ${site.contact.phone}, Anfrageformular, E-Mail, Adresse, Bürozeiten und Anfahrt.`}
   pageType="ContactPage"
   breadcrumbs={breadcrumbs}
 >
   <PageHero
+    size="compact"
     breadcrumbs={breadcrumbs}
-    eyebrow="Kontakt"
-    eyebrowIcon="message-square"
     title={'Wir freuen uns <span class="accent">auf Ihre Anfrage.</span>'}
-    lead="Ob neue Hofeinfahrt, Gartenanlage, Hausanschluss oder Erschließungsstraße: Rufen Sie uns an oder schreiben Sie uns – wir melden uns zeitnah bei Ihnen."
+    lead="Ob Hofeinfahrt, Gartenanlage, Hausanschluss oder Erschließungsstraße – rufen Sie uns an oder schicken Sie uns Ihre Anfrage direkt über das Formular."
     image="betrieb/team/06"
     imagePosition="top"
-    size="sm"
   />
 
-  <ContactSection
-    title={'Ihr Projekt in <span class="accent">guten Händen.</span>'}
-    text="Beschreiben Sie uns kurz Ihr Vorhaben – gerne auch mit Fotos oder Plänen per E-Mail. Wir beraten Sie persönlich, besichtigen die Baustelle und erstellen Ihnen ein individuelles Angebot."
-  />
+  <ContactSection />
 </BaseLayout>

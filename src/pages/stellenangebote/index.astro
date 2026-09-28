@@ -11,6 +11,7 @@ import ProcessSection from '@/components/sections/ProcessSection.astro';
 import Button from '@/components/ui/Button.astro';
 import FactList from '@/components/ui/FactList.astro';
 import FeatureCard from '@/components/ui/FeatureCard.astro';
+import Icon from '@/components/ui/Icon.astro';
 import JobCard from '@/components/ui/JobCard.astro';
 import Section from '@/components/ui/Section.astro';
 import SectionHeader from '@/components/ui/SectionHeader.astro';
@@ -33,7 +34,6 @@ const highlights = [
   { label: 'Arbeitsort', value: 'Landkreis Konstanz', icon: 'map-pin' },
 ];
 
-const mailto = `mailto:${site.contact.email}?subject=${encodeURIComponent('Bewerbung')}`;
 ---
 
 <BaseLayout
@@ -43,16 +43,37 @@ const mailto = `mailto:${site.contact.email}?subject=${encodeURIComponent('Bewer
   breadcrumbs={breadcrumbs}
 >
   <PageHero
+    size="full"
+    scrollTarget="#stellen"
     breadcrumbs={breadcrumbs}
     eyebrow="Karriere"
-    title={'Stellenangebote: Werden Sie Teil <span class="accent">unseres Teams.</span>'}
+    title={'Werden Sie Teil <span class="accent">unseres Teams.</span>'}
     lead="Wir suchen Verstärkung für unser Team im Garten-, Tief- und Straßenbau – mit Berufserfahrung, als Quereinsteiger oder als Auszubildende. Bei uns arbeiten Sie in einem Familienbetrieb mit echtem Zusammenhalt."
     image="betrieb/team/10"
     imagePosition="top"
   >
-    <Button href="#stellen" variant="light" icon="arrow-down">Offene Stellen</Button>
-    <Button href={mailto} variant="outline-light">Initiativ bewerben</Button>
-    <FactList slot="aside" title="Das erwartet Sie" facts={highlights} />
+    <Button href="#stellen" variant="light" icon="arrow-down">Alle Stellen ansehen</Button>
+    <Button href="/stellenangebote/initiativ/" variant="outline-light">Initiativ bewerben</Button>
+    <div slot="aside" class="hero-aside">
+      <FactList title="Das erwartet Sie" facts={highlights} />
+      {
+        jobs.length > 0 && (
+          <nav class="jump" aria-label="Direkt zur Stelle">
+            <p class="jump__label">Direkt zur Stelle</p>
+            <ul class="jump__list" role="list">
+              {jobs.map((job) => (
+                <li>
+                  <a class="jump__link" href={`#stelle-${job.id}`}>
+                    <Icon name={job.data.icon} size="1.05rem" />
+                    <span>{job.data.title}</span>
+                  </a>
+                </li>
+              ))}
+            </ul>
+          </nav>
+        )
+      }
+    </div>
   </PageHero>
 
   <Section id="stellen" labelledby="stellen-titel">
@@ -69,7 +90,7 @@ const mailto = `mailto:${site.contact.email}?subject=${encodeURIComponent('Bewer
     <ul class="jobs" role="list" data-reveal-group="90">
       {
         jobs.map((job) => (
-          <li>
+          <li id={`stelle-${job.id}`} class="jobs__item">
             <JobCard job={job} />
           </li>
         ))
@@ -108,19 +129,94 @@ const mailto = `mailto:${site.contact.email}?subject=${encodeURIComponent('Bewer
     title="Keine passende Stelle dabei?"
     text="Wir freuen uns auch über Initiativbewerbungen – ob Fachkraft, Quereinsteiger oder Praktikant. Erzählen Sie uns, was Sie mitbringen."
   >
-    <Button href={`mailto:${site.contact.email}?subject=${encodeURIComponent('Initiativbewerbung')}`} variant="primary" icon="mail" iconPosition="start">
-      Initiativbewerbung senden
-    </Button>
+    <Button href="/stellenangebote/initiativ/" variant="primary" icon="arrow-right">Initiativ bewerben</Button>
     <Button href={site.contact.phoneHref} variant="secondary" icon="phone" iconPosition="start">{site.contact.phone}</Button>
   </CtaStrip>
 </BaseLayout>
 
 <style>
-  .jobs {
+  /* Sprungmarken im Seitenkopf – gleiche Glas-Pills wie auf der Startseite */
+  .hero-aside {
     display: grid;
-    gap: var(--space-4);
+    gap: var(--space-5);
+  }
+
+  .jump {
+    display: grid;
+    gap: var(--space-3);
+  }
+
+  .jump__label {
+    font-size: var(--text-2xs);
+    font-weight: var(--weight-semibold);
+    letter-spacing: var(--tracking-wider);
+    text-transform: uppercase;
+    color: var(--blue-200);
+  }
+
+  .jump__list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2);
     margin: 0;
     padding: 0;
+  }
+
+  .jump__link {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 1rem 0.5rem 0.8rem;
+    font-size: var(--text-sm);
+    font-weight: var(--weight-semibold);
+    color: #ffffff;
+    text-decoration: none;
+    border-radius: var(--radius-full);
+    background: rgb(255 255 255 / 0.12);
+    box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.3);
+    -webkit-backdrop-filter: blur(10px);
+    backdrop-filter: blur(10px);
+    transition:
+      background-color var(--duration-base) ease,
+      box-shadow var(--duration-base) ease;
+  }
+
+  .jump__link:hover {
+    background: rgb(255 255 255 / 0.24);
+    box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.55);
+  }
+
+  /* Angesprungene Stelle kurz hervorheben */
+  .jobs__item:target > :global(.card) {
+    border-color: var(--blue-400);
+    box-shadow:
+      0 0 0 4px var(--blue-100),
+      var(--shadow-md);
+    transition:
+      border-color var(--duration-slow) ease,
+      box-shadow var(--duration-slow) ease;
+  }
+
+  /* Stellen im 2×2-Raster */
+  .jobs {
+    display: grid;
+    gap: var(--grid-gap);
+    margin: 0;
+    padding: 0;
+  }
+
+  @media (min-width: 48rem) {
+    .jobs {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+  }
+
+  .jobs__item {
+    display: flex;
+  }
+
+  .jobs__item > :global(*) {
+    flex: 1;
   }
 
   .benefits {

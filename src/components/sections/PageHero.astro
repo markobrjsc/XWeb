@@ -3,12 +3,15 @@
  * PageHero – dunkler Seitenkopf der Unterseiten mit Brotkrumen, Überschrift und Einleitung.
  * Slot "aside": optionaler Inhalt rechts (z. B. Kennzahlen oder eine Zeichnung).
  * Slot default: optionale Buttons unter dem Text.
+ * `size`: md (Standard) · sm · compact (schmaler Kopf, nur Titel und Einleitung) · full (füllt den ganzen Bildschirm,
+ *   mit Scroll-Hinweis – der erste Scroll nach unten gleitet direkt zum Inhalt darunter, s. initHeroSnap in site.ts)
  * `image`: Name eines Fotos aus src/assets/images (z. B. "betrieb/team/01") – erscheint abgedunkelt im Hintergrund.
  */
 import { Picture } from 'astro:assets';
 import Breadcrumbs, { type Crumb } from '@/components/ui/Breadcrumbs.astro';
 import Container from '@/components/ui/Container.astro';
 import Eyebrow from '@/components/ui/Eyebrow.astro';
+import Icon from '@/components/ui/Icon.astro';
 import TechGrid from '@/components/ui/TechGrid.astro';
 import { findImage } from '@/lib/images';
 
@@ -18,13 +21,15 @@ interface Props {
   eyebrowIcon?: string;
   lead?: string;
   breadcrumbs?: Crumb[];
-  size?: 'md' | 'sm';
+  size?: 'md' | 'sm' | 'compact' | 'full';
+  /** Ziel des Scroll-Hinweises im Vollbild-Kopf */
+  scrollTarget?: string;
   image?: string;
   /** Bildausschnitt, z. B. "50% 40%" */
   imagePosition?: 'center' | 'top' | 'bottom';
 }
 
-const { title, eyebrow, eyebrowIcon, lead, breadcrumbs, size = 'md', image, imagePosition = 'center' } = Astro.props;
+const { title, eyebrow, eyebrowIcon, lead, breadcrumbs, size = 'md', image, imagePosition = 'center', scrollTarget } = Astro.props;
 const photo = findImage(image);
 const hasAside = Astro.slots.has('aside');
 ---
@@ -32,6 +37,7 @@ const hasAside = Astro.slots.has('aside');
 <section
   class:list={['page-hero', `page-hero--${size}`, { 'page-hero--aside': hasAside, 'page-hero--photo': photo }]}
   data-tone="dark"
+  data-hero-snap={size === 'full' ? '' : undefined}
 >
   {
     photo && (
@@ -74,6 +80,13 @@ const hasAside = Astro.slots.has('aside');
       )
     }
   </Container>
+  {
+    size === 'full' && scrollTarget && (
+      <a class="page-hero__scroll" href={scrollTarget} aria-label="Weiter nach unten" data-hero-scroll>
+        <Icon name="chevron-down" size="1.35rem" />
+      </a>
+    )
+  }
 </section>
 
 <style>
@@ -129,6 +142,87 @@ const hasAside = Astro.slots.has('aside');
     padding-bottom: clamp(2.5rem, 1.5rem + 3vw, 4rem);
   }
 
+  /* Schmaler Seitenkopf: Inhalt steht nach wenigen Zeilen */
+  .page-hero--compact {
+    padding-top: calc(var(--header-height) + var(--space-4));
+    padding-bottom: clamp(1.5rem, 1rem + 1.5vw, 2.25rem);
+  }
+
+  .page-hero--compact .page-hero__content {
+    gap: var(--space-3);
+    max-width: 56rem;
+  }
+
+  .page-hero--compact .page-hero__content > :global(.eyebrow) {
+    display: none;
+  }
+
+  .page-hero--compact :global(.page-hero__crumbs) {
+    margin-bottom: 0;
+  }
+
+  .page-hero--compact .page-hero__title {
+    font-size: var(--text-3xl);
+    line-height: 1.12;
+  }
+
+  .page-hero--compact .page-hero__lead {
+    max-width: 50rem;
+    font-size: var(--text-base);
+    line-height: var(--leading-normal, 1.55);
+  }
+
+  .page-hero--compact .page-hero__actions {
+    margin-top: 0;
+  }
+
+  /* Vollbild-Kopf: füllt den ersten Bildschirm, Inhalt vertikal mittig */
+  .page-hero--full {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    min-height: 100svh;
+    padding-top: calc(var(--header-height) + var(--space-6));
+    padding-bottom: clamp(4rem, 3rem + 3vw, 5rem);
+  }
+
+  .page-hero--full .page-hero__content {
+    gap: var(--space-4);
+  }
+
+  .page-hero__scroll {
+    position: absolute;
+    left: 50%;
+    bottom: clamp(1rem, 0.5rem + 2vh, 2rem);
+    display: grid;
+    place-items: center;
+    width: 2.75rem;
+    height: 2.75rem;
+    translate: -50% 0;
+    color: #ffffff;
+    border-radius: 50%;
+    background: rgb(255 255 255 / 0.12);
+    box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.35);
+    -webkit-backdrop-filter: blur(10px);
+    backdrop-filter: blur(10px);
+    animation: hero-bob 2.4s var(--ease-out) 1s infinite;
+    transition: background-color var(--duration-base) ease;
+  }
+
+  .page-hero__scroll:hover {
+    background: rgb(255 255 255 / 0.24);
+  }
+
+  @keyframes hero-bob {
+    0%,
+    100% {
+      transform: translateY(0);
+    }
+    50% {
+      transform: translateY(5px);
+    }
+  }
+
   .page-hero__bg {
     position: absolute;
     inset: -15% 0 0;
@@ -152,7 +246,7 @@ const hasAside = Astro.slots.has('aside');
   @media (min-width: 60rem) {
     .page-hero--aside :global(.page-hero__container) {
       grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr);
-      gap: var(--space-16);
+      gap: var(--space-12);
     }
   }
 

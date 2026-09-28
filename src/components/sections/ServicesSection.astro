@@ -2,12 +2,14 @@
 /**
  * ServicesSection – alle Leistungen, gegliedert nach Fachbereich (Inhalt der Seite /leistungen/).
  * Links bzw. rechts: technische Zeichnung (bleibt beim Scrollen stehen), daneben Beschreibung und Leistungen.
+ * Mit `tabs`: Auswahlleiste über den Fachbereichen – es ist immer nur einer sichtbar (ohne JavaScript alle untereinander).
  * Fotos: src/assets/images/gartenbau.jpg, tiefbau.jpg, strassenbau.jpg ersetzen die Zeichnungen automatisch.
  */
 import GartenbauDrawing from '@/components/drawings/GartenbauDrawing.astro';
 import StrassenbauDrawing from '@/components/drawings/StrassenbauDrawing.astro';
 import TiefbauDrawing from '@/components/drawings/TiefbauDrawing.astro';
 import Eyebrow from '@/components/ui/Eyebrow.astro';
+import Icon from '@/components/ui/Icon.astro';
 import Media from '@/components/ui/Media.astro';
 import Section from '@/components/ui/Section.astro';
 import SectionHeader from '@/components/ui/SectionHeader.astro';
@@ -18,9 +20,11 @@ import { pillars } from '@/data/services';
 interface Props {
   /** Abschnittsüberschrift zeigen (auf der Leistungsseite übernimmt das der Seitenkopf) */
   showHeader?: boolean;
+  /** Fachbereiche über eine Auswahlleiste umschalten statt alle untereinander zu zeigen */
+  tabs?: boolean;
 }
 
-const { showHeader = true } = Astro.props;
+const { showHeader = true, tabs = false } = Astro.props;
 
 const drawings = {
   gartenbau: GartenbauDrawing,
@@ -29,7 +33,12 @@ const drawings = {
 };
 ---
 
-<Section id="leistungen" tone="subtle" labelledby={showHeader ? 'leistungen-titel' : undefined} class="services">
+<Section
+  id="leistungen"
+  tone="subtle"
+  labelledby={showHeader ? 'leistungen-titel' : undefined}
+  class:list={['services', { 'services--tabs': tabs }]}
+>
   {
     showHeader && (
       <SectionHeader
@@ -41,29 +50,66 @@ const drawings = {
     )
   }
 
-  <div class="services__rows">
+  {
+    tabs && (
+      <div class="services__tabbar" data-tabbar hidden>
+        <div class="services__tabs" role="tablist" aria-label="Fachbereich wählen">
+          {pillars.map((pillar, index) => (
+            <button
+              class="services__tab"
+              type="button"
+              role="tab"
+              id={`tab-${pillar.id}`}
+              aria-controls={pillar.id}
+              aria-selected={index === 0 ? 'true' : 'false'}
+              tabindex={index === 0 ? undefined : -1}
+              data-tab={pillar.id}
+            >
+              <span class="services__tab-icon" aria-hidden="true">
+                <Icon name={pillar.icon} size="1.1rem" />
+              </span>
+              <span class="services__tab-text">
+                <span class="services__tab-title">{pillar.title}</span>
+                <span class="services__tab-sub">{pillar.subtitle}</span>
+              </span>
+            </button>
+          ))}
+        </div>
+      </div>
+    )
+  }
+
+  <div class="services__rows" data-tab-panels={tabs ? '' : undefined}>
     {
       pillars.map((pillar, index) => {
         const Drawing = drawings[pillar.id];
-        const reverse = index % 2 === 1;
+        // Ohne Auswahlleiste stehen alle Bereiche untereinander – dann Bild abwechselnd links und rechts
+        const reverse = !tabs && index % 2 === 1;
+        // Karten: bis zu drei nebeneinander, vier als 2 × 2
+        const cols = pillar.services.length === 4 ? 2 : Math.min(pillar.services.length, 3);
         return (
-          <article id={pillar.id} class:list={['pillar-row', { 'pillar-row--reverse': reverse }]} aria-labelledby={`${pillar.id}-titel`}>
-            <div class="pillar-row__visual" data-reveal="fade">
-              <figure class="pillar-row__frame">
-                <TechGrid tone="dark" class="pillar-row__grid" />
-                <Media
-                  name={pillar.id}
-                  alt={`${pillar.title}: Projekt von Pflasterarbeiten Hildebrand`}
-                  aspect="auto"
-                  sizes="(min-width: 64rem) 45vw, 100vw"
-                  class="pillar-row__media"
-                >
-                  <Drawing slot="fallback" class="pillar-row__drawing" />
-                </Media>
-              </figure>
-            </div>
+          <article
+            id={pillar.id}
+            class:list={['pillar-row', { 'pillar-row--reverse': reverse }]}
+            aria-labelledby={`${pillar.id}-titel`}
+            data-panel={tabs ? pillar.id : undefined}
+          >
+            <div class="pillar-row__head">
+              <div class="pillar-row__visual" data-reveal="fade">
+                <figure class="pillar-row__frame">
+                  <TechGrid tone="dark" class="pillar-row__grid" />
+                  <Media
+                    name={pillar.id}
+                    alt={`${pillar.title}: Projekt von Pflasterarbeiten Hildebrand`}
+                    aspect="auto"
+                    sizes="(min-width: 64rem) 40vw, 100vw"
+                    class="pillar-row__media"
+                  >
+                    <Drawing slot="fallback" class="pillar-row__drawing" />
+                  </Media>
+                </figure>
+              </div>
 
-            <div class="pillar-row__content">
               <div class="pillar-row__intro" data-reveal>
                 <Eyebrow icon={pillar.icon}>
                   {pillar.number} · {pillar.subtitle}
@@ -73,11 +119,12 @@ const drawings = {
                 </h2>
                 <p class="pillar-row__text">{pillar.description}</p>
               </div>
-              <div class="pillar-row__services" data-reveal-group="90">
-                {pillar.services.map((service) => (
-                  <ServiceCard service={service} pillar={pillar.id} headingLevel="h3" />
-                ))}
-              </div>
+            </div>
+
+            <div class:list={['pillar-row__services', `pillar-row__services--cols-${cols}`]} data-reveal-group="90">
+              {pillar.services.map((service) => (
+                <ServiceCard service={service} pillar={pillar.id} headingLevel="h3" />
+              ))}
             </div>
           </article>
         );
@@ -86,33 +133,302 @@ const drawings = {
   </div>
 </Section>
 
+<script>
+  // Auswahlleiste: immer nur ein Fachbereich sichtbar – der bisherige blendet aus, der gewählte ein
+  const tabbar = document.querySelector<HTMLElement>('[data-tabbar]');
+  const container = document.querySelector<HTMLElement>('[data-tab-panels]');
+
+  if (tabbar && container) {
+    const tabs = [...tabbar.querySelectorAll<HTMLButtonElement>('[data-tab]')];
+    const panels = [...container.querySelectorAll<HTMLElement>('[data-panel]')];
+    const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
+    let current = tabs[0]?.dataset.tab ?? '';
+    let leaveTimer = 0;
+
+    // Platzhalter direkt vor der Leiste: liegt er oberhalb des Headers, klebt die Leiste
+    const sentinel = document.createElement('div');
+    sentinel.setAttribute('aria-hidden', 'true');
+    tabbar.before(sentinel);
+
+    tabbar.hidden = false;
+    panels.forEach((panel) => {
+      panel.setAttribute('role', 'tabpanel');
+      panel.setAttribute('aria-labelledby', `tab-${panel.dataset.panel}`);
+      panel.hidden = panel.dataset.panel !== current;
+    });
+
+    // Abstand, in dem die Leiste unter dem Header klebt
+    const headerOffset = () => parseFloat(getComputedStyle(tabbar).top) || 0;
+
+    const markTabs = (id: string, focus: boolean) => {
+      tabs.forEach((tab) => {
+        const active = tab.dataset.tab === id;
+        tab.setAttribute('aria-selected', String(active));
+        if (active) tab.removeAttribute('tabindex');
+        else tab.tabIndex = -1;
+        if (active && focus) tab.focus();
+      });
+    };
+
+    const show = (next: HTMLElement, animate: boolean) => {
+      panels.forEach((panel) => {
+        panel.classList.remove('is-leaving', 'is-entering');
+        panel.hidden = panel !== next;
+      });
+      next.querySelectorAll<HTMLElement>('[data-reveal]').forEach((el) => el.classList.add('is-revealed'));
+      if (animate) next.classList.add('is-entering');
+    };
+
+    const select = (id: string, focus = false) => {
+      const next = panels.find((panel) => panel.dataset.panel === id);
+      if (!next) return;
+      markTabs(id, focus);
+      history.replaceState(null, '', `#${id}`);
+      if (id === current) return;
+
+      const previous = panels.find((panel) => panel.dataset.panel === current);
+      current = id;
+      window.clearTimeout(leaveTimer);
+      const animate = !reducedMotion.matches;
+
+      const swap = () => {
+        show(next, animate);
+        // Neuer Inhalt beginnt oben – nur zurückscrollen, wenn man schon weiter unten war
+        const stuck = sentinel.getBoundingClientRect().top < headerOffset();
+        if (stuck) {
+          const y = sentinel.getBoundingClientRect().top + window.scrollY - headerOffset();
+          window.scrollTo({ top: y, behavior: animate ? 'smooth' : 'auto' });
+        }
+      };
+
+      if (previous && animate) {
+        previous.classList.remove('is-entering');
+        previous.classList.add('is-leaving');
+        leaveTimer = window.setTimeout(swap, 200);
+      } else {
+        swap();
+      }
+    };
+
+    tabs.forEach((tab, index) => {
+      tab.addEventListener('click', () => select(tab.dataset.tab ?? ''));
+      tab.addEventListener('keydown', (event) => {
+        const step = event.key === 'ArrowRight' ? 1 : event.key === 'ArrowLeft' ? -1 : 0;
+        if (!step) return;
+        event.preventDefault();
+        select(tabs[(index + step + tabs.length) % tabs.length].dataset.tab ?? '', true);
+      });
+    });
+
+    // Schatten, sobald die Leiste klebt
+    const updateStuck = () => tabbar.classList.toggle('is-stuck', sentinel.getBoundingClientRect().top < headerOffset() - 1);
+    window.addEventListener('scroll', updateStuck, { passive: true });
+    updateStuck();
+
+    // Direkte Links: /leistungen/#tiefbau oder /leistungen/#leistung-kanalbau
+    const openFromHash = () => {
+      const id = decodeURIComponent(window.location.hash.slice(1));
+      const target = id ? document.getElementById(id) : null;
+      const panel = target?.closest<HTMLElement>('[data-panel]');
+      if (!target || !panel) return;
+      window.clearTimeout(leaveTimer);
+      current = panel.dataset.panel ?? current;
+      markTabs(current, false);
+      show(panel, false);
+      requestAnimationFrame(() => target.scrollIntoView());
+    };
+    openFromHash();
+    window.addEventListener('hashchange', openFromHash);
+  }
+</script>
+
 <style>
-  .services__rows {
-    display: grid;
-    gap: clamp(4.5rem, 3rem + 5vw, 7.5rem);
+  /* Auswahlleiste der Fachbereiche – klebt beim Scrollen unter dem Header */
+  .services__tabbar {
+    position: sticky;
+    top: calc(var(--header-height-compact) + var(--space-2));
+    z-index: 5;
+    margin-bottom: var(--stack-space);
   }
 
+  .services__tabbar[hidden] {
+    display: none;
+  }
+
+  .services__tabs {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: var(--space-1);
+    max-width: 58rem;
+    margin-inline: auto;
+    padding: var(--space-1);
+    border-radius: var(--radius-full);
+    background: rgb(255 255 255 / 0.88);
+    box-shadow:
+      inset 0 0 0 1px var(--color-border),
+      var(--shadow-xs);
+    -webkit-backdrop-filter: blur(12px);
+    backdrop-filter: blur(12px);
+    transition: box-shadow var(--duration-base) ease;
+  }
+
+  .services__tabbar.is-stuck .services__tabs {
+    box-shadow:
+      inset 0 0 0 1px var(--color-border),
+      var(--shadow-md);
+  }
+
+  .services__tab {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-3);
+    min-width: 0;
+    min-height: 3rem;
+    padding: var(--space-2) var(--space-4) var(--space-2) var(--space-2);
+    font: inherit;
+    text-align: left;
+    color: var(--color-heading);
+    border: 0;
+    border-radius: var(--radius-full);
+    background: transparent;
+    cursor: pointer;
+    transition:
+      background-color var(--duration-base) ease,
+      color var(--duration-base) ease;
+  }
+
+  .services__tab:hover {
+    background: var(--blue-50);
+  }
+
+  .services__tab[aria-selected='true'] {
+    color: #ffffff;
+    background: var(--blue-600);
+  }
+
+  .services__tab-icon {
+    display: grid;
+    place-items: center;
+    flex: none;
+    width: 2.25rem;
+    height: 2.25rem;
+    border-radius: 50%;
+    color: var(--blue-700);
+    background: var(--blue-50);
+    transition:
+      background-color var(--duration-base) ease,
+      color var(--duration-base) ease;
+  }
+
+  .services__tab[aria-selected='true'] .services__tab-icon {
+    color: #ffffff;
+    background: rgb(255 255 255 / 0.18);
+  }
+
+  .services__tab-text {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+  }
+
+  .services__tab-title {
+    font-size: var(--text-sm);
+    font-weight: var(--weight-bold);
+    line-height: 1.2;
+  }
+
+  .services__tab-sub {
+    overflow: hidden;
+    font-size: var(--text-2xs);
+    line-height: 1.3;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    opacity: 0.72;
+  }
+
+  @media (max-width: 47.99rem) {
+    .services__tabs {
+      border-radius: calc(var(--radius-xl) + var(--space-1));
+    }
+
+    .services__tab {
+      flex-direction: column;
+      gap: var(--space-1);
+      padding: var(--space-2) var(--space-1);
+      border-radius: var(--radius-xl);
+      text-align: center;
+    }
+
+    .services__tab-icon {
+      width: 1.9rem;
+      height: 1.9rem;
+    }
+
+    .services__tab-sub {
+      display: none;
+    }
+  }
+
+  /* Ein- und Ausblenden beim Umschalten */
+  .pillar-row[hidden] {
+    display: none;
+  }
+
+  .pillar-row.is-leaving {
+    animation: panel-out 200ms ease-in both;
+  }
+
+  .pillar-row.is-entering {
+    animation: panel-in 500ms var(--ease-out) both;
+  }
+
+  @keyframes panel-out {
+    to {
+      opacity: 0;
+      translate: 0 0.5rem;
+    }
+  }
+
+  @keyframes panel-in {
+    from {
+      opacity: 0;
+      translate: 0 0.75rem;
+    }
+  }
+
+  .services__rows {
+    display: grid;
+    gap: clamp(2.5rem, 2rem + 2.5vw, 4rem);
+  }
+
+  /* Bereich: oben Bild und Einleitung nebeneinander, darunter alle Leistungen über die volle Breite */
   .pillar-row {
     display: grid;
-    grid-template-columns: minmax(0, 1fr);
-    gap: var(--space-10);
+    gap: clamp(1.75rem, 1.25rem + 1.5vw, 2.75rem);
     scroll-margin-top: calc(var(--header-height-compact) + var(--space-6));
   }
 
-  @media (min-width: 64rem) {
-    .pillar-row {
-      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-      gap: clamp(2.5rem, 1rem + 4vw, 4.5rem);
-      align-items: start;
+  .pillar-row__head {
+    display: grid;
+    gap: var(--space-6);
+    align-items: center;
+  }
+
+  :global(.services--tabs) .pillar-row,
+  :global(.services--tabs) :global(.service) {
+    /* zusätzlich zum scroll-padding des Headers: Platz für die klebende Auswahlleiste */
+    scroll-margin-top: 4rem;
+  }
+
+  @media (min-width: 56rem) {
+    .pillar-row__head {
+      grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
+      gap: clamp(2rem, 1rem + 3vw, 4rem);
     }
 
     .pillar-row--reverse .pillar-row__visual {
       order: 2;
-    }
-
-    .pillar-row__visual {
-      position: sticky;
-      top: calc(var(--header-height-compact) + var(--space-8));
     }
   }
 
@@ -145,11 +461,6 @@ const drawings = {
     aspect-ratio: 3 / 2;
   }
 
-  .pillar-row__content {
-    display: grid;
-    gap: var(--space-8);
-  }
-
   .pillar-row__intro {
     display: flex;
     flex-direction: column;
@@ -174,18 +485,25 @@ const drawings = {
     gap: var(--grid-gap);
   }
 
+  /* Tablet: zwei Spalten, eine übrig bleibende Karte über die volle Breite */
   @media (min-width: 40rem) {
     .pillar-row__services {
       grid-template-columns: repeat(2, minmax(0, 1fr));
     }
 
-    /* Ungerade Anzahl: letzte Karte über die volle Breite, Stichpunkte zweispaltig */
     .pillar-row__services > :global(:last-child:nth-child(odd)) {
       grid-column: 1 / -1;
     }
+  }
 
-    .pillar-row__services > :global(:last-child:nth-child(odd) .checklist) {
-      grid-template-columns: repeat(2, minmax(0, 1fr));
+  /* Desktop: drei Leistungen nebeneinander, vier als 2 × 2 */
+  @media (min-width: 64rem) {
+    .pillar-row__services--cols-3 {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+
+    .pillar-row__services--cols-3 > :global(:last-child:nth-child(odd)) {
+      grid-column: auto;
     }
   }
 </style>

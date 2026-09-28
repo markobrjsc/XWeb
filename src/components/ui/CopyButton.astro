@@ -1,0 +1,159 @@
+---
+/**
+ * CopyButton – kleiner runder Knopf mit Rahmen, der einen Text in die Zwischenablage kopiert
+ * (z. B. hinter Telefonnummer, E-Mail oder Adresse). Kurz „Kopiert“ als Rückmeldung.
+ *
+ * <CopyButton value="07732 10374" label="Telefonnummer" />
+ */
+import Icon from './Icon.astro';
+
+interface Props {
+  value: string;
+  /** Was kopiert wird – für Screenreader: „Telefonnummer kopieren“ */
+  label: string;
+  class?: string;
+}
+
+const { value, label, class: className } = Astro.props;
+---
+
+<button type="button" class:list={['copy-btn', className]} data-copy={value} aria-label={`${label} kopieren`} title={`${label} kopieren`}>
+  <Icon name="copy" size="0.85rem" class="copy-btn__icon copy-btn__icon--copy" />
+  <Icon name="check" size="0.85rem" class="copy-btn__icon copy-btn__icon--done" />
+  <span class="copy-btn__tip" aria-hidden="true">Kopiert</span>
+  <span class="visually-hidden" aria-live="polite" data-copy-status></span>
+</button>
+
+<script>
+  // Kopieren in die Zwischenablage (mit Rückfall für ältere Browser)
+  const copy = async (text: string) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      return true;
+    } catch {
+      const area = document.createElement('textarea');
+      area.value = text;
+      area.setAttribute('readonly', '');
+      area.style.position = 'fixed';
+      area.style.opacity = '0';
+      document.body.append(area);
+      area.select();
+      const ok = document.execCommand('copy');
+      area.remove();
+      return ok;
+    }
+  };
+
+  document.querySelectorAll<HTMLButtonElement>('[data-copy]').forEach((button) => {
+    let timer = 0;
+    button.addEventListener('click', async () => {
+      const ok = await copy(button.dataset.copy ?? '');
+      if (!ok) return;
+      button.dataset.copied = '';
+      const status = button.querySelector('[data-copy-status]');
+      if (status) status.textContent = 'In die Zwischenablage kopiert';
+      window.clearTimeout(timer);
+      timer = window.setTimeout(() => {
+        delete button.dataset.copied;
+        if (status) status.textContent = '';
+      }, 1800);
+    });
+  });
+</script>
+
+<style>
+  .copy-btn {
+    position: relative;
+    display: inline-grid;
+    place-items: center;
+    flex: none;
+    width: 1.75rem;
+    height: 1.75rem;
+    padding: 0;
+    color: var(--color-text-muted);
+    border: 1px solid var(--color-border-strong);
+    border-radius: 50%;
+    background: transparent;
+    cursor: pointer;
+    transition:
+      color var(--duration-base) ease,
+      border-color var(--duration-base) ease,
+      background-color var(--duration-base) ease;
+  }
+
+  .copy-btn:hover {
+    color: var(--color-heading);
+    border-color: currentColor;
+  }
+
+  :global([data-tone='dark']) .copy-btn,
+  :global([data-tone='brand']) .copy-btn {
+    color: rgb(255 255 255 / 0.75);
+    border-color: rgb(255 255 255 / 0.28);
+  }
+
+  :global([data-tone='dark']) .copy-btn:hover,
+  :global([data-tone='brand']) .copy-btn:hover {
+    color: #ffffff;
+    border-color: rgb(255 255 255 / 0.7);
+    background: rgb(255 255 255 / 0.08);
+  }
+
+  .copy-btn :global(.copy-btn__icon) {
+    grid-area: 1 / 1;
+    transition:
+      opacity var(--duration-base) ease,
+      scale var(--duration-base) var(--ease-out);
+  }
+
+  .copy-btn :global(.copy-btn__icon--done) {
+    opacity: 0;
+    scale: 0.5;
+  }
+
+  .copy-btn[data-copied] {
+    color: var(--color-success);
+    border-color: currentColor;
+  }
+
+  :global([data-tone='dark']) .copy-btn[data-copied],
+  :global([data-tone='brand']) .copy-btn[data-copied] {
+    color: #6ce9a6;
+  }
+
+  .copy-btn[data-copied] :global(.copy-btn__icon--copy) {
+    opacity: 0;
+    scale: 0.5;
+  }
+
+  .copy-btn[data-copied] :global(.copy-btn__icon--done) {
+    opacity: 1;
+    scale: 1;
+  }
+
+  /* Kleine Rückmeldung über dem Knopf */
+  .copy-btn__tip {
+    position: absolute;
+    bottom: calc(100% + 0.4rem);
+    left: 50%;
+    padding: 0.2rem 0.55rem;
+    font-size: var(--text-2xs);
+    font-weight: var(--weight-semibold);
+    white-space: nowrap;
+    color: #ffffff;
+    border-radius: var(--radius-full);
+    background: var(--blue-950);
+    box-shadow: var(--shadow-md);
+    opacity: 0;
+    translate: -50% 0.25rem;
+    pointer-events: none;
+    transition:
+      opacity var(--duration-base) ease,
+      translate var(--duration-base) var(--ease-out);
+  }
+
+  .copy-btn[data-copied] .copy-btn__tip {
+    opacity: 1;
+    translate: -50% 0;
+  }
+</style>

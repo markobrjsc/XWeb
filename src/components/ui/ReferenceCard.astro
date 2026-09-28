@@ -58,7 +58,8 @@ const photos = findImages(gallery ?? `referenzen/${entry.id}`);
 
 <style>
   .ref-card {
-    scroll-margin-top: calc(var(--header-height) + var(--space-6));
+    /* zusätzlich zum scroll-padding des Headers: Platz für die klebende Filterleiste */
+    scroll-margin-top: 4rem;
   }
 
   .ref-card:target {
@@ -114,11 +115,11 @@ const photos = findImages(gallery ?? `referenzen/${entry.id}`);
   }
 
   .ref-card__tags li {
-    padding: 0.25em 0.65em;
+    padding: 0.25em 0.8em;
     font-size: var(--text-2xs);
     font-weight: var(--weight-semibold);
     color: var(--gray-700);
     background: var(--gray-100);
-    border-radius: var(--radius-xs);
+    border-radius: var(--radius-full);
   }
 </style>

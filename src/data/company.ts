@@ -120,7 +120,7 @@ export const benefits: Feature[] = [
 export const applicationSteps: Step[] = [
   {
     title: 'Kontakt aufnehmen',
-    text: 'Schicken Sie uns Ihre Unterlagen per E-Mail oder rufen Sie uns einfach an – wir freuen uns auf Sie.',
+    text: 'Bewerben Sie sich online mit Ihren Unterlagen oder rufen Sie uns einfach an – wir freuen uns auf Sie.',
   },
   {
     title: 'Kennenlernen',

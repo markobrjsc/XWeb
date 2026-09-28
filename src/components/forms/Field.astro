@@ -1,0 +1,183 @@
+---
+/**
+ * Field – Beschriftung plus Eingabefeld, mehrzeiliges Textfeld oder Auswahlliste.
+ */
+import type { HTMLAttributes } from 'astro/types';
+
+type Span = 'full' | 'half' | 'third' | 'two-thirds';
+type Option = string | { value: string; label: string };
+
+interface Props {
+  name: string;
+  label: string;
+  as?: 'input' | 'textarea' | 'select';
+  type?: 'text' | 'email' | 'tel' | 'date';
+  required?: boolean;
+  autocomplete?: HTMLAttributes<'input'>['autocomplete'];
+  inputmode?: HTMLAttributes<'input'>['inputmode'];
+  placeholder?: string;
+  hint?: string;
+  maxlength?: number;
+  rows?: number;
+  /** Nur für as="select" */
+  options?: readonly Option[];
+  value?: string;
+  readonly?: boolean;
+  span?: Span;
+}
+
+const {
+  name,
+  label,
+  as = 'input',
+  type = 'text',
+  required = false,
+  autocomplete,
+  inputmode,
+  placeholder,
+  hint,
+  maxlength,
+  rows = 5,
+  options = [],
+  value,
+  readonly = false,
+  span = 'full',
+} = Astro.props;
+
+const id = `feld-${name}`;
+const normalized = options.map((option) => (typeof option === 'string' ? { value: option, label: option } : option));
+const hintId = hint ? `${id}-hinweis` : undefined;
+---
+
+<div class="field" data-span={span}>
+  <label class="field__label" for={id}>
+    {label}
+    {required ? <abbr title="Pflichtfeld">*</abbr> : <span class="field__optional">(optional)</span>}
+  </label>
+  {
+    as === 'textarea' ? (
+      <textarea
+        class="field__control field__control--area"
+        id={id}
+        name={name}
+        rows={rows}
+        required={required}
+        placeholder={placeholder}
+        maxlength={maxlength}
+        aria-describedby={hintId}
+        set:text={value ?? ''}
+      />
+    ) : as === 'select' ? (
+      <select class="field__control field__control--select" id={id} name={name} required={required} aria-describedby={hintId}>
+        <option value="">Bitte wählen …</option>
+        {normalized.map((option) => (
+          <option value={option.value} selected={option.value === value}>
+            {option.label}
+          </option>
+        ))}
+      </select>
+    ) : (
+      <input
+        class="field__control"
+        id={id}
+        name={name}
+        type={type}
+        required={required}
+        autocomplete={autocomplete}
+        inputmode={inputmode}
+        placeholder={placeholder}
+        maxlength={maxlength}
+        value={value}
+        readonly={readonly}
+        aria-describedby={hintId}
+      />
+    )
+  }
+  {hint && <p class="field__hint" id={hintId}>{hint}</p>}
+</div>
+
+<style>
+  .field {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+    min-width: 0;
+  }
+
+  .field__label {
+    font-size: var(--text-sm);
+    font-weight: var(--weight-semibold);
+    color: var(--color-heading);
+  }
+
+  .field__label abbr {
+    margin-left: 0.15em;
+    text-decoration: none;
+    color: var(--color-danger);
+  }
+
+  .field__optional {
+    margin-left: 0.35em;
+    font-weight: var(--weight-regular);
+    color: var(--color-text-subtle);
+  }
+
+  .field__control {
+    width: 100%;
+    min-height: 3rem;
+    padding: 0.7rem 1rem;
+    font: inherit;
+    font-size: var(--text-base);
+    color: var(--color-heading);
+    border: 1.5px solid var(--color-border-strong);
+    border-radius: var(--radius-md);
+    background: #ffffff;
+    transition:
+      border-color var(--duration-base) ease,
+      box-shadow var(--duration-base) ease;
+  }
+
+  .field__control::placeholder {
+    color: var(--gray-400);
+  }
+
+  .field__control:hover {
+    border-color: var(--blue-300);
+  }
+
+  .field__control:focus {
+    outline: none;
+    border-color: var(--blue-500);
+    box-shadow: 0 0 0 4px var(--blue-100);
+  }
+
+  .field__control:user-invalid {
+    border-color: var(--color-danger);
+    box-shadow: 0 0 0 4px var(--color-danger-soft);
+  }
+
+  .field__control[readonly] {
+    color: var(--color-text-muted);
+    background: var(--color-bg-subtle);
+  }
+
+  .field__control--area {
+    min-height: 8rem;
+    line-height: var(--leading-relaxed);
+    resize: vertical;
+  }
+
+  .field__control--select {
+    appearance: none;
+    padding-right: 2.75rem;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' fill='none' stroke='%2351627a' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 0.9rem center;
+    background-size: 1.1rem;
+  }
+
+  .field__hint {
+    font-size: var(--text-xs);
+    color: var(--color-text-subtle);
+  }
+</style>

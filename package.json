@@ -6,6 +6,7 @@
   "description": "Website der Pflasterarbeiten Hildebrand GmbH – Garten-, Tief- und Straßenbau in Radolfzell am Bodensee.",
   "scripts": {
     "dev": "astro dev",
+    "dev:api": "wrangler dev --port 8787",
     "build": "astro build",
     "preview": "astro preview",
     "check": "astro check",

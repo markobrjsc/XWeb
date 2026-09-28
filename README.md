@@ -124,26 +124,61 @@ axe-core (WCAG 2.2 AA): keine Verstöße.
 
 ---
 
+## Formulare & E-Mail-Versand
+
+Kontaktformular (`/kontakt/`) und Online-Bewerbung (`/stellenangebote/<stelle>/bewerben/`,
+`/stellenangebote/initiativ/`) schicken ihre Daten an einen kleinen **Cloudflare Worker** (`worker/index.ts`), der
+die E-Mail über **[Resend](https://resend.com)** an die Adresse aus `src/config/site.ts` verschickt. Beides ist im
+kostenlosen Tarif enthalten (Resend: 3.000 E-Mails/Monat, 100/Tag).
+
+- Felder, Auswahlmöglichkeiten und Grenzen für Anhänge: `src/lib/forms.ts` (gilt für Seiten _und_ Worker)
+- Anhänge (max. 10 MB pro Datei, 20 MB insgesamt) werden einzeln hochgeladen, kurz im KV-Speicher abgelegt
+  (Löschung nach 6 Stunden) und von Resend per Link abgeholt – so bleibt der Worker im kostenlosen CPU-Limit.
+- Spam-Schutz: verstecktes Feld + Mindest-Ausfüllzeit; Absenden nur von der eigenen Domain.
+
+### Einmalig einrichten
+
+1. **Resend-Konto** anlegen (kostenlos) → **Domains → Add Domain** → `pflasterarbeiten-hildebrand.de` eintragen und
+   die angezeigten DNS-Einträge (SPF/DKIM) bei Cloudflare hinzufügen. Bis die Domain bestätigt ist, in
+   `wrangler.jsonc` als Absender `"Website <onboarding@resend.dev>"` eintragen – dann kann Resend aber nur an die
+   E-Mail-Adresse des Resend-Kontos senden.
+2. **API-Key** bei Resend erstellen (Berechtigung „Sending access“) und im Worker hinterlegen:
+   ```bash
+   npx wrangler secret put RESEND_API_KEY
+   ```
+3. **KV-Speicher** für Uploads anlegen und die ausgegebene `id` in `wrangler.jsonc` bei `kv_namespaces` eintragen:
+   ```bash
+   npx wrangler kv namespace create UPLOADS
+   ```
+4. Absender (`MAIL_FROM`) und ggf. abweichenden Empfänger (`MAIL_TO`) in `wrangler.jsonc` → `vars` prüfen.
+
+### Lokal testen
+
+```bash
+cp .dev.vars.example .dev.vars   # MAIL_DRY_RUN=1: E-Mail wird nur im Terminal ausgegeben
+npm run build                    # der Worker liefert die Seiten aus dist/
+npm run dev:api                  # Worker auf Port 8787
+npm run dev                      # Astro leitet /api/* an den Worker weiter
+```
+
+---
+
 ## Deployment auf Cloudflare
 
-Die Website ist rein statisch (`dist/`). Zwei Wege – beide kostenlos möglich:
+Die Seiten sind statisch (`dist/`), dazu kommt der Formular-Worker (`worker/index.ts`). Deshalb als **Cloudflare
+Worker** bereitstellen (Cloudflare Pages führt den Worker nicht aus). Zwei Wege – beide kostenlos:
 
-### Variante A: Cloudflare Pages mit GitHub (empfohlen – automatisches Deployment bei jedem Push)
+### Variante A: Mit GitHub verbinden (empfohlen – automatisches Deployment bei jedem Push)
 
-1. Im Cloudflare-Dashboard: **Workers & Pages → Erstellen → Pages → Mit Git verbinden** und dieses Repository wählen.
-2. Build-Einstellungen:
-   - Framework-Voreinstellung: **Astro**
-   - Build-Befehl: `npm run build`
-   - Ausgabeverzeichnis: `dist`
-   - Node-Version: wird aus `.node-version` gelesen (22)
-3. Speichern & bereitstellen. Jeder Push auf den Hauptbranch veröffentlicht automatisch, andere Branches erhalten
-   eine Vorschau-URL.
+1. Im Cloudflare-Dashboard: **Workers & Pages → Erstellen → Worker → Mit Git verbinden** und dieses Repository wählen.
+2. Build-Befehl: `npm run build` · Deploy-Befehl: `npx wrangler deploy`
+3. Speichern & bereitstellen. Jeder Push auf den Hauptbranch veröffentlicht automatisch.
 
-### Variante B: Cloudflare Workers per Kommandozeile
+### Variante B: Per Kommandozeile
 
 ```bash
 npx wrangler login     # einmalig im Browser anmelden
-npm run deploy         # baut die Seite und lädt dist/ hoch (Konfiguration: wrangler.jsonc)
+npm run deploy         # baut die Seite und lädt dist/ + Worker hoch (Konfiguration: wrangler.jsonc)
 ```
 
 ### Domain verbinden
@@ -168,6 +203,8 @@ Soll eine andere Domain verwendet werden: `SITE_URL` in `astro.config.mjs` anpas
       Ort und Jahr ergänzen (`location`, `year`)
 - [ ] **Firmengeschichte:** Texte auf der Seite „Unser Betrieb“ bestätigen lassen
 - [ ] **Stellenangebote** inhaltlich prüfen (Aufgaben, Profil, `datePosted`)
+- [ ] **E-Mail-Versand** eingerichtet (siehe „Formulare & E-Mail-Versand“) und je eine Test-Anfrage und
+      Test-Bewerbung mit Anhang abgeschickt
 - [ ] Nach dem Livegang: Sitemap in der **Google Search Console** einreichen und das
       **Google-Unternehmensprofil** auf die neue Website verlinken
 

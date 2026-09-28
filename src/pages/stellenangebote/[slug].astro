@@ -26,7 +26,7 @@ interface Props {
 
 const { job } = Astro.props;
 const { Content } = await render(job);
-const { title, type, start, location, summary, tasks, profile, datePosted, validThrough, employmentType, icon } = job.data;
+const { title, type, start, location, summary, tasks, profile, datePosted, validThrough, employmentType } = job.data;
 
 const otherJobs = (await getCollection('stellenangebote'))
   .filter((entry) => entry.data.active && entry.id !== job.id)
@@ -38,7 +38,7 @@ const breadcrumbs = [
   { label: title, href: `/stellenangebote/${job.id}/` },
 ];
 
-const mailto = `mailto:${site.contact.email}?subject=${encodeURIComponent(`Bewerbung: ${title}`)}`;
+const applyHref = `/stellenangebote/${job.id}/bewerben/`;
 const origin = (Astro.site ?? Astro.url).origin;
 const escapeHtml = (text: string) => text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 const intro = job.body?.trim() ?? '';
@@ -57,7 +57,7 @@ const jobPosting = {
   datePosted: datePosted.toISOString().slice(0, 10),
   ...(validThrough ? { validThrough: validThrough.toISOString() } : {}),
   employmentType,
-  directApply: false,
+  directApply: true,
   industry: 'Bauwesen',
   hiringOrganization: {
     '@type': 'Organization',
@@ -85,9 +85,9 @@ const jobPosting = {
   breadcrumbs={breadcrumbs}
   schema={[jobPosting]}
 >
-  <PageHero breadcrumbs={breadcrumbs} eyebrow={`Stellenangebot · ${type}`} eyebrowIcon={icon} title={title} lead={summary}>
-    <Button href={mailto} variant="light" icon="mail" iconPosition="start">Jetzt bewerben</Button>
-    <Button href={site.contact.phoneHref} variant="outline-light" icon="phone" iconPosition="start">{site.contact.phone}</Button>
+  <PageHero size="compact" breadcrumbs={breadcrumbs} title={title} lead={summary} image="betrieb/team/10" imagePosition="top">
+    <Button href={applyHref} variant="light" size="sm" icon="arrow-right">Jetzt bewerben</Button>
+    <Button href="/stellenangebote/initiativ/" variant="outline-light" size="sm">Initiativ bewerben</Button>
   </PageHero>
 
   <Section>
@@ -141,10 +141,11 @@ const jobPosting = {
         <div class="apply" data-reveal>
           <h2 class="apply__title">So bewerben Sie sich</h2>
           <p class="apply__text">
-            Senden Sie uns Ihre Unterlagen per E-Mail oder rufen Sie uns an. Wir melden uns schnellstmöglich bei Ihnen.
+            Bewerben Sie sich in wenigen Minuten online – Lebenslauf und Zeugnisse laden Sie direkt hoch. Oder rufen Sie
+            uns einfach an.
           </p>
           <ContactList items={['phone', 'email']} size="sm" />
-          <Button href={mailto} variant="primary" block icon="mail" iconPosition="start">Bewerbung per E-Mail</Button>
+          <Button href={applyHref} variant="primary" block icon="arrow-right">Jetzt online bewerben</Button>
         </div>
 
         {

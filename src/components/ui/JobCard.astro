@@ -19,13 +19,15 @@ const { title, type, start, location, summary, icon } = job.data;
 
 <Card interactive reveal="up" padding="lg" class:list={['job-card', className]}>
   <div class="job-card__layout">
-    <IconBadge name={icon} tone="soft" size="lg" />
-    <div class="job-card__main">
+    <div class="job-card__head">
+      <IconBadge name={icon} tone="soft" size="lg" />
       <div class="job-card__meta">
         <Badge tone="primary" size="sm">{type}</Badge>
         <span class="job-card__detail"><Icon name="calendar" size="1em" /> {start}</span>
         <span class="job-card__detail"><Icon name="map-pin" size="1em" /> {location}</span>
       </div>
+    </div>
+    <div class="job-card__main">
       <h3 class="job-card__title">
         <a class="card__link" href={`/stellenangebote/${job.id}/`}>{title}</a>
       </h3>
@@ -38,23 +40,34 @@ const { title, type, start, location, summary, icon } = job.data;
 </Card>
 
 <style>
-  .job-card__layout {
-    display: grid;
-    gap: var(--space-5);
-    align-items: center;
+  /* Gestapelt: passt in eine Kachel des 2×2-Rasters auf der Stellenseite */
+  :global(.job-card) {
+    height: 100%;
   }
 
-  @media (min-width: 48rem) {
-    .job-card__layout {
-      grid-template-columns: auto minmax(0, 1fr) auto;
-      gap: var(--space-6);
-    }
+  .job-card__layout {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    gap: var(--space-4);
+  }
+
+  .job-card__head {
+    display: flex;
+    align-items: center;
+    gap: var(--space-4);
   }
 
   .job-card__main {
     display: flex;
     flex-direction: column;
     gap: var(--space-2);
+  }
+
+  .job-card__more {
+    align-self: flex-start;
+    margin-top: auto;
+    padding-top: var(--space-2);
   }
 
   .job-card__meta {

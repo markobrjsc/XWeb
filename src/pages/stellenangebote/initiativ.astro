@@ -1,0 +1,36 @@
+---
+/**
+ * Initiativbewerbung – /stellenangebote/initiativ/
+ */
+import { getCollection } from 'astro:content';
+import BaseLayout from '@/layouts/BaseLayout.astro';
+import ApplicationSection from '@/components/sections/ApplicationSection.astro';
+import PageHero from '@/components/sections/PageHero.astro';
+
+const jobs = (await getCollection('stellenangebote'))
+  .filter((job) => job.data.active)
+  .sort((a, b) => a.data.order - b.data.order);
+
+const breadcrumbs = [
+  { label: 'Start', href: '/' },
+  { label: 'Stellenangebote', href: '/stellenangebote/' },
+  { label: 'Initiativbewerbung', href: '/stellenangebote/initiativ/' },
+];
+---
+
+<BaseLayout
+  title="Initiativbewerbung"
+  description="Initiativ bei der Pflasterarbeiten Hildebrand GmbH in Radolfzell bewerben – ob Fachkraft, Quereinsteiger oder Azubi. Unterlagen direkt online hochladen."
+  breadcrumbs={breadcrumbs}
+>
+  <PageHero
+    size="compact"
+    breadcrumbs={breadcrumbs}
+    title={'Initiativ bewerben – <span class="accent">wir freuen uns auf Sie.</span>'}
+    lead="Keine passende Stelle dabei? Erzählen Sie uns, was Sie mitbringen – ob Fachkraft, Quereinsteiger oder Azubi."
+    image="betrieb/team/10"
+    imagePosition="top"
+  />
+
+  <ApplicationSection jobs={jobs} />
+</BaseLayout>

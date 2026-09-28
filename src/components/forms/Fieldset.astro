@@ -1,0 +1,86 @@
+---
+/**
+ * Fieldset – nummerierter Abschnitt eines Formulars mit zweispaltigem Raster für die Felder.
+ */
+interface Props {
+  legend: string;
+  step?: number;
+  hint?: string;
+}
+
+const { legend, step, hint } = Astro.props;
+---
+
+<fieldset class="fset">
+  <legend class="fset__legend">
+    {step !== undefined && <span class="fset__step" aria-hidden="true">{step}</span>}
+    {legend}
+  </legend>
+  {hint && <p class="fset__hint">{hint}</p>}
+  <div class="fset__grid">
+    <slot />
+  </div>
+</fieldset>
+
+<style>
+  .fset {
+    min-width: 0;
+    margin: 0;
+    padding: 0;
+    border: 0;
+  }
+
+  .fset__legend {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    margin-bottom: var(--space-4);
+    padding: 0;
+    font-size: var(--text-lg);
+    font-weight: var(--weight-bold);
+    color: var(--color-heading);
+  }
+
+  .fset__step {
+    display: grid;
+    place-items: center;
+    width: 1.9rem;
+    height: 1.9rem;
+    font-size: var(--text-sm);
+    color: var(--blue-700);
+    border-radius: 50%;
+    background: var(--blue-50);
+    box-shadow: inset 0 0 0 1px var(--blue-100);
+  }
+
+  .fset__hint {
+    margin: calc(var(--space-2) * -1) 0 var(--space-4);
+    font-size: var(--text-sm);
+    color: var(--color-text-muted);
+  }
+
+  .fset__grid {
+    display: grid;
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+    gap: var(--space-4);
+  }
+
+  /* Feldbreiten: data-span="full | half | third | two-thirds" – auf dem Handy immer volle Breite */
+  .fset__grid > :global(*) {
+    grid-column: 1 / -1;
+  }
+
+  @media (min-width: 36rem) {
+    .fset__grid > :global([data-span='half']) {
+      grid-column: span 3;
+    }
+
+    .fset__grid > :global([data-span='third']) {
+      grid-column: span 2;
+    }
+
+    .fset__grid > :global([data-span='two-thirds']) {
+      grid-column: span 4;
+    }
+  }
+</style>

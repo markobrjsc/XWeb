@@ -28,7 +28,7 @@ const { name, size = 'md', tone = 'soft', class: className } = Astro.props;
     width: var(--badge-size);
     height: var(--badge-size);
     font-size: var(--badge-icon);
-    border-radius: var(--radius-md);
+    border-radius: 50%;
     transition:
       background-color var(--duration-base) ease,
       color var(--duration-base) ease;
@@ -37,7 +37,6 @@ const { name, size = 'md', tone = 'soft', class: className } = Astro.props;
   .icon-badge--sm {
     --badge-size: 2.25rem;
     --badge-icon: 1.1rem;
-    border-radius: var(--radius-sm);
   }
 
   .icon-badge--lg {
