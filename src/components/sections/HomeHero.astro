@@ -50,23 +50,19 @@ const [firstLegal, ...otherLegal] = legalNav;
         <span class="hero__title-main">Hildebrand</span>
       </h1>
 
-      <hr class="hero__rule hero__rule--accent" aria-hidden="true" />
-
-      <p class="hero__lead">
-        Höfe, Wege, Gärten, Kanäle und Straßen – gebaut vom Familienbetrieb für private, gewerbliche und öffentliche
-        Auftraggeber im Landkreis Konstanz.
-      </p>
-
-      <hr class="hero__rule hero__rule--wide" aria-hidden="true" />
-
+      <!-- Fachbereiche als ruhige Informationszeile (Links zu den Leistungen) – bewusst keine Buttons,
+           damit die beiden Hauptaktionen darunter klar hervorstechen -->
       <nav class="hero__pillars" aria-label="Unsere Fachbereiche">
         <ul role="list">
           {
             pillars.map((pillar) => (
               <li>
                 <a class="hero__pillar" href={`/leistungen/#${pillar.id}`}>
-                  <Icon name={pillar.icon} size="1.05rem" class="hero__pillar-icon" />
-                  {pillar.title}
+                  <Icon name={pillar.icon} size="1.15rem" class="hero__pillar-icon" />
+                  <span class="hero__pillar-text">
+                    <span class="hero__pillar-title">{pillar.title}</span>
+                    <span class="hero__pillar-sub">{pillar.subtitle}</span>
+                  </span>
                 </a>
               </li>
             ))
@@ -74,11 +70,11 @@ const [firstLegal, ...otherLegal] = legalNav;
         </ul>
       </nav>
 
-      <hr class="hero__rule hero__rule--mid" aria-hidden="true" />
+      <hr class="hero__rule hero__rule--wide" aria-hidden="true" />
 
       <div class="hero__actions">
-        <Button href="/referenzen/" variant="primary" icon="arrow-right">Referenzen</Button>
-        <Button href="/kontakt/" variant="outline-light" class="hero__glass-btn">Kontakt aufnehmen</Button>
+        <Button href="/kontakt/" variant="primary" size="lg" icon="arrow-right">Kontakt aufnehmen</Button>
+        <Button href="/referenzen/" variant="outline-light" size="lg" class="hero__glass-btn">Referenzen ansehen</Button>
       </div>
     </div>
   </div>
@@ -109,6 +105,16 @@ const [firstLegal, ...otherLegal] = legalNav;
     z-index: -1;
   }
 
+  /* Zusätzliche Abdunklung des Fotos – einstellbar in der Design-Vorschau (--hero-dim: 0 … 0.7) */
+  .hero__bg::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    background: rgb(var(--ink) / var(--hero-dim, 0));
+    pointer-events: none;
+  }
+
   .hero__bg :global(picture),
   .hero__bg :global(img) {
     position: absolute;
@@ -128,23 +134,24 @@ const [firstLegal, ...otherLegal] = legalNav;
     content: '';
     position: absolute;
     inset: 0;
+    z-index: 1;
     background:
       linear-gradient(
         to bottom,
-        rgb(7 23 44 / 0.4) 0%,
-        rgb(7 23 44 / 0.24) 10%,
-        rgb(7 23 44 / 0.11) 21%,
-        rgb(7 23 44 / 0.03) 33%,
+        rgb(var(--ink) / 0.4) 0%,
+        rgb(var(--ink) / 0.24) 10%,
+        rgb(var(--ink) / 0.11) 21%,
+        rgb(var(--ink) / 0.03) 33%,
         transparent 42%,
         transparent 58%,
-        rgb(7 23 44 / 0.05) 68%,
-        rgb(7 23 44 / 0.16) 80%,
-        rgb(7 23 44 / 0.32) 91%,
-        rgb(7 23 44 / 0.48) 100%
+        rgb(var(--ink) / 0.05) 68%,
+        rgb(var(--ink) / 0.16) 80%,
+        rgb(var(--ink) / 0.32) 91%,
+        rgb(var(--ink) / 0.48) 100%
       );
     box-shadow:
-      inset 0 0 clamp(8rem, 22vmax, 20rem) clamp(1.5rem, 4vmax, 4rem) rgb(7 23 44 / 0.5),
-      inset 0 0 clamp(2rem, 5vmax, 5rem) rgb(7 23 44 / 0.25);
+      inset 0 0 clamp(8rem, 22vmax, 20rem) clamp(1.5rem, 4vmax, 4rem) rgb(var(--ink) / 0.5),
+      inset 0 0 clamp(2rem, 5vmax, 5rem) rgb(var(--ink) / 0.25);
   }
 
   /* Inhalt: mittig, leicht oberhalb der Bildmitte */
@@ -172,16 +179,17 @@ const [firstLegal, ...otherLegal] = legalNav;
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: clamp(0.6rem, 1.6vh, 1rem);
+    /* Abstände bewusst je Gruppe (Ort + Name · Fachbereiche · Aktionen) statt gleichmäßig – siehe margin-top unten */
+    gap: 0;
     width: 100%;
     max-width: 48rem;
     padding: clamp(0.75rem, 0.5rem + 1.2vw, 1.5rem) clamp(0.5rem, 2vw, 1.5rem);
     text-align: center;
     color: #ffffff;
     text-shadow:
-      0 1px 2px rgb(7 23 44 / 0.5),
-      0 2px 12px rgb(7 23 44 / 0.45),
-      0 0 32px rgb(7 23 44 / 0.3);
+      0 1px 2px rgb(var(--ink) / 0.5),
+      0 2px 12px rgb(var(--ink) / 0.45),
+      0 0 32px rgb(var(--ink) / 0.3);
   }
 
   /*
@@ -193,7 +201,7 @@ const [firstLegal, ...otherLegal] = legalNav;
     position: absolute;
     inset: -12% -34%;
     z-index: -1;
-    background: radial-gradient(closest-side, rgb(7 23 44 / 0.26), rgb(7 23 44 / 0.14) 55%, transparent 100%);
+    background: radial-gradient(closest-side, rgb(var(--ink) / 0.26), rgb(var(--ink) / 0.14) 55%, transparent 100%);
     -webkit-backdrop-filter: blur(3px);
     backdrop-filter: blur(3px);
     -webkit-mask-image: radial-gradient(
@@ -235,7 +243,7 @@ const [firstLegal, ...otherLegal] = legalNav;
     height: 1px;
     background: currentColor;
     opacity: 0.7;
-    box-shadow: 0 1px 3px rgb(7 23 44 / 0.4);
+    box-shadow: 0 1px 3px rgb(var(--ink) / 0.4);
   }
 
   @media (max-width: 30rem) {
@@ -249,6 +257,7 @@ const [firstLegal, ...otherLegal] = legalNav;
   }
 
   .hero__title {
+    margin-top: clamp(0.6rem, 1.4vh, 0.9rem);
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -274,109 +283,121 @@ const [firstLegal, ...otherLegal] = legalNav;
     text-transform: uppercase;
   }
 
-  .hero__lead {
-    max-width: 38rem;
-    text-wrap: balance;
-    font-size: var(--text-base);
-    font-weight: var(--weight-medium);
-    line-height: var(--leading-relaxed);
-    color: #ffffff;
-    animation: hero-rise 900ms var(--ease-out) 380ms both;
-  }
-
   /* Dünne weiße Trennlinien zwischen den Abschnitten – je nach Stelle unterschiedlich lang und kräftig */
   .hero__rule {
     flex-shrink: 0;
     margin: 0;
     border: 0;
     border-radius: 999px;
-    box-shadow: 0 1px 6px rgb(7 23 44 / 0.35);
+    box-shadow: 0 1px 6px rgb(var(--ink) / 0.35);
     animation: hero-rule-in 900ms var(--ease-out) both;
-  }
-
-  /* Kurz und kräftig unter dem Firmennamen */
-  .hero__rule--accent {
-    width: 2.75rem;
-    height: 3px;
-    background: #ffffff;
-    animation-delay: 320ms;
   }
 
   /* Lang und fein, an den Enden auslaufend */
   .hero__rule--wide {
+    margin-top: clamp(1rem, 2.4vh, 1.6rem);
     width: min(20rem, 80%);
     height: 1px;
     background: linear-gradient(90deg, transparent, rgb(255 255 255 / 0.7) 22%, rgb(255 255 255 / 0.7) 78%, transparent);
     box-shadow: none;
-    animation-delay: 440ms;
+    animation-delay: 600ms;
   }
 
-  /* Mittellang, etwas zurückhaltender vor den Aktionen */
-  .hero__rule--mid {
-    width: min(9rem, 50%);
-    height: 2px;
-    background: rgb(255 255 255 / 0.55);
-    animation-delay: 680ms;
+  /* Fachbereiche: ruhige Zeile mit feinen Trennstrichen – Information, keine Buttons */
+  .hero__pillars {
+    margin-top: clamp(1.25rem, 3vh, 2.1rem);
   }
 
-  /* Fachbereiche als leichte Glas-Chips */
   .hero__pillars ul {
     display: flex;
     flex-wrap: wrap;
     justify-content: center;
-    gap: var(--space-2);
     margin: 0;
     padding: 0;
   }
 
   .hero__pillars li {
+    display: flex;
     animation: hero-rise 800ms var(--ease-out) both;
   }
 
+  .hero__pillars li + li {
+    border-left: 1px solid rgb(255 255 255 / 0.35);
+  }
+
   .hero__pillars li:nth-child(1) {
-    animation-delay: 480ms;
+    animation-delay: 380ms;
   }
   .hero__pillars li:nth-child(2) {
-    animation-delay: 560ms;
+    animation-delay: 460ms;
   }
   .hero__pillars li:nth-child(3) {
-    animation-delay: 640ms;
+    animation-delay: 540ms;
   }
 
   .hero__pillar {
-    display: inline-flex;
+    display: flex;
     align-items: center;
-    gap: 0.5rem;
-    padding: 0.5rem 1rem 0.5rem 0.8rem;
-    font-size: var(--text-sm);
-    font-weight: var(--weight-semibold);
+    gap: 0.6rem;
+    padding: 0.15rem clamp(0.9rem, 0.4rem + 1.6vw, 1.75rem);
     color: #ffffff;
+    text-align: left;
     text-decoration: none;
-    text-shadow: none;
-    border-radius: 999px;
-    background: rgb(255 255 255 / 0.14);
-    box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.35);
-    -webkit-backdrop-filter: blur(10px);
-    backdrop-filter: blur(10px);
-    transition:
-      background-color var(--duration-base) ease,
-      box-shadow var(--duration-base) ease,
-      transform var(--duration-base) var(--ease-out);
   }
 
-  .hero__pillar:hover {
-    background: rgb(255 255 255 / 0.26);
-    box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.6);
-    transform: translateY(-1px);
+  .hero__pillar :global(.hero__pillar-icon) {
+    flex: none;
+    color: var(--color-accent);
+    filter: drop-shadow(0 1px 4px rgb(var(--ink) / 0.5));
+  }
+
+  .hero__pillar-text {
+    display: flex;
+    flex-direction: column;
+    line-height: 1.2;
+  }
+
+  .hero__pillar-title {
+    font-size: var(--text-base);
+    font-weight: var(--weight-bold);
+    letter-spacing: 0.01em;
+    text-decoration: underline;
+    text-decoration-color: transparent;
+    text-decoration-thickness: 1.5px;
+    text-underline-offset: 0.3em;
+    transition: text-decoration-color var(--duration-base) ease;
+  }
+
+  .hero__pillar-sub {
+    font-size: var(--text-2xs);
+    font-weight: var(--weight-medium);
+    color: rgb(255 255 255 / 0.78);
+  }
+
+  .hero__pillar:hover .hero__pillar-title {
+    text-decoration-color: currentColor;
   }
 
   .hero__pillar:focus-visible {
     outline: 2px solid var(--color-focus-inverse);
-    outline-offset: 3px;
+    outline-offset: 4px;
+    border-radius: var(--radius-sm);
   }
 
-  .hero__pillar :global(.hero__pillar-icon) {
-    color: var(--blue-100);
+  /* Schmale Bildschirme: nur die Titel in einer Zeile – ohne Icons und Untertitel */
+  @media (max-width: 40rem) {
+    .hero__pillar {
+      padding-inline: 0.7rem;
+    }
+
+    .hero__pillar :global(.hero__pillar-icon),
+    .hero__pillar-sub {
+      display: none;
+    }
+
+    .hero__pillar-title {
+      font-size: var(--text-sm);
+    }
   }
 
   .hero__actions {
@@ -384,19 +405,19 @@ const [firstLegal, ...otherLegal] = legalNav;
     flex-wrap: wrap;
     justify-content: center;
     gap: var(--space-3);
-    margin-top: clamp(0.4rem, 1.8vh, 1.25rem);
+    margin-top: clamp(1rem, 2.4vh, 1.6rem);
     text-shadow: none;
-    animation: hero-rise 900ms var(--ease-out) 720ms both;
+    animation: hero-rise 900ms var(--ease-out) 660ms both;
   }
 
   .hero__actions :global(.btn--primary) {
-    box-shadow: 0 12px 28px -12px rgb(7 23 44 / 0.7);
+    box-shadow: 0 12px 28px -12px rgb(var(--ink) / 0.7);
   }
 
   /* Nebenaktion mit milchiger Füllung wie Header und Fußleiste */
   .hero__actions :global(.hero__glass-btn.btn) {
     --btn-bg: rgb(var(--glass-dark));
-    --btn-bg-hover: rgb(7 23 44 / 0.72);
+    --btn-bg-hover: rgb(var(--ink) / 0.72);
     -webkit-backdrop-filter: blur(var(--glass-blur));
     backdrop-filter: blur(var(--glass-blur));
   }
@@ -474,7 +495,6 @@ const [firstLegal, ...otherLegal] = legalNav;
     .hero__rule,
     .hero__kicker,
     .hero__title,
-    .hero__lead,
     .hero__pillars li,
     .hero__actions {
       animation: none !important;

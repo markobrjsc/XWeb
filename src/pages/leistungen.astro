@@ -8,6 +8,7 @@ import CtaStrip from '@/components/sections/CtaStrip.astro';
 import PageHero from '@/components/sections/PageHero.astro';
 import ProcessSection from '@/components/sections/ProcessSection.astro';
 import ServicesSection from '@/components/sections/ServicesSection.astro';
+import ServiceTabs from '@/components/sections/ServiceTabs.astro';
 import Button from '@/components/ui/Button.astro';
 import { processSteps } from '@/data/company';
 
@@ -33,14 +34,17 @@ const breadcrumbs = [
     image="referenzen/terrassengarten-trockenmauern/08"
   />
 
-  <ServicesSection showHeader={false} tabs />
-
-  <ProcessSection
-    steps={processSteps}
-    eyebrow="So arbeiten wir"
-    title={'In vier Schritten <span class="accent">zu Ihrem Projekt.</span>'}
-    lead="Klare Absprachen, ein fester Ansprechpartner und saubere Ausführung – so läuft die Zusammenarbeit mit uns ab."
-  />
+  <!-- Die Auswahlleiste klebt über Leistungen und Ablauf hinweg – so bleibt sie bis zum Ende erreichbar -->
+  <div>
+    <ServiceTabs />
+    <ServicesSection showHeader={false} tabs />
+    <ProcessSection
+      steps={processSteps}
+      eyebrow="So arbeiten wir"
+      title={'In vier Schritten <span class="accent">zu Ihrem Projekt.</span>'}
+      lead="Klare Absprachen, ein fester Ansprechpartner und saubere Ausführung – so läuft die Zusammenarbeit mit uns ab."
+    />
+  </div>
 
   <CtaStrip
     icon="message-square"

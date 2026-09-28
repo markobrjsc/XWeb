@@ -2,7 +2,7 @@
 import { createHash } from 'node:crypto';
 import { defineConfig, fontProviders } from 'astro/config';
 import sitemap, { ChangeFreqEnum } from '@astrojs/sitemap';
-import { JS_DETECT_SCRIPT, PAGE_TRANSITION_SCRIPT } from './src/lib/inline-scripts.mjs';
+import { DESIGN_BOOT_SCRIPT, JS_DETECT_SCRIPT, PAGE_TRANSITION_SCRIPT } from './src/lib/inline-scripts.mjs';
 
 // Produktiv-Domain. Wird für Canonical-URLs, Open-Graph-Tags, Sitemap und robots.txt verwendet.
 const SITE_URL = 'https://www.pflasterarbeiten-hildebrand.de';
@@ -70,7 +70,7 @@ export default defineConfig({
   security: {
     csp: {
       scriptDirective: {
-        hashes: [sha256(JS_DETECT_SCRIPT), sha256(PAGE_TRANSITION_SCRIPT)],
+        hashes: [sha256(JS_DETECT_SCRIPT), sha256(PAGE_TRANSITION_SCRIPT), sha256(DESIGN_BOOT_SCRIPT)],
       },
       directives: [
         "default-src 'self'",

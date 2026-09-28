@@ -5,6 +5,7 @@
  * <BaseLayout title="Referenzen" description="…" breadcrumbs={[…]}> … </BaseLayout>
  */
 import '@/styles/global.css';
+import DesignPanel from '@/components/debug/DesignPanel.astro';
 import Footer from '@/components/layout/Footer.astro';
 import Header from '@/components/layout/Header.astro';
 import SEOHead from '@/components/seo/SEOHead.astro';
@@ -68,6 +69,7 @@ const jsonLd = graph([
       <slot />
     </main>
     {footer && <Footer />}
+    <DesignPanel />
 
     <script>
       import '@/scripts/site.ts';

@@ -5,6 +5,7 @@
    ========================================================================== */
 @import './tokens.css';
 @import './drawing.css';
+@import './themes.css';
 
 /* ---------------------------------------------------------------------------
    Reset
@@ -241,7 +242,7 @@ b {
 }
 
 .accent {
-  color: var(--color-primary);
+  color: var(--color-highlight);
 }
 
 [data-tone='dark'] .accent,

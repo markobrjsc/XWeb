@@ -92,6 +92,8 @@ const breadcrumbs = [
 </BaseLayout>
 
 <script>
+  import { smoothScrollTo } from '@/scripts/smooth-scroll';
+
   // Filter nach Fachbereich (nur mit JavaScript sichtbar – ohne JS werden einfach alle Projekte gezeigt)
   const filter = document.querySelector<HTMLElement>('[data-filter]');
   const items = [...document.querySelectorAll<HTMLElement>('.refs__item')];
@@ -126,7 +128,7 @@ const breadcrumbs = [
         apply(button.dataset.filterValue ?? 'alle');
         if (filter.classList.contains('is-stuck')) {
           const y = sentinel.getBoundingClientRect().top + window.scrollY - stickyTop();
-          window.scrollTo({ top: y, behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
+          smoothScrollTo(y);
         }
       });
     });
@@ -150,6 +152,37 @@ const breadcrumbs = [
 
   .filter[hidden] {
     display: none;
+  }
+
+  /* Klebt die Leiste: Fläche über die ganze Breite bis unter den Header und ein weicher Übergang nach
+     unten – die Projekte verschwinden dahinter, statt sichtbar durchzuscrollen */
+  .filter::before,
+  .filter::after {
+    content: '';
+    position: absolute;
+    left: calc(50% - 50vw);
+    width: 100vw;
+    z-index: -1;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity var(--duration-base) ease;
+  }
+
+  .filter::before {
+    top: calc((var(--header-height-compact) + var(--space-2)) * -1);
+    bottom: calc(var(--space-4) * -1);
+    background: var(--color-bg);
+  }
+
+  .filter::after {
+    top: calc(100% + var(--space-4));
+    height: var(--space-6);
+    background: linear-gradient(var(--color-bg), transparent);
+  }
+
+  .filter.is-stuck::before,
+  .filter.is-stuck::after {
+    opacity: 1;
   }
 
   .filter__buttons {

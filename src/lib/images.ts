@@ -24,6 +24,15 @@ for (const [path, module] of Object.entries(modules)) {
   imagesByName.set(name, module.default);
 }
 
+/** Alle Fotos mit Name und Dateipfad (für Auswertungen beim Build, z. B. Helligkeit in der Design-Vorschau) */
+export function listImages(): { name: string; image: ImageMetadata; file: string }[] {
+  return Object.entries(modules).map(([path, module]) => ({
+    name: path.replace('/src/assets/images/', '').replace(/.[^.]+$/, '').toLowerCase(),
+    image: module.default,
+    file: path.slice(1),
+  }));
+}
+
 export function findImage(name: string | undefined): ImageMetadata | undefined {
   if (!name) return undefined;
   return imagesByName.get(name.toLowerCase());

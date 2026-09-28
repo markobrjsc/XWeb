@@ -12,6 +12,8 @@
  * Alle Effekte respektieren „Bewegung reduzieren“ im Betriebssystem.
  */
 
+import { smoothScrollTo } from './smooth-scroll';
+
 const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
 const desktopNav = window.matchMedia('(min-width: 68.75rem)');
 
@@ -267,7 +269,7 @@ function initScrollTop() {
   document.querySelectorAll<HTMLAnchorElement>('[data-scroll-top]').forEach((link) => {
     link.addEventListener('click', (event) => {
       event.preventDefault();
-      window.scrollTo({ top: 0, behavior: reducedMotion.matches ? 'auto' : 'smooth' });
+      smoothScrollTo(0);
       // Tastaturfokus mitnehmen, ohne den Sprung zu stören
       document.querySelector<HTMLElement>('#main')?.focus({ preventScroll: true });
     });
@@ -283,15 +285,18 @@ function initHeroSnap() {
   const header = document.querySelector<HTMLElement>('[data-site-header]');
   const content = hero.nextElementSibling instanceof HTMLElement ? hero.nextElementSibling : null;
 
-  // Ziel: Unterkante des Kopfes schließt mit dem (schwebenden) Header ab
-  const target = () => hero.offsetTop + hero.offsetHeight - (header?.getBoundingClientRect().bottom ?? 0);
+  // Ziel: Unterkante des Kopfes schließt mit dem Header ab – und zwar mit dessen Form *nach* dem Scrollen
+  // (durchgehende Leiste ganz oben, ohne Abstand), sonst bliebe ein Streifen des Kopfes sichtbar
+  const headerBar = header?.querySelector<HTMLElement>('.site-header__bar');
+  const target = () => hero.offsetTop + hero.offsetHeight - (headerBar?.offsetHeight ?? header?.offsetHeight ?? 0);
   const inHero = () => window.scrollY < target() - 4;
   let busyUntil = 0;
   const busy = () => performance.now() < busyUntil;
 
   const glide = () => {
-    busyUntil = performance.now() + (reducedMotion.matches ? 100 : 900);
-    window.scrollTo({ top: target(), behavior: reducedMotion.matches ? 'auto' : 'smooth' });
+    // Weiche Animation (ca. 0,9 s) – nachlaufende Mausrad-Ereignisse werden währenddessen geschluckt
+    busyUntil = performance.now() + 1000;
+    smoothScrollTo(target(), { duration: 900, lock: true });
     if (content) {
       content.tabIndex = -1;
       content.focus({ preventScroll: true });

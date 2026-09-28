@@ -1,0 +1,316 @@
+---
+/**
+ * ServiceTabs – Auswahlleiste der Fachbereiche auf /leistungen/ (Gartenbau · Tiefbau · Straßenbau).
+ * Immer nur ein Fachbereich der ServicesSection ist sichtbar; der bisherige blendet aus, der gewählte ein.
+ *
+ * Die Leiste klebt unter dem Header, solange ihr Elternelement sichtbar ist – auf der Leistungsseite
+ * umschließt dieses Leistungen *und* Ablauf, damit die Auswahl auch dort erreichbar bleibt.
+ * Beim Kleben füllt ein Hintergrund die ganze Breite bis unter den Header: Inhalte verschwinden dahinter.
+ * Ohne JavaScript bleibt die Leiste ausgeblendet und alle Fachbereiche stehen untereinander.
+ */
+import Container from '@/components/ui/Container.astro';
+import Icon from '@/components/ui/Icon.astro';
+import { pillars } from '@/data/services';
+---
+
+<div class="svc-tabs" data-tabbar hidden>
+  <Container>
+    <div class="svc-tabs__list" role="tablist" aria-label="Fachbereich wählen">
+      {
+        pillars.map((pillar, index) => (
+          <button
+            class="svc-tabs__tab"
+            type="button"
+            role="tab"
+            id={`tab-${pillar.id}`}
+            aria-controls={pillar.id}
+            aria-selected={index === 0 ? 'true' : 'false'}
+            tabindex={index === 0 ? undefined : -1}
+            data-tab={pillar.id}
+          >
+            <span class="svc-tabs__icon" aria-hidden="true">
+              <Icon name={pillar.icon} size="1.1rem" />
+            </span>
+            <span class="svc-tabs__text">
+              <span class="svc-tabs__title">{pillar.title}</span>
+              <span class="svc-tabs__sub">{pillar.subtitle}</span>
+            </span>
+          </button>
+        ))
+      }
+    </div>
+  </Container>
+</div>
+
+<script>
+  import { smoothScrollTo } from '@/scripts/smooth-scroll';
+
+  const tabbar = document.querySelector<HTMLElement>('[data-tabbar]');
+  const container = document.querySelector<HTMLElement>('[data-tab-panels]');
+
+  if (tabbar && container) {
+    const tabs = [...tabbar.querySelectorAll<HTMLButtonElement>('[data-tab]')];
+    const panels = [...container.querySelectorAll<HTMLElement>('[data-panel]')];
+    let current = tabs[0]?.dataset.tab ?? '';
+    let leaveTimer = 0;
+
+    // Platzhalter direkt vor der Leiste: liegt er oberhalb der Klebe-Position, klebt die Leiste
+    const sentinel = document.createElement('div');
+    sentinel.setAttribute('aria-hidden', 'true');
+    tabbar.before(sentinel);
+
+    tabbar.hidden = false;
+    panels.forEach((panel) => {
+      panel.setAttribute('role', 'tabpanel');
+      panel.setAttribute('aria-labelledby', `tab-${panel.dataset.panel}`);
+      panel.hidden = panel.dataset.panel !== current;
+    });
+
+    // Position, an der die Leiste klebt (CSS „top“, kann negativ sein)
+    const stickyTop = () => parseFloat(getComputedStyle(tabbar).top) || 0;
+    const isStuck = () => sentinel.getBoundingClientRect().top < stickyTop() - 1;
+
+    const markTabs = (id: string, focus: boolean) => {
+      tabs.forEach((tab) => {
+        const active = tab.dataset.tab === id;
+        tab.setAttribute('aria-selected', String(active));
+        if (active) tab.removeAttribute('tabindex');
+        else tab.tabIndex = -1;
+        if (active && focus) tab.focus();
+      });
+    };
+
+    const show = (next: HTMLElement, animate: boolean) => {
+      panels.forEach((panel) => {
+        panel.classList.remove('is-leaving', 'is-entering');
+        panel.hidden = panel !== next;
+      });
+      next.querySelectorAll<HTMLElement>('[data-reveal]').forEach((el) => el.classList.add('is-revealed'));
+      if (animate) next.classList.add('is-entering');
+    };
+
+    const select = (id: string, focus = false) => {
+      const next = panels.find((panel) => panel.dataset.panel === id);
+      if (!next) return;
+      markTabs(id, focus);
+      history.replaceState(null, '', `#${id}`);
+
+      // Weiter unten (z. B. beim Ablauf)? Dann zurück an den Anfang der Leistungen gleiten
+      const backToTop = () => {
+        if (isStuck()) smoothScrollTo(sentinel.getBoundingClientRect().top + window.scrollY - stickyTop());
+      };
+
+      if (id === current) {
+        backToTop();
+        return;
+      }
+
+      const previous = panels.find((panel) => panel.dataset.panel === current);
+      current = id;
+      window.clearTimeout(leaveTimer);
+
+      const swap = () => {
+        show(next, true);
+        backToTop();
+      };
+
+      if (previous && !previous.hidden) {
+        previous.classList.remove('is-entering');
+        previous.classList.add('is-leaving');
+        leaveTimer = window.setTimeout(swap, 200);
+      } else {
+        swap();
+      }
+    };
+
+    tabs.forEach((tab, index) => {
+      tab.addEventListener('click', () => select(tab.dataset.tab ?? ''));
+      tab.addEventListener('keydown', (event) => {
+        const step = event.key === 'ArrowRight' ? 1 : event.key === 'ArrowLeft' ? -1 : 0;
+        if (!step) return;
+        event.preventDefault();
+        select(tabs[(index + step + tabs.length) % tabs.length].dataset.tab ?? '', true);
+      });
+    });
+
+    // Hintergrund und Schatten, sobald die Leiste klebt
+    const updateStuck = () => tabbar.classList.toggle('is-stuck', isStuck());
+    window.addEventListener('scroll', updateStuck, { passive: true });
+    updateStuck();
+
+    // Direkte Links: /leistungen/#tiefbau oder /leistungen/#leistung-kanalbau
+    const openFromHash = () => {
+      const id = decodeURIComponent(window.location.hash.slice(1));
+      const target = id ? document.getElementById(id) : null;
+      const panel = target?.closest<HTMLElement>('[data-panel]');
+      if (!target || !panel) return;
+      window.clearTimeout(leaveTimer);
+      current = panel.dataset.panel ?? current;
+      markTabs(current, false);
+      show(panel, false);
+      requestAnimationFrame(() => target.scrollIntoView());
+    };
+    openFromHash();
+    window.addEventListener('hashchange', openFromHash);
+  }
+</script>
+
+<style>
+  .svc-tabs {
+    --tabs-bg: var(--color-bg-subtle);
+    --tabs-pad: var(--section-space-sm);
+    position: sticky;
+    /* Die Pille selbst klebt knapp unter dem Header – der Innenabstand darüber rutscht darunter */
+    top: calc(var(--header-height-compact) + var(--space-2) - var(--tabs-pad));
+    z-index: 5;
+    padding-top: var(--tabs-pad);
+    padding-bottom: var(--space-4);
+    background: var(--tabs-bg);
+  }
+
+  .svc-tabs[hidden] {
+    display: none;
+  }
+
+  /* Klebt die Leiste: Fläche bis unter den Header und ein weicher Übergang nach unten */
+  .svc-tabs::before,
+  .svc-tabs::after {
+    content: '';
+    position: absolute;
+    left: 0;
+    right: 0;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity var(--duration-base) ease;
+  }
+
+  .svc-tabs::before {
+    bottom: 100%;
+    height: var(--header-height-compact);
+    background: var(--tabs-bg);
+  }
+
+  .svc-tabs::after {
+    top: 100%;
+    height: var(--space-6);
+    background: linear-gradient(var(--tabs-bg), transparent);
+  }
+
+  .svc-tabs.is-stuck::before,
+  .svc-tabs.is-stuck::after {
+    opacity: 1;
+  }
+
+  .svc-tabs__list {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: var(--space-1);
+    max-width: 58rem;
+    margin-inline: auto;
+    padding: var(--space-1);
+    border-radius: var(--radius-full);
+    background: #ffffff;
+    box-shadow:
+      inset 0 0 0 1px var(--color-border),
+      var(--shadow-xs);
+    transition: box-shadow var(--duration-base) ease;
+  }
+
+  .svc-tabs.is-stuck .svc-tabs__list {
+    box-shadow:
+      inset 0 0 0 1px var(--color-border),
+      var(--shadow-md);
+  }
+
+  .svc-tabs__tab {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-3);
+    min-width: 0;
+    min-height: 3rem;
+    padding: var(--space-2) var(--space-4) var(--space-2) var(--space-2);
+    font: inherit;
+    text-align: left;
+    color: var(--color-heading);
+    border: 0;
+    border-radius: var(--radius-full);
+    background: transparent;
+    cursor: pointer;
+    transition:
+      background-color var(--duration-base) ease,
+      color var(--duration-base) ease;
+  }
+
+  .svc-tabs__tab:hover {
+    background: var(--blue-50);
+  }
+
+  .svc-tabs__tab[aria-selected='true'] {
+    color: #ffffff;
+    background: var(--blue-600);
+  }
+
+  .svc-tabs__icon {
+    display: grid;
+    place-items: center;
+    flex: none;
+    width: 2.25rem;
+    height: 2.25rem;
+    border-radius: 50%;
+    color: var(--blue-700);
+    background: var(--blue-50);
+    transition:
+      background-color var(--duration-base) ease,
+      color var(--duration-base) ease;
+  }
+
+  .svc-tabs__tab[aria-selected='true'] .svc-tabs__icon {
+    color: #ffffff;
+    background: rgb(255 255 255 / 0.18);
+  }
+
+  .svc-tabs__text {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+  }
+
+  .svc-tabs__title {
+    font-size: var(--text-sm);
+    font-weight: var(--weight-bold);
+    line-height: 1.2;
+  }
+
+  .svc-tabs__sub {
+    overflow: hidden;
+    font-size: var(--text-2xs);
+    line-height: 1.3;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    opacity: 0.72;
+  }
+
+  @media (max-width: 47.99rem) {
+    .svc-tabs__list {
+      border-radius: calc(var(--radius-xl) + var(--space-1));
+    }
+
+    .svc-tabs__tab {
+      flex-direction: column;
+      gap: var(--space-1);
+      padding: var(--space-2) var(--space-1);
+      border-radius: var(--radius-xl);
+      text-align: center;
+    }
+
+    .svc-tabs__icon {
+      width: 1.9rem;
+      height: 1.9rem;
+    }
+
+    .svc-tabs__sub {
+      display: none;
+    }
+  }
+</style>

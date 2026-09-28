@@ -142,7 +142,7 @@ const hasActiveNav = mainNav.some((item) => isCurrent(item.href));
     /* Genau halbe Höhe statt 999px – so lässt sich die Rundung weich auf 0 animieren */
     border-radius: calc(var(--header-bar-h) / 2 + 1px);
     background: var(--header-bg);
-    box-shadow: 0 14px 34px -20px rgb(7 23 44 / 0.6);
+    box-shadow: 0 14px 34px -20px rgb(var(--ink) / 0.6);
     -webkit-backdrop-filter: blur(var(--glass-blur));
     backdrop-filter: blur(var(--glass-blur));
     transition:
@@ -163,7 +163,7 @@ const hasActiveNav = mainNav.some((item) => isCurrent(item.href));
     border-color: transparent transparent rgb(255 255 255 / 0.12);
     border-radius: 0;
     background: var(--blue-950);
-    box-shadow: 0 10px 30px -16px rgb(7 23 44 / 0.55);
+    box-shadow: 0 10px 30px -16px rgb(var(--ink) / 0.55);
   }
 
   .site-header[data-scrolled='true'][data-menu-open='true'] .site-header__bar {

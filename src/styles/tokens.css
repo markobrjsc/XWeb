@@ -28,6 +28,10 @@
   --blue-900: #0c2645;
   --blue-950: #07172c;
 
+  /* Dunkelster Markenton als RGB-Tripel – für Verdunklungen über Fotos, Glas-Flächen und Schatten:
+     rgb(var(--ink) / 0.5). Farbschemata (src/styles/themes.css) setzen ihn passend zur Palette. */
+  --ink: 7 23 44;
+
   /* Neutrale Töne (leicht bläulich) */
   --gray-0: #ffffff;
   --gray-50: #f7f9fb;
@@ -66,6 +70,9 @@
   --color-primary-hover: var(--blue-700);
   --color-primary-soft: var(--blue-100);
   --color-primary-softer: var(--blue-50);
+
+  /* Hervorhebung im Text (z. B. farbiger Teil einer Überschrift) auf hellem Grund */
+  --color-highlight: var(--color-primary);
 
   /* Akzent: helles Stahlblau – Hervorhebungen, v. a. auf dunklem Grund */
   --color-accent: var(--blue-300);
@@ -169,7 +176,7 @@
   --header-height: 5.75rem;
   --header-height-compact: 5.75rem;
   /* Dunkle, milchige Flächen: Header-Leiste und Plakette am Seitenende */
-  --glass-dark: 7 23 44 / 0.62;
+  --glass-dark: var(--ink) / 0.62;
   --glass-blur: 10px;
   /* Wie weit die Kontakt-Karte in den Footer hineinragt */
   --footer-overlap: clamp(3rem, 2rem + 5vw, 6rem);

@@ -1,0 +1,469 @@
+---
+/**
+ * DesignPanel – ausklappbare Design-Vorschau am rechten Rand, um dem Kunden Varianten zu zeigen:
+ *  · Farbschema (komplette Palette inkl. Neutraltöne, Schatten und Akzente → src/styles/themes.css)
+ *  · Startbild der Startseite (die dunkelsten Querformat-Fotos aus der Galerie, automatisch sortiert)
+ *  · Abdunklung des Startbilds
+ * Auswahl wird im Browser gespeichert (localStorage) und gilt auf allen Seiten – nur für diesen Browser.
+ *
+ * Sichtbar: lokal immer (npm run dev) · auf der Live-Seite erst nach Aufruf mit ?design
+ * (z. B. https://…/?design), wieder ausblenden mit ?design=aus. Frühes Setzen des Schemas: DESIGN_BOOT_SCRIPT.
+ */
+import { getImage } from 'astro:assets';
+import sharp from 'sharp';
+import Icon from '@/components/ui/Icon.astro';
+import { findImage, listImages } from '@/lib/images';
+
+// Paletten: src/styles/themes.css · swatch = dunkelster Ton, Markenfarbe, Akzent
+const themes = [
+  { id: '', name: 'Nachtblau', note: 'aktuell · sachlich', swatch: ['#07172c', '#235c95', '#91b8de'] },
+  { id: 'waldgruen', name: 'Waldgrün', note: 'natürlich · ruhig', swatch: ['#0b1c13', '#2d6644', '#b9d9a8'] },
+  { id: 'anthrazit', name: 'Anthrazit & Messing', note: 'neutral · hochwertig', swatch: ['#0f1113', '#474c52', '#dcc08a'] },
+  { id: 'terrakotta', name: 'Terrakotta', note: 'warm · Naturstein', swatch: ['#25130d', '#9a4b2f', '#f2cfae'] },
+  { id: 'petrol', name: 'Petrol & Kupfer', note: 'experimentell', swatch: ['#07191e', '#226775', '#b35a2a'] },
+  { id: 'graphit', name: 'Graphit & Signalgelb', note: 'experimentell · Baustelle', swatch: ['#101010', '#3f3f3f', '#f6c945'] },
+];
+
+/* Helligkeit aller Querformat-Fotos einmal ermitteln (bleibt für alle Seiten im Speicher) */
+type Candidate = { name: string; brightness: number };
+const globalCache = globalThis as unknown as { __heroCandidates?: Promise<Candidate[]> };
+globalCache.__heroCandidates ??= Promise.all(
+  listImages()
+    .filter(({ image, name }) => image.width > image.height * 1.2 && name !== 'hero')
+    .map(async ({ name, file }) => {
+      const { channels } = await sharp(file).resize(48).stats();
+      const brightness = (channels[0].mean * 0.299 + channels[1].mean * 0.587 + channels[2].mean * 0.114) / 255;
+      return { name, brightness };
+    }),
+).then((list) => list.sort((a, b) => a.brightness - b.brightness));
+
+const darkest = (await globalCache.__heroCandidates).slice(0, 11);
+const options = await Promise.all(
+  [{ name: 'hero', brightness: -1 }, ...darkest].map(async ({ name }) => {
+    const image = findImage(name)!;
+    const [full, thumb] = await Promise.all([
+      getImage({ src: image, width: Math.min(2400, image.width), format: 'webp', quality: 80 }),
+      getImage({ src: image, width: 240, format: 'webp', quality: 60 }),
+    ]);
+    return { name, full: full.src, thumb: thumb.src, label: name === 'hero' ? 'Standard' : name.split('/').slice(-2).join(' · ') };
+  }),
+);
+
+const devMode = import.meta.env.DEV;
+---
+
+<aside class="dpanel" data-design-panel data-dev={devMode ? '' : undefined} hidden aria-label="Design-Vorschau">
+  <button class="dpanel__handle" type="button" data-design-toggle aria-expanded="false" aria-controls="design-panel-body">
+    <Icon name="palette" size="1.1rem" />
+    <span>Design</span>
+  </button>
+
+  <div class="dpanel__body" id="design-panel-body">
+    <header class="dpanel__head">
+      <p class="dpanel__title">Design-Vorschau</p>
+      <button class="dpanel__close" type="button" data-design-toggle aria-label="Einklappen">
+        <Icon name="chevron-right" size="1.1rem" />
+      </button>
+    </header>
+
+    <section class="dpanel__group">
+      <h2 class="dpanel__label">Farbschema</h2>
+      <div class="dpanel__themes" role="radiogroup" aria-label="Farbschema">
+        {
+          themes.map((theme) => (
+            <button class="dpanel__theme" type="button" role="radio" aria-checked="false" data-theme-option={theme.id}>
+              <span class="dpanel__swatch" aria-hidden="true">
+                {theme.swatch.map((color) => (
+                  <span data-color={color} />
+                ))}
+              </span>
+              <span class="dpanel__theme-text">
+                <strong>{theme.name}</strong>
+                <span>{theme.note}</span>
+              </span>
+            </button>
+          ))
+        }
+      </div>
+    </section>
+
+    <section class="dpanel__group">
+      <h2 class="dpanel__label">Startbild <span>(Startseite)</span></h2>
+      <div class="dpanel__images" role="radiogroup" aria-label="Startbild">
+        {
+          options.map((option) => (
+            <button
+              class="dpanel__image"
+              type="button"
+              role="radio"
+              aria-checked="false"
+              data-hero-option={option.name}
+              data-hero-src={option.full}
+              title={option.label}
+            >
+              <img src={option.thumb} alt={option.label} width="240" height="135" loading="lazy" decoding="async" />
+            </button>
+          ))
+        }
+      </div>
+      <p class="dpanel__hint">Sortiert von dunkel nach hell · „Standard“ ist das aktuelle Bild.</p>
+    </section>
+
+    <section class="dpanel__group">
+      <label class="dpanel__label" for="design-dim">Startbild abdunkeln <output data-dim-value>0 %</output></label>
+      <input class="dpanel__range" id="design-dim" type="range" min="0" max="70" step="5" value="0" data-dim-input />
+    </section>
+
+    <footer class="dpanel__foot">
+      <button class="dpanel__reset" type="button" data-design-reset>
+        <Icon name="rotate-ccw" size="0.95rem" /> Zurücksetzen
+      </button>
+      {!devMode && <a class="dpanel__off" href="?design=aus">Panel ausblenden</a>}
+    </footer>
+  </div>
+</aside>
+
+<script>
+  const KEYS = { panel: 'design-panel', open: 'design-panel-open', theme: 'design-theme', hero: 'design-hero', dim: 'design-hero-dim' };
+  const store = {
+    get: (key: string) => {
+      try {
+        return localStorage.getItem(key);
+      } catch {
+        return null;
+      }
+    },
+    set: (key: string, value: string | null) => {
+      try {
+        if (value === null) localStorage.removeItem(key);
+        else localStorage.setItem(key, value);
+      } catch {
+        /* privates Fenster o. Ä. – Auswahl gilt dann nur bis zum Neuladen */
+      }
+    },
+  };
+
+  const panel = document.querySelector<HTMLElement>('[data-design-panel]');
+  const root = document.documentElement;
+
+  // Freischalten auf der Live-Seite: ?design (an) bzw. ?design=aus (aus)
+  const param = new URLSearchParams(location.search).get('design');
+  if (param !== null) store.set(KEYS.panel, param === 'aus' || param === '0' ? null : '1');
+
+  if (panel && (panel.hasAttribute('data-dev') || store.get(KEYS.panel) === '1')) {
+    panel.hidden = false;
+
+    // Farbfelder der Schemata (per CSSOM – ohne Inline-Styles, CSP-freundlich)
+    panel.querySelectorAll<HTMLElement>('[data-color]').forEach((el) => (el.style.background = el.dataset.color ?? ''));
+
+    /* Ein- und Ausklappen */
+    const setOpen = (open: boolean) => {
+      panel.classList.toggle('is-open', open);
+      panel.querySelectorAll('[data-design-toggle]').forEach((b) => b.setAttribute('aria-expanded', String(open)));
+      store.set(KEYS.open, open ? '1' : null);
+    };
+    setOpen(store.get(KEYS.open) === '1');
+    panel.querySelectorAll('[data-design-toggle]').forEach((button) =>
+      button.addEventListener('click', () => setOpen(!panel.classList.contains('is-open'))),
+    );
+
+    /* Farbschema */
+    const themeButtons = [...panel.querySelectorAll<HTMLButtonElement>('[data-theme-option]')];
+    const applyTheme = (id: string) => {
+      if (id) root.dataset.theme = id;
+      else delete root.dataset.theme;
+      store.set(KEYS.theme, id || null);
+      themeButtons.forEach((b) => b.setAttribute('aria-checked', String(b.dataset.themeOption === id)));
+    };
+    themeButtons.forEach((b) => b.addEventListener('click', () => applyTheme(b.dataset.themeOption ?? '')));
+    applyTheme(store.get(KEYS.theme) ?? '');
+
+    /* Startbild (nur auf der Startseite sichtbar – die Wahl gilt trotzdem überall) */
+    const heroButtons = [...panel.querySelectorAll<HTMLButtonElement>('[data-hero-option]')];
+    const applyHero = (name: string) => {
+      const option = heroButtons.find((b) => b.dataset.heroOption === name) ?? heroButtons[0];
+      if (!option) return;
+      heroButtons.forEach((b) => b.setAttribute('aria-checked', String(b === option)));
+      store.set(KEYS.hero, option.dataset.heroOption === 'hero' ? null : (option.dataset.heroOption ?? null));
+
+      const img = document.querySelector<HTMLImageElement>('.hero__bg img');
+      if (!img || option.dataset.heroOption === 'hero' && !img.dataset.swapped) return;
+      img.closest('picture')?.querySelectorAll('source').forEach((source) => source.remove());
+      img.removeAttribute('srcset');
+      img.removeAttribute('sizes');
+      img.src = option.dataset.heroSrc ?? img.src;
+      img.dataset.swapped = '';
+    };
+    heroButtons.forEach((b) => b.addEventListener('click', () => applyHero(b.dataset.heroOption ?? 'hero')));
+    applyHero(store.get(KEYS.hero) ?? 'hero');
+
+    /* Abdunkeln */
+    const dimInput = panel.querySelector<HTMLInputElement>('[data-dim-input]');
+    const dimValue = panel.querySelector<HTMLElement>('[data-dim-value]');
+    const applyDim = (percent: number) => {
+      root.style.setProperty('--hero-dim', String(percent / 100));
+      if (dimInput) dimInput.value = String(percent);
+      if (dimValue) dimValue.textContent = `${percent} %`;
+      store.set(KEYS.dim, percent ? String(percent / 100) : null);
+    };
+    dimInput?.addEventListener('input', () => applyDim(Number(dimInput.value)));
+    applyDim(Math.round(Number(store.get(KEYS.dim) ?? 0) * 100));
+
+    /* Zurücksetzen */
+    panel.querySelector('[data-design-reset]')?.addEventListener('click', () => {
+      applyTheme('');
+      applyHero('hero');
+      applyDim(0);
+    });
+  }
+</script>
+
+<style>
+  .dpanel {
+    --dp-width: min(21rem, calc(100vw - 3rem));
+    position: fixed;
+    top: 50%;
+    right: 0;
+    z-index: 1000;
+    display: flex;
+    align-items: center;
+    max-height: calc(100dvh - 2rem);
+    translate: var(--dp-width) -50%;
+    transition: translate 380ms var(--ease-out);
+    font-family: var(--font-sans);
+    color: #1f2a36;
+  }
+
+  .dpanel[hidden] {
+    display: none;
+  }
+
+  .dpanel.is-open {
+    translate: 0 -50%;
+  }
+
+  /* Griff am rechten Rand */
+  .dpanel__handle {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.8rem 0.45rem;
+    font: inherit;
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    writing-mode: vertical-rl;
+    color: #ffffff;
+    border: 0;
+    border-radius: 0.9rem 0 0 0.9rem;
+    background: #111a24;
+    box-shadow: -6px 8px 24px -10px rgb(0 0 0 / 0.45);
+    cursor: pointer;
+  }
+
+  .dpanel__handle :global(.icon) {
+    writing-mode: horizontal-tb;
+  }
+
+  .dpanel.is-open .dpanel__handle {
+    visibility: hidden;
+  }
+
+  .dpanel__body {
+    display: flex;
+    flex-direction: column;
+    gap: 1.1rem;
+    width: var(--dp-width);
+    max-height: calc(100dvh - 2rem);
+    padding: 1rem 1rem 1.1rem;
+    overflow-y: auto;
+    border-radius: 1.1rem 0 0 1.1rem;
+    background: #ffffff;
+    box-shadow:
+      0 0 0 1px rgb(17 26 36 / 0.08),
+      -18px 0 50px -20px rgb(0 0 0 / 0.45);
+  }
+
+  .dpanel__head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .dpanel__title {
+    font-size: 0.95rem;
+    font-weight: 700;
+  }
+
+  .dpanel__close {
+    display: grid;
+    place-items: center;
+    width: 2rem;
+    height: 2rem;
+    color: #36434f;
+    border: 1px solid #dfe5ec;
+    border-radius: 50%;
+    background: #ffffff;
+    cursor: pointer;
+  }
+
+  .dpanel__group {
+    display: grid;
+    gap: 0.55rem;
+  }
+
+  .dpanel__label {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: #5f6e80;
+  }
+
+  .dpanel__label span,
+  .dpanel__label output {
+    font-weight: 500;
+    letter-spacing: 0;
+    text-transform: none;
+  }
+
+  .dpanel__themes {
+    display: grid;
+    gap: 0.35rem;
+  }
+
+  .dpanel__theme {
+    display: flex;
+    align-items: center;
+    gap: 0.7rem;
+    padding: 0.45rem 0.6rem;
+    font: inherit;
+    text-align: left;
+    color: inherit;
+    border: 1.5px solid #dfe5ec;
+    border-radius: 0.8rem;
+    background: #ffffff;
+    cursor: pointer;
+  }
+
+  .dpanel__theme[aria-checked='true'] {
+    border-color: #111a24;
+    box-shadow: 0 0 0 2px rgb(17 26 36 / 0.12);
+  }
+
+  .dpanel__swatch {
+    display: flex;
+    flex: none;
+    overflow: hidden;
+    border-radius: 50%;
+    box-shadow: 0 0 0 1px rgb(0 0 0 / 0.08);
+  }
+
+  .dpanel__swatch span {
+    width: 0.7rem;
+    height: 2.1rem;
+  }
+
+  .dpanel__theme-text {
+    display: flex;
+    flex-direction: column;
+    font-size: 0.82rem;
+    line-height: 1.25;
+  }
+
+  .dpanel__theme-text span {
+    font-size: 0.72rem;
+    color: #5f6e80;
+  }
+
+  .dpanel__images {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0.35rem;
+  }
+
+  .dpanel__image {
+    padding: 0;
+    overflow: hidden;
+    aspect-ratio: 16 / 10;
+    border: 2px solid transparent;
+    border-radius: 0.55rem;
+    background: #eef2f6;
+    cursor: pointer;
+  }
+
+  .dpanel__image img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  .dpanel__image[aria-checked='true'] {
+    border-color: #111a24;
+  }
+
+  .dpanel__image:first-child {
+    position: relative;
+  }
+
+  .dpanel__image:first-child::after {
+    content: 'Standard';
+    position: absolute;
+    left: 0.25rem;
+    bottom: 0.25rem;
+    padding: 0.05rem 0.35rem;
+    font-size: 0.6rem;
+    font-weight: 700;
+    color: #ffffff;
+    border-radius: 999px;
+    background: rgb(17 26 36 / 0.75);
+  }
+
+  .dpanel__hint {
+    font-size: 0.7rem;
+    color: #5f6e80;
+  }
+
+  .dpanel__range {
+    width: 100%;
+    accent-color: #111a24;
+  }
+
+  .dpanel__foot {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding-top: 0.8rem;
+    border-top: 1px solid #eef2f6;
+  }
+
+  .dpanel__reset {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.45rem 0.9rem;
+    font: inherit;
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: #1f2a36;
+    border: 1px solid #c5cfda;
+    border-radius: 999px;
+    background: #ffffff;
+    cursor: pointer;
+  }
+
+  .dpanel__off {
+    font-size: 0.75rem;
+    color: #5f6e80;
+  }
+
+  .dpanel button:focus-visible {
+    outline: 3px solid #3273b3;
+    outline-offset: 2px;
+  }
+</style>
