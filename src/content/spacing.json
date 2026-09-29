@@ -19,5 +19,11 @@
   },
   "body[data-page=\"/leistungen/\"] main#main > section.cta-strip.cta-strip--tight:nth-of-type(2) > div.container.container--default > div.cta-strip__box": {
     "padding-top": "10px"
+  },
+  "body[data-page=\"/\"] main#main > section.hero > div.hero__content:nth-of-type(2) > div.hero__card > div.hero__actions": {
+    "margin-top": "50px"
+  },
+  "body[data-page=\"/\"] main#main > section.hero > div.hero__content:nth-of-type(2) > div.hero__card": {
+    "padding-top": "40px"
   }
 }
