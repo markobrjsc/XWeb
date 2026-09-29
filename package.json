@@ -5,14 +5,15 @@
   "type": "module",
   "description": "Website der Pflasterarbeiten Hildebrand GmbH – Garten-, Tief- und Straßenbau in Radolfzell am Bodensee.",
   "scripts": {
-    "dev": "astro dev",
+    "dev": "node scripts/build-zertifikate.mjs && astro dev",
     "dev:api": "wrangler dev --port 8787",
-    "build": "astro build",
+    "build": "node scripts/build-zertifikate.mjs && astro build",
     "preview": "astro preview",
     "check": "astro check",
     "assets": "node scripts/build-brand-assets.mjs",
     "deploy": "npm run build && wrangler deploy",
-    "og-image": "node scripts/generate-og-image.mjs"
+    "og-image": "node scripts/generate-og-image.mjs",
+    "zertifikate": "node scripts/build-zertifikate.mjs"
   },
   "engines": {
     "node": ">=22.12.0"
@@ -26,6 +27,7 @@
   },
   "devDependencies": {
     "@astrojs/check": "^0.9.10",
+    "mupdf": "^1.28.1",
     "playwright": "^1.63.0",
     "sharp": "^0.35.4",
     "typescript": "^6.0.3",

@@ -19,8 +19,8 @@
 [data-tone='brand'] .drawing,
 .drawing--inverse {
   --draw-line: rgb(255 255 255 / 0.86);
-  --draw-line-soft: rgb(145 184 222 / 0.75);
-  --draw-hatch: rgb(145 184 222 / 0.4);
+  --draw-line-soft: rgb(255 255 255 / 0.55);
+  --draw-hatch: rgb(255 255 255 / 0.28);
   --draw-fill: rgb(255 255 255 / 0.035);
   --draw-fill-strong: rgb(255 255 255 / 0.1);
   --draw-text: rgb(255 255 255 / 0.66);

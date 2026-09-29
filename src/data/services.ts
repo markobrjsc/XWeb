@@ -11,8 +11,11 @@ export interface Service {
   icon: string;
   description: string;
   points: string[];
-  /** Beispielprojekt aus src/content/referenzen (Dateiname ohne .md) – wird auf der Leistungsseite gezeigt */
-  reference?: string;
+  /**
+   * Referenzprojekte aus src/content/referenzen (Dateinamen ohne .md) – erscheinen in der Leistungskarte als
+   * Bildergalerie; bei mehreren Projekten per Auswahl umschaltbar. Ein Projekt darf in mehreren Karten stehen.
+   */
+  references?: string[];
 }
 
 export interface Pillar {
@@ -41,7 +44,7 @@ export const pillars: Pillar[] = [
     services: [
       {
         id: 'pflasterarbeiten',
-        reference: 'hofeinfahrt-betonpflaster',
+        references: ['hofeinfahrt-betonpflaster', 'garagenzufahrt-natursteinmauern', 'terrassengarten-trockenmauern'],
         title: 'Pflasterarbeiten',
         icon: 'layout-grid',
         description:
@@ -50,7 +53,7 @@ export const pillars: Pillar[] = [
       },
       {
         id: 'pflanzungen',
-        reference: 'vorgarten-hochbeete-staudenpflanzung',
+        references: ['vorgarten-hochbeete-staudenpflanzung', 'trockenmauern-neubau'],
         title: 'Pflanzungen',
         icon: 'sprout',
         description:
@@ -59,7 +62,7 @@ export const pillars: Pillar[] = [
       },
       {
         id: 'gartengestaltung',
-        reference: 'garten-holzdeck-wasserspiel',
+        references: ['garten-holzdeck-wasserspiel', 'hanggarten-natursteinmauern'],
         title: 'Gartengestaltung',
         icon: 'flower-2',
         description:
@@ -80,7 +83,7 @@ export const pillars: Pillar[] = [
     services: [
       {
         id: 'kanal-leitungsbau',
-        reference: 'leitungsbau-hausanschluss',
+        references: ['leitungsbau-hausanschluss'],
         title: 'Kanal- & Leitungsbau',
         icon: 'cable',
         description:
@@ -89,7 +92,7 @@ export const pillars: Pillar[] = [
       },
       {
         id: 'erdbau',
-        reference: 'erdbau-baugrube',
+        references: ['erdbau-baugrube', 'wirtschaftsweg-asphalt'],
         title: 'Erdbau',
         icon: 'mountain',
         description:
@@ -98,7 +101,7 @@ export const pillars: Pillar[] = [
       },
       {
         id: 'bauaushub',
-        reference: 'erdbau-baugrube',
+        references: ['erdbau-baugrube', 'leitungsbau-hausanschluss'],
         title: 'Bauaushub',
         icon: 'truck',
         description:
@@ -107,7 +110,7 @@ export const pillars: Pillar[] = [
       },
       {
         id: 'durchpressungen',
-        reference: 'leitungsbau-hausanschluss',
+        references: ['leitungsbau-hausanschluss'],
         title: 'Durchpressungen',
         icon: 'drill',
         description:
@@ -128,7 +131,7 @@ export const pillars: Pillar[] = [
     services: [
       {
         id: 'strassenbau',
-        reference: 'granitpflaster-bogen',
+        references: ['granitpflaster-bogen', 'wirtschaftsweg-asphalt'],
         title: 'Straßen- & Wegebau',
         icon: 'road',
         description:
@@ -137,7 +140,7 @@ export const pillars: Pillar[] = [
       },
       {
         id: 'asphaltbau',
-        reference: 'wirtschaftsweg-asphalt',
+        references: ['wirtschaftsweg-asphalt'],
         title: 'Asphaltbau',
         icon: 'layers',
         description:

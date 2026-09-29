@@ -90,9 +90,14 @@ export const benefits: Feature[] = [
     text: 'Attraktive Bezahlung, die Ihren Einsatz und Ihr Können widerspiegelt.',
   },
   {
-    icon: 'fuel',
-    title: 'Monatliche Tankgutscheine',
-    text: 'Ein Extra, das jeden Monat direkt in Ihrem Geldbeutel ankommt.',
+    icon: 'dumbbell',
+    title: 'Hansefit – Firmenfitness',
+    text: 'Zugang zu Fitnessstudios, Schwimmbädern und Kursen in der ganzen Region – für Ihre Gesundheit und den Ausgleich.',
+  },
+  {
+    icon: 'car',
+    title: 'Geschäftswagen',
+    text: 'Für den Außendienst – oder optional auch darüber hinaus. Sprechen Sie uns an.',
   },
   {
     icon: 'cup-soda',

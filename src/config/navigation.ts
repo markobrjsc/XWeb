@@ -11,10 +11,9 @@ export interface NavItem {
 
 export const mainNav: NavItem[] = [
   { label: 'Start', href: '/', description: 'Zur Startseite' },
-  { label: 'Leistungen', href: '/leistungen/', description: 'Gartenbau, Tiefbau & Straßenbau' },
-  { label: 'Unser Betrieb', href: '/betrieb/', description: 'Familienbetrieb aus Radolfzell' },
-  { label: 'Referenzen', href: '/referenzen/', description: 'Ausgewählte Projekte' },
+  { label: 'Leistungen', href: '/leistungen/', description: 'Gartenbau, Tiefbau & Straßenbau – mit Referenzprojekten' },
   { label: 'Stellenangebote', href: '/stellenangebote/', description: 'Karriere & Ausbildung' },
+  { label: 'Unser Betrieb', href: '/betrieb/', description: 'Familienbetrieb aus Radolfzell' },
 ];
 
 /** Kontakt – im Header als hervorgehobener Button, im mobilen Menü als letzter Punkt. */

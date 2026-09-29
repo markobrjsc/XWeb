@@ -1,13 +1,16 @@
 ---
 /**
- * Logo – Bildmarke (Figur mit Stein-„H“) plus Wortmarke.
- * Die Bilddatei liegt in src/assets/brand/hildebrand-logo.webp und wird automatisch optimiert.
+ * Logo – zwei Varianten aus den Vektordateien in src/assets/brand/:
+ *  · variant="wordmark": gelbes Schriftband mit Maskottchen (hildebrand-logo.svg) – im Header
+ *  · Standard: Maskottchen mit Stein-„H“ (hildebrand-maskottchen.svg) plus Schriftzug – an allen anderen Stellen
  */
 import { Image } from 'astro:assets';
-import logo from '@/assets/brand/hildebrand-logo.webp';
+import wordmark from '@/assets/brand/hildebrand-logo.svg';
+import mascot from '@/assets/brand/hildebrand-maskottchen.svg';
 
 interface Props {
-  /** Nur Bildmarke ohne Schriftzug */
+  variant?: 'wordmark' | 'mark';
+  /** Nur Maskottchen ohne Schriftzug */
   markOnly?: boolean;
   size?: 'sm' | 'md' | 'lg';
   /** Bild priorisiert laden (z. B. im Header) */
@@ -15,28 +18,38 @@ interface Props {
   class?: string;
 }
 
-const { markOnly = false, size = 'md', eager = false, class: className } = Astro.props;
+const { variant = 'mark', markOnly = false, size = 'md', eager = false, class: className } = Astro.props;
 ---
 
-<span class:list={['logo', `logo--${size}`, className]}>
-  <Image
-    src={logo}
-    alt={markOnly ? 'Pflasterarbeiten Hildebrand GmbH' : ''}
-    width={56}
-    densities={[1, 2, 3]}
-    class="logo__mark"
-    loading={eager ? 'eager' : 'lazy'}
-    decoding="async"
-  />
-  {
-    !markOnly && (
-      <span class="logo__text">
-        <span class="logo__name">Hildebrand</span>
-        <span class="logo__sub">Pflasterarbeiten GmbH</span>
-      </span>
-    )
-  }
-</span>
+{
+  variant === 'wordmark' ? (
+    <span class:list={['logo', 'logo--wordmark', `logo--${size}`, className]}>
+      <Image
+        src={wordmark}
+        alt="Hildebrand Pflasterarbeiten GmbH"
+        class="logo__wordmark"
+        loading={eager ? 'eager' : 'lazy'}
+        decoding="async"
+      />
+    </span>
+  ) : (
+    <span class:list={['logo', `logo--${size}`, className]}>
+      <Image
+        src={mascot}
+        alt={markOnly ? 'Pflasterarbeiten Hildebrand GmbH' : ''}
+        class="logo__mark"
+        loading={eager ? 'eager' : 'lazy'}
+        decoding="async"
+      />
+      {!markOnly && (
+        <span class="logo__text">
+          <span class="logo__name">Hildebrand</span>
+          <span class="logo__sub">Pflasterarbeiten GmbH</span>
+        </span>
+      )}
+    </span>
+  )
+}
 
 <style>
   .logo {
@@ -56,7 +69,9 @@ const { markOnly = false, size = 'md', eager = false, class: className } = Astro
     --logo-height: 3.9rem;
   }
 
-  .logo :global(.logo__mark) {
+  .logo :global(.logo__mark),
+  .logo :global(.logo__wordmark) {
+    display: block;
     width: auto;
     height: var(--logo-height);
     transition: height var(--duration-slow) var(--ease-out);

@@ -3,7 +3,7 @@
  *
  *   npm run assets
  *
- * Quelle:  src/assets/brand/hildebrand-logo.webp (Figur mit Stein-„H“, transparent)
+ * Quelle:  src/assets/brand/hildebrand-maskottchen.svg (Maskottchen mit Stein-„H“, Vektor)
  * Ausgabe: public/favicon.svg, public/favicon.ico, public/apple-touch-icon.png,
  *          public/icon-192.png, public/icon-512.png, public/icon-maskable-512.png,
  *          public/logo-512.png, public/site.webmanifest
@@ -17,21 +17,21 @@ import sharp from 'sharp';
 
 const root = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const pub = (file) => path.join(root, 'public', file);
-const logoPath = path.join(root, 'src/assets/brand/hildebrand-logo.webp');
+const logoPath = path.join(root, 'src/assets/brand/hildebrand-maskottchen.svg');
 
-const NAVY = '#0c2645';
+const NAVY = '#0b0b0c'; // Onyx
 const WHITE = '#ffffff';
 
 /** Monogramm „H“ für kleine Größen (Browser-Tab), wo die Figur nicht mehr erkennbar wäre. */
 const faviconSvg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
   <rect width="32" height="32" rx="6" fill="${NAVY}"/>
-  <path d="M9 8h3.2v6.4h7.6V8H23v16h-3.2v-6.6h-7.6V24H9z" fill="${WHITE}"/>
+  <path d="M9 8h3.2v6.4h7.6V8H23v16h-3.2v-6.6h-7.6V24H9z" fill="#f8f32b"/>
 </svg>
 `;
 
 /** Logo mittig auf weißem Quadrat platzieren. `scale` = Anteil der Höhe, den das Logo einnimmt. */
 async function logoOnSquare(size, scale) {
-  const logo = await sharp(logoPath)
+  const logo = await sharp(logoPath, { density: 300 })
     .resize({ height: Math.round(size * scale), fit: 'inside' })
     .toBuffer();
   const meta = await sharp(logo).metadata();

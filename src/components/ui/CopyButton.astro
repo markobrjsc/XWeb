@@ -118,7 +118,7 @@ const { value, label, class: className } = Astro.props;
 
   :global([data-tone='dark']) .copy-btn[data-copied],
   :global([data-tone='brand']) .copy-btn[data-copied] {
-    color: #6ce9a6;
+    color: var(--color-accent);
   }
 
   .copy-btn[data-copied] :global(.copy-btn__icon--copy) {

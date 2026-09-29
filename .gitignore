@@ -28,3 +28,7 @@ Thumbs.db
 .vscode/*
 !.vscode/extensions.json
 .idea/
+
+# Zertifikate: werden aus den PDFs erzeugt (scripts/build-zertifikate.mjs)
+src/assets/zertifikate/_seiten/
+public/zertifikate/

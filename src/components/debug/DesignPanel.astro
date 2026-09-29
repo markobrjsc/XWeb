@@ -1,28 +1,17 @@
 ---
 /**
  * DesignPanel – ausklappbare Design-Vorschau am rechten Rand, um dem Kunden Varianten zu zeigen:
- *  · Farbschema (komplette Palette inkl. Neutraltöne, Schatten und Akzente → src/styles/themes.css)
  *  · Startbild der Startseite (die dunkelsten Querformat-Fotos aus der Galerie, automatisch sortiert)
  *  · Abdunklung des Startbilds
  * Auswahl wird im Browser gespeichert (localStorage) und gilt auf allen Seiten – nur für diesen Browser.
  *
  * Sichtbar: lokal immer (npm run dev) · auf der Live-Seite erst nach Aufruf mit ?design
- * (z. B. https://…/?design), wieder ausblenden mit ?design=aus. Frühes Setzen des Schemas: DESIGN_BOOT_SCRIPT.
+ * (z. B. https://…/?design), wieder ausblenden mit ?design=aus. Frühes Setzen der Abdunklung: DESIGN_BOOT_SCRIPT.
  */
 import { getImage } from 'astro:assets';
 import sharp from 'sharp';
 import Icon from '@/components/ui/Icon.astro';
 import { findImage, listImages } from '@/lib/images';
-
-// Paletten: src/styles/themes.css · swatch = dunkelster Ton, Markenfarbe, Akzent
-const themes = [
-  { id: '', name: 'Nachtblau', note: 'aktuell · sachlich', swatch: ['#07172c', '#235c95', '#91b8de'] },
-  { id: 'waldgruen', name: 'Waldgrün', note: 'natürlich · ruhig', swatch: ['#0b1c13', '#2d6644', '#b9d9a8'] },
-  { id: 'anthrazit', name: 'Anthrazit & Messing', note: 'neutral · hochwertig', swatch: ['#0f1113', '#474c52', '#dcc08a'] },
-  { id: 'terrakotta', name: 'Terrakotta', note: 'warm · Naturstein', swatch: ['#25130d', '#9a4b2f', '#f2cfae'] },
-  { id: 'petrol', name: 'Petrol & Kupfer', note: 'experimentell', swatch: ['#07191e', '#226775', '#b35a2a'] },
-  { id: 'graphit', name: 'Graphit & Signalgelb', note: 'experimentell · Baustelle', swatch: ['#101010', '#3f3f3f', '#f6c945'] },
-];
 
 /* Helligkeit aller Querformat-Fotos einmal ermitteln (bleibt für alle Seiten im Speicher) */
 type Candidate = { name: string; brightness: number };
@@ -67,27 +56,6 @@ const devMode = import.meta.env.DEV;
     </header>
 
     <section class="dpanel__group">
-      <h2 class="dpanel__label">Farbschema</h2>
-      <div class="dpanel__themes" role="radiogroup" aria-label="Farbschema">
-        {
-          themes.map((theme) => (
-            <button class="dpanel__theme" type="button" role="radio" aria-checked="false" data-theme-option={theme.id}>
-              <span class="dpanel__swatch" aria-hidden="true">
-                {theme.swatch.map((color) => (
-                  <span data-color={color} />
-                ))}
-              </span>
-              <span class="dpanel__theme-text">
-                <strong>{theme.name}</strong>
-                <span>{theme.note}</span>
-              </span>
-            </button>
-          ))
-        }
-      </div>
-    </section>
-
-    <section class="dpanel__group">
       <h2 class="dpanel__label">Startbild <span>(Startseite)</span></h2>
       <div class="dpanel__images" role="radiogroup" aria-label="Startbild">
         {
@@ -124,7 +92,7 @@ const devMode = import.meta.env.DEV;
 </aside>
 
 <script>
-  const KEYS = { panel: 'design-panel', open: 'design-panel-open', theme: 'design-theme', hero: 'design-hero', dim: 'design-hero-dim' };
+  const KEYS = { panel: 'design-panel', open: 'design-panel-open', hero: 'design-hero', dim: 'design-hero-dim' };
   const store = {
     get: (key: string) => {
       try {
@@ -153,9 +121,6 @@ const devMode = import.meta.env.DEV;
   if (panel && (panel.hasAttribute('data-dev') || store.get(KEYS.panel) === '1')) {
     panel.hidden = false;
 
-    // Farbfelder der Schemata (per CSSOM – ohne Inline-Styles, CSP-freundlich)
-    panel.querySelectorAll<HTMLElement>('[data-color]').forEach((el) => (el.style.background = el.dataset.color ?? ''));
-
     /* Ein- und Ausklappen */
     const setOpen = (open: boolean) => {
       panel.classList.toggle('is-open', open);
@@ -166,17 +131,6 @@ const devMode = import.meta.env.DEV;
     panel.querySelectorAll('[data-design-toggle]').forEach((button) =>
       button.addEventListener('click', () => setOpen(!panel.classList.contains('is-open'))),
     );
-
-    /* Farbschema */
-    const themeButtons = [...panel.querySelectorAll<HTMLButtonElement>('[data-theme-option]')];
-    const applyTheme = (id: string) => {
-      if (id) root.dataset.theme = id;
-      else delete root.dataset.theme;
-      store.set(KEYS.theme, id || null);
-      themeButtons.forEach((b) => b.setAttribute('aria-checked', String(b.dataset.themeOption === id)));
-    };
-    themeButtons.forEach((b) => b.addEventListener('click', () => applyTheme(b.dataset.themeOption ?? '')));
-    applyTheme(store.get(KEYS.theme) ?? '');
 
     /* Startbild (nur auf der Startseite sichtbar – die Wahl gilt trotzdem überall) */
     const heroButtons = [...panel.querySelectorAll<HTMLButtonElement>('[data-hero-option]')];
@@ -211,7 +165,6 @@ const devMode = import.meta.env.DEV;
 
     /* Zurücksetzen */
     panel.querySelector('[data-design-reset]')?.addEventListener('click', () => {
-      applyTheme('');
       applyHero('hero');
       applyDim(0);
     });
@@ -331,55 +284,6 @@ const devMode = import.meta.env.DEV;
     text-transform: none;
   }
 
-  .dpanel__themes {
-    display: grid;
-    gap: 0.35rem;
-  }
-
-  .dpanel__theme {
-    display: flex;
-    align-items: center;
-    gap: 0.7rem;
-    padding: 0.45rem 0.6rem;
-    font: inherit;
-    text-align: left;
-    color: inherit;
-    border: 1.5px solid #dfe5ec;
-    border-radius: 0.8rem;
-    background: #ffffff;
-    cursor: pointer;
-  }
-
-  .dpanel__theme[aria-checked='true'] {
-    border-color: #111a24;
-    box-shadow: 0 0 0 2px rgb(17 26 36 / 0.12);
-  }
-
-  .dpanel__swatch {
-    display: flex;
-    flex: none;
-    overflow: hidden;
-    border-radius: 50%;
-    box-shadow: 0 0 0 1px rgb(0 0 0 / 0.08);
-  }
-
-  .dpanel__swatch span {
-    width: 0.7rem;
-    height: 2.1rem;
-  }
-
-  .dpanel__theme-text {
-    display: flex;
-    flex-direction: column;
-    font-size: 0.82rem;
-    line-height: 1.25;
-  }
-
-  .dpanel__theme-text span {
-    font-size: 0.72rem;
-    color: #5f6e80;
-  }
-
   .dpanel__images {
     display: grid;
     grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -463,7 +367,7 @@ const devMode = import.meta.env.DEV;
   }
 
   .dpanel button:focus-visible {
-    outline: 3px solid #3273b3;
+    outline: 3px solid #0b0b0c;
     outline-offset: 2px;
   }
 </style>

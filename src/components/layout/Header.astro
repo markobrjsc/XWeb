@@ -1,8 +1,8 @@
 ---
 /**
  * Header mit Hauptnavigation.
- * – Schwebende, runde Leiste auf allen Seiten: dunkel-milchig mit dünnem weißem Rand, Logo im hellen Label,
- *   aktiver Menüpunkt im weißen Label.
+ * – Schwebende, runde Leiste auf allen Seiten: dunkel-milchig mit dünnem weißem Rand, links das gelbe Logo,
+ *   aktiver Menüpunkt im weißen Label, rechts Instagram, Telefonnummer und Kontakt.
  * – Bleibt bei Seitenwechseln stehen, während der Inhalt seitlich hinein- bzw. hinausgleitet.
  * – Unterhalb von 1100 px Breite: Menü-Button, der ein Vollbild-Menü aus- und einklappt.
  * Menüpunkte kommen aus src/config/navigation.ts, das Verhalten aus src/scripts/site.ts.
@@ -26,7 +26,7 @@ const hasActiveNav = mainNav.some((item) => isCurrent(item.href));
   <div class="site-header__bar">
     <div class="site-header__inner">
       <a class="site-header__brand" href="/">
-        <Logo eager />
+        <Logo variant="wordmark" eager />
         <span class="visually-hidden"> – zur Startseite</span>
       </a>
 
@@ -47,6 +47,10 @@ const hasActiveNav = mainNav.some((item) => isCurrent(item.href));
       </nav>
 
       <div class="site-header__actions">
+        <a class="site-header__social" href={site.social.instagram} target="_blank" rel="noopener noreferrer">
+          <Icon name="instagram" size="1.05rem" />
+          <span class="visually-hidden">Instagram (öffnet in neuem Tab)</span>
+        </a>
         <a class="site-header__phone" href={site.contact.phoneHref}>
           <span class="site-header__phone-icon" aria-hidden="true"><Icon name="phone" size="1em" /></span>
           <span class="site-header__phone-number">{site.contact.phone}</span>
@@ -93,6 +97,9 @@ const hasActiveNav = mainNav.some((item) => isCurrent(item.href));
       </nav>
       <div class="mobile-menu__footer">
         <ContactList items={['phone', 'email', 'hours']} size="sm" />
+        <a class="mobile-menu__social" href={site.social.instagram} target="_blank" rel="noopener noreferrer">
+          <Icon name="instagram" size="1.1rem" /> Instagram
+        </a>
         <Button href={contactNavItem.href} variant="light" block icon="arrow-right">Projekt anfragen</Button>
       </div>
     </div>
@@ -106,7 +113,7 @@ const hasActiveNav = mainNav.some((item) => isCurrent(item.href));
     --header-fg-muted: rgb(255 255 255 / 0.72);
     --header-bg: rgb(var(--glass-dark));
     --header-border: rgb(255 255 255 / 0.55);
-    --header-accent: var(--blue-300);
+    --header-accent: var(--color-accent);
     --header-h: var(--header-height);
     /* Innenabstand der Leiste – oben, unten, links und rechts gleich groß */
     --header-pad: 0.8rem;
@@ -190,21 +197,20 @@ const hasActiveNav = mainNav.some((item) => isCurrent(item.href));
     flex-shrink: 0;
     align-items: center;
     height: var(--header-item-h);
-    padding: 0 1.1rem 0 0.75rem;
+    padding: 0;
     color: var(--blue-950);
     text-decoration: none;
-    border-radius: 999px;
-    background: #ffffff;
-    transition: background-color var(--duration-base) ease;
+    border-radius: var(--radius-sm);
+    transition: opacity var(--duration-base) ease;
   }
 
   .site-header__brand:hover {
-    background: var(--blue-50);
+    opacity: 0.88;
   }
 
+  /* Gelbes Schriftband-Logo in voller Leistenhöhe */
   .site-header__brand :global(.logo) {
-    --logo-height: calc(var(--header-item-h) - 0.75rem);
-    gap: 0.6rem;
+    --logo-height: var(--header-item-h);
   }
 
   .site-header__brand :global(.logo__text) {
@@ -306,6 +312,26 @@ const hasActiveNav = mainNav.some((item) => isCurrent(item.href));
     align-items: center;
     gap: var(--space-4);
     margin-left: auto;
+  }
+
+  /* Instagram – runder Rahmen wie das Telefon-Symbol */
+  .site-header__social {
+    display: inline-grid;
+    place-items: center;
+    flex: none;
+    width: 2.4rem;
+    height: 2.4rem;
+    color: var(--header-fg);
+    border-radius: 50%;
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--header-fg) 30%, transparent);
+    transition:
+      color var(--duration-base) ease,
+      box-shadow var(--duration-base) ease;
+  }
+
+  .site-header__social:hover {
+    color: var(--header-accent);
+    box-shadow: inset 0 0 0 1px var(--header-accent);
   }
 
   .site-header__phone {
@@ -562,6 +588,21 @@ const hasActiveNav = mainNav.some((item) => isCurrent(item.href));
 
   .mobile-menu__link[aria-current='page'] .mobile-menu__label {
     color: var(--blue-200);
+  }
+
+  .mobile-menu__social {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+    justify-self: start;
+    font-size: var(--text-sm);
+    font-weight: var(--weight-semibold);
+    color: #ffffff;
+    text-decoration: none;
+  }
+
+  .mobile-menu__social :global(.icon) {
+    color: var(--color-accent);
   }
 
   .mobile-menu__footer {

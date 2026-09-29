@@ -5,103 +5,133 @@
    definiert und in allen Komponenten per var(--…) verwendet.
    → Eine Änderung hier wirkt sich automatisch auf die ganze Website aus.
 
-   Gestaltungsprinzip: sachlich, präzise, hochwertig – Blau, Weiß und Grau,
-   klare Kanten, ruhige Bewegungen.
+   Farbwelt: nur Onyx (dunkel), Zinkgelb RAL 1018 (Akzent) und Weiß – plus
+   neutrale Abstufungen dazwischen. Kein Blau, keine weiteren Farbtöne.
+   Gelb ist Aktionen und Hervorhebungen vorbehalten, nie flächig.
    ========================================================================== */
 
 :root {
   /* ---------------------------------------------------------------------
-     Markenfarbe – aus dem Logo abgeleitet
+     Onyx – dunkle Grundfarbe (neutral, ohne Farbstich)
      --------------------------------------------------------------------- */
-  --brand-blue: #345c84;
+  --onyx-50: #f6f6f5;
+  --onyx-100: #ececea;
+  --onyx-200: #d9d9d6;
+  --onyx-300: #b8b8b4;
+  --onyx-400: #8c8c88;
+  --onyx-500: #62625f;
+  --onyx-600: #2c2c2d;
+  --onyx-700: #222223;
+  --onyx-800: #19191a;
+  --onyx-900: #121213;
+  --onyx-950: #0b0b0c;
 
-  /* Blau-Skala (Farbton 210°) – Primärfarbe der Website */
-  --blue-50: #f3f7fc;
-  --blue-100: #e3edf8;
-  --blue-200: #c3d9ee;
-  --blue-300: #91b8de;
-  --blue-400: #5c94cc;
-  --blue-500: #3273b3;
-  --blue-600: #235c95;
-  --blue-700: #19487b;
-  --blue-800: #12365e;
-  --blue-900: #0c2645;
-  --blue-950: #07172c;
+  /* ---------------------------------------------------------------------
+     Zinkgelb RAL 1018 – Akzent (Richtwert #F8F32B, am Bildschirm mit Kunde abgleichen)
+     --------------------------------------------------------------------- */
+  --yellow-50: #fefde8;
+  --yellow-100: #fdfbc4;
+  --yellow-300: #fbf77a;
+  --yellow-500: #f8f32b;
+  --yellow-600: #e2dc12;
+  --yellow-700: #8f8a00; /* nur für feine Linien/Icons auf Weiß, nicht als Textfarbe */
 
-  /* Dunkelster Markenton als RGB-Tripel – für Verdunklungen über Fotos, Glas-Flächen und Schatten:
-     rgb(var(--ink) / 0.5). Farbschemata (src/styles/themes.css) setzen ihn passend zur Palette. */
-  --ink: 7 23 44;
+  /* Altname: Die Komponenten verwenden noch --blue-* – das ist jetzt die Onyx-Skala */
+  --blue-50: var(--onyx-50);
+  --blue-100: var(--onyx-100);
+  --blue-200: var(--onyx-200);
+  --blue-300: var(--onyx-300);
+  --blue-400: var(--onyx-400);
+  --blue-500: var(--onyx-500);
+  --blue-600: var(--onyx-600);
+  --blue-700: var(--onyx-700);
+  --blue-800: var(--onyx-800);
+  --blue-900: var(--onyx-900);
+  --blue-950: var(--onyx-950);
+  --brand-blue: var(--onyx-800);
 
-  /* Neutrale Töne (leicht bläulich) */
+  /* Dunkelster Ton als RGB-Tripel – für Verdunklungen über Fotos, Glas-Flächen und Schatten:
+     rgb(var(--ink) / 0.5) */
+  --ink: 11 11 12;
+
+  /* Neutrale Töne (ohne Farbstich) */
   --gray-0: #ffffff;
-  --gray-50: #f7f9fb;
-  --gray-100: #eef2f6;
-  --gray-200: #dfe5ec;
-  --gray-300: #c5cfda;
-  --gray-400: #9aa8b8;
-  --gray-500: #5f6e80; /* ≥ 4.6:1 auf allen hellen Flächen (WCAG AA) */
-  --gray-600: #4b5a6b;
-  --gray-700: #36434f;
-  --gray-800: #1f2a36;
-  --gray-900: #111a24;
+  --gray-50: #f7f7f6;
+  --gray-100: #efefed;
+  --gray-200: #e2e2df;
+  --gray-300: #cacac6;
+  --gray-400: #9d9d98;
+  --gray-500: #62625e; /* ≥ 4.6:1 auf allen hellen Flächen (WCAG AA) */
+  --gray-600: #4b4b48;
+  --gray-700: #373735;
+  --gray-800: #232322;
+  --gray-900: #141414;
 
   /* ---------------------------------------------------------------------
      Semantische Farben – diese Namen nutzen die Komponenten
      --------------------------------------------------------------------- */
   --color-bg: var(--gray-0);
   --color-bg-subtle: var(--gray-50);
-  --color-bg-muted: var(--blue-50);
-  --color-bg-dark: var(--blue-950);
-  --color-bg-brand: var(--blue-800);
+  --color-bg-muted: var(--onyx-50);
+  --color-bg-dark: var(--onyx-950);
+  --color-bg-brand: var(--onyx-800);
 
   --color-surface: var(--gray-0);
   --color-surface-raised: var(--gray-0);
-  --color-surface-dark: var(--blue-900);
+  --color-surface-dark: var(--onyx-900);
 
   --color-text: var(--gray-800);
   --color-text-muted: var(--gray-600);
   --color-text-subtle: var(--gray-500);
-  --color-heading: var(--blue-950);
+  --color-heading: var(--onyx-950);
   --color-text-inverse: #ffffff;
   --color-text-inverse-muted: rgb(255 255 255 / 0.78);
   --color-text-inverse-subtle: rgb(255 255 255 / 0.6);
 
-  --color-primary: var(--blue-600);
-  --color-primary-hover: var(--blue-700);
-  --color-primary-soft: var(--blue-100);
-  --color-primary-softer: var(--blue-50);
+  /* Primär = Onyx (Flächen, aktive Reiter, Icons) */
+  --color-primary: var(--onyx-600);
+  --color-primary-hover: var(--onyx-800);
+  --color-primary-soft: var(--onyx-100);
+  --color-primary-softer: var(--onyx-50);
 
-  /* Hervorhebung im Text (z. B. farbiger Teil einer Überschrift) auf hellem Grund */
-  --color-highlight: var(--color-primary);
+  /* Haupt-Aktionen (Buttons): Gelb mit dunkler Schrift */
+  --color-cta: var(--yellow-500);
+  --color-cta-hover: var(--yellow-600);
+  --color-cta-fg: var(--onyx-950);
 
-  /* Akzent: helles Stahlblau – Hervorhebungen, v. a. auf dunklem Grund */
-  --color-accent: var(--blue-300);
-  --color-accent-strong: var(--blue-500);
+  /* Hervorhebung im Text auf hellem Grund: Onyx mit gelber Markierung (siehe .accent in global.css) –
+     gelbe Schrift wäre auf Weiß nicht lesbar */
+  --color-highlight: var(--onyx-950);
+  --color-highlight-mark: var(--yellow-500);
 
-  --color-link: var(--blue-600);
-  --color-link-hover: var(--blue-800);
+  /* Akzent auf dunklem Grund: Gelb */
+  --color-accent: var(--yellow-500);
+  --color-accent-strong: var(--yellow-600);
+
+  --color-link: var(--onyx-800);
+  --color-link-hover: var(--onyx-950);
 
   --color-border: var(--gray-200);
   --color-border-strong: var(--gray-300);
   --color-border-inverse: rgb(255 255 255 / 0.14);
 
-  --color-focus: var(--blue-500);
-  --color-focus-inverse: var(--blue-200);
+  --color-focus: var(--onyx-950);
+  --color-focus-inverse: var(--yellow-500);
 
-  /* Rückmeldungen in Formularen */
-  --color-danger: #b42318;
-  --color-danger-soft: #fef3f2;
-  --color-success: #067647;
-  --color-success-soft: #ecfdf3;
+  /* Rückmeldungen in Formularen – ebenfalls nur Onyx/Gelb (Hinweisfläche gelb getönt) */
+  --color-danger: var(--onyx-950);
+  --color-danger-soft: var(--yellow-100);
+  --color-success: var(--onyx-950);
+  --color-success-soft: var(--yellow-300);
 
   /* Technische Zeichnungen (Querschnitte, Lageplan) */
-  --draw-line: var(--blue-800);
-  --draw-line-soft: var(--blue-400);
-  --draw-hatch: var(--blue-300);
-  --draw-fill: var(--blue-50);
-  --draw-fill-strong: var(--blue-200);
+  --draw-line: var(--onyx-800);
+  --draw-line-soft: var(--onyx-400);
+  --draw-hatch: var(--onyx-300);
+  --draw-fill: var(--onyx-50);
+  --draw-fill-strong: var(--onyx-200);
   --draw-text: var(--gray-600);
-  --draw-highlight: var(--blue-500);
+  --draw-highlight: var(--yellow-600);
 
   /* ---------------------------------------------------------------------
      Typografie
@@ -203,7 +233,7 @@
   /* ---------------------------------------------------------------------
      Schatten (dezent, blau getönt)
      --------------------------------------------------------------------- */
-  --shadow-color: 212 74% 10%;
+  --shadow-color: 240 4% 5%;
   --shadow-xs: 0 1px 2px hsl(var(--shadow-color) / 0.05);
   --shadow-sm: 0 1px 2px hsl(var(--shadow-color) / 0.05), 0 2px 6px -2px hsl(var(--shadow-color) / 0.06);
   --shadow-md: 0 1px 3px hsl(var(--shadow-color) / 0.05), 0 10px 24px -10px hsl(var(--shadow-color) / 0.14);

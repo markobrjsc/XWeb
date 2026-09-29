@@ -1,15 +1,17 @@
 ---
 /**
- * Leistungen – alle Leistungen der drei Fachbereiche mit je einem Referenzprojekt,
+ * Leistungen – alle Leistungen der drei Fachbereiche mit ihren Referenzprojekten (Bildergalerien, je Karte umschaltbar),
  * dazu der Ablauf der Zusammenarbeit.
  */
 import BaseLayout from '@/layouts/BaseLayout.astro';
+import CertificatesSection from '@/components/sections/CertificatesSection.astro';
 import CtaStrip from '@/components/sections/CtaStrip.astro';
 import PageHero from '@/components/sections/PageHero.astro';
 import ProcessSection from '@/components/sections/ProcessSection.astro';
 import ServicesSection from '@/components/sections/ServicesSection.astro';
 import ServiceTabs from '@/components/sections/ServiceTabs.astro';
 import Button from '@/components/ui/Button.astro';
+import { site } from '@/config/site';
 import { processSteps } from '@/data/company';
 
 const breadcrumbs = [
@@ -20,7 +22,7 @@ const breadcrumbs = [
 
 <BaseLayout
   title="Leistungen"
-  description="Leistungen der Pflasterarbeiten Hildebrand GmbH: Pflasterarbeiten, Pflanzungen, Gartengestaltung, Kanal-, Leitungs- und Erdbau, Straßen-, Wege- und Asphaltbau."
+  description="Leistungen und Referenzen der Pflasterarbeiten Hildebrand GmbH: Pflasterarbeiten, Pflanzungen, Gartengestaltung, Kanal-, Leitungs- und Erdbau, Straßen-, Wege- und Asphaltbau."
   pageType="CollectionPage"
   breadcrumbs={breadcrumbs}
 >
@@ -38,6 +40,7 @@ const breadcrumbs = [
   <div>
     <ServiceTabs />
     <ServicesSection showHeader={false} tabs />
+    <CertificatesSection />
     <ProcessSection
       steps={processSteps}
       eyebrow="So arbeiten wir"
@@ -49,9 +52,10 @@ const breadcrumbs = [
   <CtaStrip
     icon="message-square"
     title="Sie planen ein Projekt?"
-    text="Rufen Sie uns an oder schreiben Sie uns – wir beraten Sie gerne und erstellen Ihnen ein individuelles Angebot."
+    text="Rufen Sie uns an oder schreiben Sie uns – wir beraten Sie gerne. Aktuelle Einblicke von unseren Baustellen zeigen wir auf Instagram."
   >
     <Button href="/kontakt/" variant="primary" icon="arrow-right">Kontakt aufnehmen</Button>
+    <Button href={site.social.instagram} variant="secondary" icon="instagram" iconPosition="start" external>Instagram</Button>
   </CtaStrip>
 </BaseLayout>
 

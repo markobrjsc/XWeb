@@ -14,13 +14,13 @@ export const JS_DETECT_SCRIPT = "document.documentElement.classList.add('js')";
  * src/config/navigation.ts (bei neuen Menüpunkten bitte hier ergänzen).
  * Muss im <head> stehen, damit das Ereignis `pagereveal` vor dem ersten Zeichnen registriert ist.
  */
-const NAV_ORDER = ['/', '/leistungen/', '/betrieb/', '/referenzen/', '/stellenangebote/', '/kontakt/'];
+const NAV_ORDER = ['/', '/leistungen/', '/stellenangebote/', '/betrieb/', '/kontakt/'];
 
 export const PAGE_TRANSITION_SCRIPT = `(function(){var o=${JSON.stringify(NAV_ORDER)};function i(u){var p;try{p=new URL(u).pathname}catch(e){return -1}for(var k=o.length-1;k>0;k--){if(p.indexOf(o[k])===0)return k}return p==='/'?0:-1}addEventListener('pagereveal',function(e){var t=e.viewTransition,a=window.navigation&&navigation.activation;if(!t)return;if(!a||!a.from||!a.entry){t.types.add('page-fade');return}var f=i(a.from.url),n=i(a.entry.url);t.types.add(f<0||n<0||f===n?'page-fade':n>f?'page-forward':'page-back')})})();`;
 
 /**
- * Design-Vorschau (src/components/debug/DesignPanel.astro): gewähltes Farbschema und die Abdunklung des
+ * Design-Vorschau (src/components/debug/DesignPanel.astro): Abdunklung des
  * Startbilds sofort setzen – vor dem ersten Zeichnen, damit beim Seitenwechsel nichts aufflackert.
  */
 export const DESIGN_BOOT_SCRIPT =
-  "try{var s=localStorage,r=document.documentElement,t=s.getItem('design-theme'),d=s.getItem('design-hero-dim');if(t)r.dataset.theme=t;if(d)r.style.setProperty('--hero-dim',d)}catch(e){}";
+  "try{var s=localStorage,d=s.getItem('design-hero-dim');s.removeItem('design-theme');if(d)document.documentElement.style.setProperty('--hero-dim',d)}catch(e){}";

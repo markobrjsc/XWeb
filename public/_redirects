@@ -5,7 +5,10 @@
 /impressum.html         /impressum/         301
 /datenschutz.html       /datenschutz/       301
 /leistungen.html /leistungen/ 301
-/referenzen.html        /referenzen/        301
+/referenzen.html        /leistungen/        301
+# Referenzen sind in die Leistungsseite übergegangen
+/referenzen/            /leistungen/        301
+/referenzen             /leistungen/        301
 /stellenangebote.html   /stellenangebote/   301
 /ueber-uns.html         /betrieb/           301
 /betrieb.html           /betrieb/           301

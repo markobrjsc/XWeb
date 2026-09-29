@@ -66,6 +66,15 @@ AVIF/WebP-Dateien in mehreren Größen erzeugt. Die vollständige Liste steht in
 Die **Originalfotos** (ca. 1,6 GB) liegen in `fotos-original/`. Dieser Ordner wird **nicht** veröffentlicht – in
 `public/` würden alle Originale unverändert mit hochgeladen. Bitte keine Fotos nach `public/images` legen.
 
+### Referenzprojekte & Zertifikate
+
+- **Referenzen** erscheinen auf der Leistungsseite in den passenden Leistungskarten (Feld `references` in
+  `src/data/services.ts`). Projekt anlegen: Markdown-Datei in `src/content/referenzen/`, Fotos in
+  `src/assets/images/referenzen/<dateiname>/`.
+- **Zertifikate:** PDF in `src/assets/zertifikate/` legen, Titel/Aussteller/Jahr in
+  `src/assets/zertifikate/zertifikate.json` eintragen. Vorschaubilder erzeugt `scripts/build-zertifikate.mjs`
+  automatisch vor `npm run dev` und `npm run build`.
+
 ---
 
 ## Gestaltung & Komponenten
