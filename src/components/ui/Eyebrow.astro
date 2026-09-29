@@ -22,7 +22,7 @@ const { as: Tag = 'p', icon, class: className } = Astro.props;
 <style>
   .eyebrow {
     --eyebrow-color: var(--blue-600);
-    --eyebrow-mark: var(--blue-600);
+    --eyebrow-mark: var(--color-accent);
     display: inline-flex;
     align-items: center;
     gap: 0.7rem;
@@ -37,13 +37,13 @@ const { as: Tag = 'p', icon, class: className } = Astro.props;
   :global([data-tone='dark']) .eyebrow,
   :global([data-tone='brand']) .eyebrow {
     --eyebrow-color: var(--blue-200);
-    --eyebrow-mark: var(--blue-300);
+    --eyebrow-mark: var(--color-accent);
   }
 
   .eyebrow__line {
     display: inline-block;
     width: 1.5rem;
-    height: 2px;
+    height: 3px;
     border-radius: 1px;
     background: var(--eyebrow-mark);
     flex-shrink: 0;

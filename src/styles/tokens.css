@@ -27,14 +27,14 @@
   --onyx-950: #0b0b0c;
 
   /* ---------------------------------------------------------------------
-     Zinkgelb RAL 1018 – Akzent (Richtwert #F8F32B, am Bildschirm mit Kunde abgleichen)
+     Gelb RAL 1018 – Akzent: rgb(243, 165, 5) (Vorgabe Kunde; im Bearbeiten-Modus per Farbwähler änderbar)
      --------------------------------------------------------------------- */
-  --yellow-50: #fefde8;
-  --yellow-100: #fdfbc4;
-  --yellow-300: #fbf77a;
-  --yellow-500: #f8f32b;
-  --yellow-600: #e2dc12;
-  --yellow-700: #8f8a00; /* nur für feine Linien/Icons auf Weiß, nicht als Textfarbe */
+  --yellow-50: #fef8e7;
+  --yellow-100: #fdecc1;
+  --yellow-300: #f8c95a;
+  --yellow-500: #f3a505;
+  --yellow-600: #d99100;
+  --yellow-700: #8a5c00; /* nur für feine Linien/Icons auf Weiß, nicht als Textfarbe */
 
   /* Altname: Die Komponenten verwenden noch --blue-* – das ist jetzt die Onyx-Skala */
   --blue-50: var(--onyx-50);

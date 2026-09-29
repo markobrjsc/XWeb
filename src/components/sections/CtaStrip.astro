@@ -11,12 +11,14 @@ interface Props {
   text?: string;
   icon?: string;
   id?: string;
+  /** Abstand nach oben: 'default' oder 'tight' (direkt nach einem Abschnitt mit eigenem Abstand) */
+  spaceTop?: 'default' | 'tight';
 }
 
-const { title, text, icon, id } = Astro.props;
+const { title, text, icon, id, spaceTop = 'default' } = Astro.props;
 ---
 
-<section class="cta-strip" id={id} aria-label={title}>
+<section class:list={['cta-strip', { 'cta-strip--tight': spaceTop === 'tight' }]} id={id} aria-label={title}>
   <Container>
     <div class="cta-strip__box" data-reveal>
       {icon && <IconBadge name={icon} tone="primary" size="lg" />}
@@ -34,6 +36,10 @@ const { title, text, icon, id } = Astro.props;
 <style>
   .cta-strip {
     padding-block: var(--section-space-sm);
+  }
+
+  .cta-strip--tight {
+    padding-top: 0;
   }
 
   .cta-strip__box {

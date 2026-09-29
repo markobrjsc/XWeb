@@ -43,6 +43,7 @@ const certificates = await Promise.all(
   certificates.length > 0 && (
     <Section id="zertifikate" labelledby="zertifikate-titel" class="certs">
       <SectionHeader
+        align="center"
         id="zertifikate-titel"
         eyebrow="Qualifikation"
         title={'Geprüft und <span class="accent">zertifiziert.</span>'}
@@ -178,6 +179,8 @@ const certificates = await Promise.all(
 <style>
   .certs__list {
     display: flex;
+    /* mittig – bei vielen Zertifikaten trotzdem vollständig wischbar */
+    justify-content: safe center;
     gap: clamp(1rem, 0.5rem + 2vw, 2rem);
     margin: 0;
     padding: 0.5rem 0.25rem 1rem;

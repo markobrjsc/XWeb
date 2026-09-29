@@ -5,6 +5,8 @@
  *    (src/content/edits.json), beim nächsten Build eingesetzt von src/middleware.ts.
  *  · Kopfbilder (Startseite + Seitenköpfe, [data-hero-edit]): aus allen Fotos wählen oder neues hochladen
  *    (src/content/heroes.json, neue Bilder unter src/assets/images/hero/).
+ *  · Farben: Farbwähler für Akzent (Gelb), Onyx-Töne und hellen Hintergrund – Vorschau sofort,
+ *    Speichern schreibt src/styles/custom-colors.css (überschreibt tokens.css).
  *  · Galerien (Carousel mit `folder`): Bilder hinzufügen, Reihenfolge per Ziehen ändern, ausblenden
  *    (src/content/galleries.json, neue Bilder als Dateien unter src/assets/images/<ordner>/).
  * Erscheint nur, wenn der Worker den Modus meldet (GET /api/edit/status/) – Server-Teil: worker/edit.ts.
@@ -32,9 +34,57 @@ const heroChoices = await Promise.all(
   <div class="edit-bar" data-edit-bar hidden>
     <span class="edit-bar__dot" aria-hidden="true"></span>
     <p class="edit-bar__text" data-edit-status aria-live="polite">Bearbeiten-Modus: Text anklicken und ändern.</p>
+    <button class="edit-bar__btn" type="button" data-colors-open>Farben</button>
     <button class="edit-bar__btn" type="button" data-edit-discard>Verwerfen</button>
     <button class="edit-bar__btn edit-bar__btn--primary" type="button" data-edit-save>Speichern</button>
   </div>
+
+  <dialog class="gallery-dialog colors-dialog" data-colors-dialog aria-labelledby="colors-dialog-title">
+    <form method="dialog" class="gallery-dialog__inner">
+      <header class="gallery-dialog__head">
+        <div>
+          <p class="gallery-dialog__kicker">Farben</p>
+          <h2 class="gallery-dialog__title" id="colors-dialog-title">Farben der Website anpassen</h2>
+        </div>
+        <button class="gallery-dialog__close" type="button" aria-label="Schließen">
+          <Icon name="x" size="1.1rem" />
+        </button>
+      </header>
+      <p class="gallery-dialog__hint">Änderungen sind sofort als Vorschau sichtbar. Hell- und Hover-Töne werden automatisch berechnet.</p>
+      <div class="colors-grid">
+        <label class="color-field">
+          <input type="color" data-color-var="--yellow-500" />
+          <span><strong>Akzent (Gelb)</strong><small>Buttons, Hervorhebungen, aktive Reiter</small></span>
+          <code data-color-code></code>
+        </label>
+        <label class="color-field">
+          <input type="color" data-color-var="--onyx-950" />
+          <span><strong>Onyx dunkel</strong><small>Header, Footer, Überschriften, Verdunklungen</small></span>
+          <code data-color-code></code>
+        </label>
+        <label class="color-field">
+          <input type="color" data-color-var="--onyx-800" />
+          <span><strong>Onyx mittel</strong><small>Links, Flächen im dunklen Bereich</small></span>
+          <code data-color-code></code>
+        </label>
+        <label class="color-field">
+          <input type="color" data-color-var="--onyx-600" />
+          <span><strong>Onyx Flächen</strong><small>Icon-Flächen, Badges</small></span>
+          <code data-color-code></code>
+        </label>
+        <label class="color-field">
+          <input type="color" data-color-var="--gray-50" />
+          <span><strong>Heller Hintergrund</strong><small>Hellgraue Abschnitte</small></span>
+          <code data-color-code></code>
+        </label>
+      </div>
+      <footer class="gallery-dialog__foot">
+        <button class="gallery-dialog__add" type="button" data-colors-reset>Auf Standard zurücksetzen</button>
+        <p class="gallery-dialog__status" data-colors-status aria-live="polite"></p>
+        <button class="edit-bar__btn edit-bar__btn--primary" type="button" data-colors-save>Farben speichern</button>
+      </footer>
+    </form>
+  </dialog>
 
   <dialog class="gallery-dialog" data-hero-dialog aria-labelledby="hero-dialog-title">
     <form method="dialog" class="gallery-dialog__inner">
@@ -276,6 +326,98 @@ const heroChoices = await Promise.all(
     document.addEventListener('input', () => editing && updateBar());
     window.addEventListener('beforeunload', (event) => {
       if (editing && changes().length) event.preventDefault();
+    });
+
+    /* ---------------- Farben ---------------- */
+    // Standardwerte wie in src/styles/tokens.css
+    const COLOR_DEFAULTS: Record<string, string> = {
+      '--yellow-500': '#f3a505',
+      '--onyx-950': '#0b0b0c',
+      '--onyx-800': '#19191a',
+      '--onyx-600': '#2c2c2d',
+      '--gray-50': '#f7f7f6',
+    };
+    const colorsDialog = ui.querySelector<HTMLDialogElement>('[data-colors-dialog]')!;
+    const colorsStatus = colorsDialog.querySelector<HTMLElement>('[data-colors-status]')!;
+    const colorInputs = [...colorsDialog.querySelectorAll<HTMLInputElement>('[data-color-var]')];
+    const root = document.documentElement;
+
+    const hexToRgb = (hex: string) => [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16));
+    const rgbToHex = (rgb: number[]) => `#${rgb.map((v) => Math.round(Math.max(0, Math.min(255, v))).toString(16).padStart(2, '0')).join('')}`;
+    const mix = (hex: string, target: string, amount: number) => {
+      const a = hexToRgb(hex);
+      const b = hexToRgb(target);
+      return rgbToHex(a.map((v, i) => v + (b[i] - v) * amount));
+    };
+    const toHex = (value: string) => {
+      const v = value.trim();
+      if (/^#[0-9a-f]{6}$/i.test(v)) return v.toLowerCase();
+      const probe = document.createElement('span');
+      probe.style.color = v;
+      document.body.append(probe);
+      const rgb = getComputedStyle(probe).color.match(/\d+/g)?.slice(0, 3).map(Number) ?? [0, 0, 0];
+      probe.remove();
+      return rgbToHex(rgb);
+    };
+
+    // Aus den gewählten Grundfarben alle abhängigen Töne berechnen
+    const derive = (base: Record<string, string>) => {
+      const y = base['--yellow-500'];
+      const o = base['--onyx-950'];
+      return {
+        ...base,
+        '--yellow-50': mix(y, '#ffffff', 0.9),
+        '--yellow-100': mix(y, '#ffffff', 0.75),
+        '--yellow-300': mix(y, '#ffffff', 0.35),
+        '--yellow-600': mix(y, '#000000', 0.1),
+        '--yellow-700': mix(y, '#000000', 0.45),
+        '--onyx-900': mix(o, '#ffffff', 0.03),
+        '--ink': hexToRgb(o).join(' '),
+      };
+    };
+
+    const currentBase = () =>
+      Object.fromEntries(colorInputs.map((input) => [input.dataset.colorVar!, input.value.toLowerCase()]));
+
+    const preview = () => {
+      Object.entries(derive(currentBase())).forEach(([name, value]) => root.style.setProperty(name, value));
+      colorInputs.forEach((input) => {
+        const code = input.parentElement?.querySelector('[data-color-code]');
+        if (code) code.textContent = input.value.toUpperCase();
+      });
+    };
+
+    ui.querySelector('[data-colors-open]')!.addEventListener('click', () => {
+      const styles = getComputedStyle(root);
+      colorInputs.forEach((input) => (input.value = toHex(styles.getPropertyValue(input.dataset.colorVar!))));
+      preview();
+      colorsStatus.textContent = '';
+      colorsDialog.showModal();
+    });
+    colorInputs.forEach((input) => input.addEventListener('input', preview));
+
+    colorsDialog.querySelector('[data-colors-reset]')!.addEventListener('click', () => {
+      colorInputs.forEach((input) => (input.value = COLOR_DEFAULTS[input.dataset.colorVar!]));
+      preview();
+      colorsStatus.textContent = 'Standardfarben als Vorschau – zum Übernehmen speichern.';
+    });
+
+    colorsDialog.querySelector('[data-colors-save]')!.addEventListener('click', async () => {
+      const base = currentBase();
+      const isDefault = Object.entries(COLOR_DEFAULTS).every(([name, value]) => base[name] === value);
+      colorsStatus.textContent = 'Wird gespeichert …';
+      try {
+        const response = await fetch('/api/edit/farben/', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ colors: isDefault ? {} : derive(base) }),
+        });
+        const result = await response.json();
+        if (!response.ok || !result.ok) throw new Error(result.error || 'Speichern fehlgeschlagen.');
+        colorsStatus.textContent = 'Gespeichert – nach dem automatischen Build in ca. 2 Minuten live.';
+      } catch (error) {
+        colorsStatus.textContent = error instanceof Error ? error.message : 'Speichern fehlgeschlagen.';
+      }
     });
 
     /* ---------------- Kopfbilder ---------------- */
@@ -595,7 +737,7 @@ const heroChoices = await Promise.all(
     width: 0.55rem;
     height: 0.55rem;
     border-radius: 50%;
-    background: var(--color-accent, #f8f32b);
+    background: var(--color-accent, #f3a505);
   }
 
   .edit-bar__text {
@@ -640,7 +782,7 @@ const heroChoices = await Promise.all(
   }
 
   :global(.is-editing [data-editable]:focus) {
-    outline: 2px solid var(--color-accent, #f8f32b);
+    outline: 2px solid var(--color-accent, #f3a505);
     background: rgb(246 201 69 / 0.16);
   }
 
@@ -656,7 +798,7 @@ const heroChoices = await Promise.all(
     color: #111a24;
     border: 0;
     border-radius: 999px;
-    background: var(--color-accent, #f8f32b);
+    background: var(--color-accent, #f3a505);
     box-shadow: 0 6px 18px -6px rgb(0 0 0 / 0.5);
     cursor: pointer;
   }
@@ -682,13 +824,68 @@ const heroChoices = await Promise.all(
 
   .hero-choices :global(.hero-choice:hover),
   .hero-choices :global(.hero-choice:focus-visible) {
-    border-color: var(--color-accent, #f8f32b);
+    border-color: var(--color-accent, #f3a505);
   }
 
   .hero-choices :global(.hero-choice img) {
     width: 100%;
     height: 100%;
     object-fit: cover;
+  }
+
+  /* Farben-Dialog */
+  .colors-dialog {
+    width: min(34rem, calc(100vw - 2rem));
+  }
+
+  .colors-grid {
+    display: grid;
+    gap: 0.5rem;
+  }
+
+  .color-field {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 0.8rem;
+    padding: 0.55rem 0.75rem;
+    border: 1px solid #e2e2df;
+    border-radius: 0.8rem;
+    cursor: pointer;
+  }
+
+  .color-field input {
+    width: 2.6rem;
+    height: 2.6rem;
+    padding: 0;
+    border: 0;
+    border-radius: 50%;
+    background: none;
+    cursor: pointer;
+  }
+
+  .color-field input::-webkit-color-swatch-wrapper {
+    padding: 0;
+  }
+
+  .color-field input::-webkit-color-swatch {
+    border: 1px solid rgb(0 0 0 / 0.15);
+    border-radius: 50%;
+  }
+
+  .color-field span {
+    display: grid;
+    font-size: 0.85rem;
+  }
+
+  .color-field small {
+    font-size: 0.72rem;
+    color: #62625e;
+  }
+
+  .color-field code {
+    font-size: 0.75rem;
+    color: #4b4b48;
   }
 
   /* Galerie-Dialog */
@@ -772,7 +969,7 @@ const heroChoices = await Promise.all(
   }
 
   .gallery-dialog__grid :global(.gallery-item[data-new]) {
-    border-color: var(--color-accent, #f8f32b);
+    border-color: var(--color-accent, #f3a505);
   }
 
   .gallery-dialog__grid :global(.gallery-item[data-hidden] img) {

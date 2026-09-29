@@ -158,13 +158,14 @@ import { pillars } from '@/data/services';
 <style>
   .svc-tabs {
     --tabs-bg: var(--color-bg-subtle);
-    --tabs-pad: var(--section-space-sm);
+    /* wenig Abstand zum Seitenkopf, mehr Luft zum Inhalt darunter */
+    --tabs-pad: clamp(0.9rem, 0.6rem + 1vw, 1.4rem);
     position: sticky;
     /* Die Pille selbst klebt knapp unter dem Header – der Innenabstand darüber rutscht darunter */
     top: calc(var(--header-height-compact) + var(--space-2) - var(--tabs-pad));
     z-index: 5;
     padding-top: var(--tabs-pad);
-    padding-bottom: var(--space-4);
+    padding-bottom: clamp(1.75rem, 1.2rem + 1.5vw, 2.5rem);
     background: var(--tabs-bg);
   }
 
@@ -246,9 +247,10 @@ import { pillars } from '@/data/services';
     background: var(--blue-50);
   }
 
+  /* Ausgewählter Fachbereich: gelb mit dunkler Schrift */
   .svc-tabs__tab[aria-selected='true'] {
-    color: #ffffff;
-    background: var(--blue-600);
+    color: var(--color-cta-fg);
+    background: var(--color-cta);
   }
 
   .svc-tabs__icon {
@@ -266,8 +268,8 @@ import { pillars } from '@/data/services';
   }
 
   .svc-tabs__tab[aria-selected='true'] .svc-tabs__icon {
-    color: #ffffff;
-    background: rgb(255 255 255 / 0.18);
+    color: var(--color-cta-fg);
+    background: rgb(255 255 255 / 0.45);
   }
 
   .svc-tabs__text {

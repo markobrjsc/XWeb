@@ -1,7 +1,8 @@
 ---
 /**
- * Logo – zwei Varianten aus den Vektordateien in src/assets/brand/:
- *  · variant="wordmark": gelbes Schriftband mit Maskottchen (hildebrand-logo.svg) – im Header
+ * Logo – drei Varianten aus den Vektordateien in src/assets/brand/:
+ *  · variant="badge": Maskottchen mit gelbem Namens-Label dahinter, im weißen Pill-Rahmen – im Header
+ *  · variant="wordmark": gelbes Schriftband mit Maskottchen (hildebrand-logo.svg) – derzeit ungenutzt
  *  · Standard: Maskottchen mit Stein-„H“ (hildebrand-maskottchen.svg) plus Schriftzug – an allen anderen Stellen
  */
 import { Image } from 'astro:assets';
@@ -9,7 +10,7 @@ import wordmark from '@/assets/brand/hildebrand-logo.svg';
 import mascot from '@/assets/brand/hildebrand-maskottchen.svg';
 
 interface Props {
-  variant?: 'wordmark' | 'mark';
+  variant?: 'badge' | 'wordmark' | 'mark';
   /** Nur Maskottchen ohne Schriftzug */
   markOnly?: boolean;
   size?: 'sm' | 'md' | 'lg';
@@ -22,7 +23,19 @@ const { variant = 'mark', markOnly = false, size = 'md', eager = false, class: c
 ---
 
 {
-  variant === 'wordmark' ? (
+  variant === 'badge' ? (
+    <span class:list={['logo', 'logo--badge', `logo--${size}`, className]}>
+      <Image
+        src={mascot}
+        alt=""
+        class="logo__badge-mark"
+        loading={eager ? 'eager' : 'lazy'}
+        decoding="async"
+      />
+      <span class="logo__badge-label" aria-hidden="true">Hildebrand</span>
+      <span class="visually-hidden">Pflasterarbeiten Hildebrand GmbH</span>
+    </span>
+  ) : variant === 'wordmark' ? (
     <span class:list={['logo', 'logo--wordmark', `logo--${size}`, className]}>
       <Image
         src={wordmark}
@@ -75,6 +88,47 @@ const { variant = 'mark', markOnly = false, size = 'md', eager = false, class: c
     width: auto;
     height: var(--logo-height);
     transition: height var(--duration-slow) var(--ease-out);
+  }
+
+  /* Header-Logo: Maskottchen vorne, gelbes Pill-Label mit „HILDEBRAND“ dahinter (ab der Figurmitte nach
+     rechts), alles in einem weißen, abgerundeten Rahmen */
+  .logo--badge {
+    --badge-pad: 3px;
+    --mark-h: calc(var(--logo-height) - var(--badge-pad) * 2 - 4px);
+    --mark-w: calc(var(--mark-h) * 0.77);
+    gap: 0;
+    height: var(--logo-height);
+    padding: var(--badge-pad) var(--badge-pad) var(--badge-pad) calc(var(--badge-pad) + 0.35rem);
+    border: 2px solid #ffffff;
+    border-radius: var(--radius-full);
+  }
+
+  .logo--badge :global(.logo__badge-mark) {
+    position: relative;
+    z-index: 1;
+    display: block;
+    width: var(--mark-w);
+    height: var(--mark-h);
+    filter: drop-shadow(1px 0 0 rgb(0 0 0 / 0.25));
+  }
+
+  .logo__badge-label {
+    display: inline-flex;
+    align-items: center;
+    height: calc(var(--mark-h) * 0.72);
+    margin-left: calc(var(--mark-w) * -0.5);
+    padding: 0 1rem 0 calc(var(--mark-w) * 0.5 + 0.55rem);
+    font-size: calc(var(--mark-h) * 0.4);
+    font-weight: var(--weight-extrabold, 800);
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    line-height: 1;
+    color: #ffffff;
+    -webkit-text-stroke: 1.5px #0b0b0c;
+    paint-order: stroke fill;
+    text-shadow: 0 1px 0 #0b0b0c;
+    border-radius: var(--radius-full);
+    background: var(--color-cta);
   }
 
   .logo__text {

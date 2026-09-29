@@ -6,6 +6,7 @@
  *  POST /api/edit/texte/             { page, changes: [{ scope: 'global' | 'page', from, to }] } → src/content/edits.json
  *  POST /api/edit/galerie/           { folder, order: [..], hidden: [..] }                        → src/content/galleries.json
  *  POST /api/edit/hero/             { page, image }  – Kopfbild einer Seite                            → src/content/heroes.json
+ *  POST /api/edit/farben/           { colors: { "--yellow-500": "#f3a505", … } }                    → src/styles/custom-colors.css
  *  PUT  /api/edit/bild/?folder=&name=  Bild als Base64-Text (vom Browser verkleinert)             → src/assets/images/<folder>/<name>
  *
  * Einrichtung: GitHub-Token (Fine-grained, nur dieses Repository, „Contents: Read and write“)
@@ -33,6 +34,23 @@ declare const FixedLengthStream: {
 const EDITS_PATH = 'src/content/edits.json';
 const GALLERIES_PATH = 'src/content/galleries.json';
 const HEROES_PATH = 'src/content/heroes.json';
+const COLORS_PATH = 'src/styles/custom-colors.css';
+
+/** Farb-Variablen, die der Bearbeiten-Modus setzen darf (Standardwerte: src/styles/tokens.css) */
+const COLOR_VARIABLES = new Set([
+  '--yellow-50',
+  '--yellow-100',
+  '--yellow-300',
+  '--yellow-500',
+  '--yellow-600',
+  '--yellow-700',
+  '--onyx-600',
+  '--onyx-800',
+  '--onyx-900',
+  '--onyx-950',
+  '--gray-50',
+  '--ink',
+]);
 const FOLDER_PATTERN = /^[a-z0-9-]+(\/[a-z0-9-]+){0,2}$/;
 const NAME_PATTERN = /^[a-z0-9][a-z0-9_-]{0,80}$/;
 const FILE_PATTERN = /^[a-z0-9][a-z0-9_-]{0,80}\.(jpg|jpeg|png|webp)$/;
@@ -74,6 +92,22 @@ async function readJsonFile<T>(env: EditEnv, path: string, fallback: T): Promise
   if (!response.ok) throw new Error(`GitHub (${response.status}): ${await response.text()}`);
   const file = (await response.json()) as { content: string; sha: string };
   return { data: JSON.parse(fromBase64(file.content)) as T, sha: file.sha };
+}
+
+/** Textdatei komplett ersetzen (legt sie bei Bedarf an) */
+async function writeTextFile(env: EditEnv, path: string, content: string, message: string) {
+  for (let attempt = 0; attempt < 3; attempt++) {
+    const current = await fetch(`${contentsUrl(env, path)}?ref=${env.GITHUB_BRANCH ?? 'main'}`, { headers: ghHeaders(env) });
+    const sha = current.ok ? ((await current.json()) as { sha: string }).sha : undefined;
+    const response = await fetch(contentsUrl(env, path), {
+      method: 'PUT',
+      headers: { ...ghHeaders(env), 'Content-Type': 'application/json' },
+      body: JSON.stringify({ message, content: toBase64(content), branch: env.GITHUB_BRANCH ?? 'main', ...(sha ? { sha } : {}) }),
+    });
+    if (response.ok) return;
+    if (response.status !== 409 && response.status !== 422) throw new Error(`GitHub (${response.status}): ${await response.text()}`);
+  }
+  throw new Error('Speichern fehlgeschlagen – bitte erneut versuchen.');
 }
 
 /** JSON-Datei lesen, ändern, zurückschreiben – bei gleichzeitigen Änderungen bis zu 3 Versuche */
@@ -175,6 +209,26 @@ async function saveHero(request: Request, env: EditEnv) {
   return json({ ok: true });
 }
 
+/* ------------------------------------------------------------------------ */
+/* Farben                                                                    */
+/* ------------------------------------------------------------------------ */
+async function saveColors(request: Request, env: EditEnv) {
+  const body = (await request.json()) as { colors?: Record<string, unknown> };
+  const entries = Object.entries(body.colors ?? {})
+    .filter(([name]) => COLOR_VARIABLES.has(name))
+    .map(([name, value]) => [name, String(value).trim().toLowerCase()] as const)
+    .filter(([name, value]) => (name === '--ink' ? /^\d{1,3} \d{1,3} \d{1,3}$/.test(value) : /^#[0-9a-f]{6}$/.test(value)));
+
+  const lines = entries.map(([name, value]) => `  ${name}: ${value};`).join('\n');
+  const css =
+    '/* Farbänderungen aus dem Bearbeiten-Modus der Website (Stift oben rechts → Farben).\n' +
+    '   Diese Datei wird beim Speichern automatisch überschrieben; Standardwerte stehen in tokens.css. */\n' +
+    `:root {\n${lines ? `${lines}\n` : ''}}\n`;
+
+  await writeTextFile(env, COLORS_PATH, css, entries.length ? `Farben geändert (${entries.length} Werte)` : 'Farben auf Standard zurückgesetzt');
+  return json({ ok: true, saved: entries.length });
+}
+
 /** Bild als Datei committen – der Base64-Text wird unverändert durchgereicht (kostet kaum Rechenzeit) */
 async function uploadImage(request: Request, env: EditEnv, url: URL) {
   const folder = url.searchParams.get('folder') ?? '';
@@ -228,6 +282,7 @@ export async function handleEdit(request: Request, env: EditEnv, url: URL, pathn
     if (pathname === '/api/edit/texte' && request.method === 'POST') return await saveTexts(request, env);
     if (pathname === '/api/edit/galerie' && request.method === 'POST') return await saveGallery(request, env);
     if (pathname === '/api/edit/hero' && request.method === 'POST') return await saveHero(request, env);
+    if (pathname === '/api/edit/farben' && request.method === 'POST') return await saveColors(request, env);
     if (pathname === '/api/edit/bild' && request.method === 'PUT') return await uploadImage(request, env, url);
   } catch (error) {
     console.error(error);

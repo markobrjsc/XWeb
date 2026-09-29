@@ -86,7 +86,7 @@ const drawings = {
                   {pillar.number} · {pillar.subtitle}
                 </Eyebrow>
                 <h2 class="pillar-row__title" id={`${pillar.id}-titel`}>
-                  {pillar.title}
+                  <span class="marker">{pillar.title}</span>
                 </h2>
                 <p class="pillar-row__text">{pillar.description}</p>
               </div>
@@ -153,7 +153,7 @@ const drawings = {
   :global(.services--tabs) .pillar-row,
   :global(.services--tabs) :global(.service) {
     /* zusätzlich zum scroll-padding des Headers: Platz für die klebende Auswahlleiste */
-    scroll-margin-top: 5.5rem;
+    scroll-margin-top: 6.5rem;
   }
 
   @media (min-width: 56rem) {

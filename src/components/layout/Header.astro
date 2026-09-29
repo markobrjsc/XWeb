@@ -1,7 +1,7 @@
 ---
 /**
  * Header mit Hauptnavigation.
- * – Schwebende, runde Leiste auf allen Seiten: dunkel-milchig mit dünnem weißem Rand, links das gelbe Logo,
+ * – Schwebende, runde Leiste auf allen Seiten: dunkel-milchig mit dünnem weißem Rand, links Maskottchen mit gelbem Namens-Label,
  *   aktiver Menüpunkt im weißen Label, rechts Instagram, Telefonnummer und Kontakt.
  * – Bleibt bei Seitenwechseln stehen, während der Inhalt seitlich hinein- bzw. hinausgleitet.
  * – Unterhalb von 1100 px Breite: Menü-Button, der ein Vollbild-Menü aus- und einklappt.
@@ -26,7 +26,7 @@ const hasActiveNav = mainNav.some((item) => isCurrent(item.href));
   <div class="site-header__bar">
     <div class="site-header__inner">
       <a class="site-header__brand" href="/">
-        <Logo variant="wordmark" eager />
+        <Logo variant="badge" eager />
         <span class="visually-hidden"> – zur Startseite</span>
       </a>
 
@@ -208,7 +208,7 @@ const hasActiveNav = mainNav.some((item) => isCurrent(item.href));
     opacity: 0.88;
   }
 
-  /* Gelbes Schriftband-Logo in voller Leistenhöhe */
+  /* Logo (Maskottchen + gelbes Label im weißen Rahmen) in voller Leistenhöhe */
   .site-header__brand :global(.logo) {
     --logo-height: var(--header-item-h);
   }
@@ -253,7 +253,13 @@ const hasActiveNav = mainNav.some((item) => isCurrent(item.href));
     color: var(--header-fg);
     text-decoration: none;
     border-radius: 999px;
-    transition: background-color var(--duration-base) ease;
+    text-decoration: underline;
+    text-decoration-color: transparent;
+    text-decoration-thickness: 3px;
+    text-underline-offset: 0.45em;
+    transition:
+      background-color var(--duration-base) ease,
+      text-decoration-color var(--duration-base) ease;
   }
 
   /* Während eines Seitenübergangs alle Menütexte weiß – siehe „site-nav-labels“ in global.css */
@@ -263,13 +269,15 @@ const hasActiveNav = mainNav.some((item) => isCurrent(item.href));
 
   .site-nav__link:hover {
     color: var(--header-fg);
-    background: rgb(255 255 255 / 0.14);
+    background: rgb(255 255 255 / 0.1);
+    text-decoration-color: var(--color-accent);
   }
 
   .site-nav__link[aria-current='page'] {
     font-weight: var(--weight-semibold);
     color: var(--blue-950);
     background: #ffffff;
+    text-decoration-color: var(--color-accent);
   }
 
   .site-nav__indicator {
@@ -314,8 +322,9 @@ const hasActiveNav = mainNav.some((item) => isCurrent(item.href));
     margin-left: auto;
   }
 
-  /* Instagram – runder Rahmen wie das Telefon-Symbol */
+  /* Instagram – runder Rahmen wie das Telefon-Symbol, als Gruppe dicht daneben */
   .site-header__social {
+    margin-right: calc(var(--space-2) - var(--space-4));
     display: inline-grid;
     place-items: center;
     flex: none;
@@ -631,8 +640,24 @@ const hasActiveNav = mainNav.some((item) => isCurrent(item.href));
 
   /* Desktop: volle Navigation, kein Menü-Button */
   @media (min-width: 68.75rem) {
+    /* Drei Spalten: Logo links, Reiter exakt mittig, Aktionen rechts – unabhängig von deren Breite */
+    .site-header__inner {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+    }
+
+    .site-header__brand {
+      justify-self: start;
+    }
+
     .site-nav {
       display: block;
+      margin-inline: 0;
+    }
+
+    .site-header__actions {
+      justify-self: end;
+      margin-left: 0;
     }
 
     .menu-toggle,
