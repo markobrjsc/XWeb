@@ -25,5 +25,23 @@
   },
   "body[data-page=\"/\"] main#main > section.hero > div.hero__content:nth-of-type(2) > div.hero__card": {
     "padding-top": "40px"
+  },
+  "body[data-page=\"/stellenangebote/\"] li#stelle-strassenbauer > article.card.card--elevated.card--pad-lg.card--interactive.job-card > div.card__body > div.job-card__layout > div.job-card__main:nth-of-type(2) > h3.job-card__title > a.card__link": {
+    "margin-top": "0px"
+  },
+  "body[data-page=\"/stellenangebote/\"] main#main > section.cta-strip:nth-of-type(5)": {
+    "padding-top": "35px"
+  },
+  "body[data-page=\"/stellenangebote/\"] section#bewerbung": {
+    "padding-bottom": "70px",
+    "padding-top": "70px"
+  },
+  "body[data-page=\"/stellenangebote/\"] main#main > section.section.section--space-default:nth-of-type(3)": {
+    "padding-top": "70px",
+    "padding-bottom": "70px"
+  },
+  "body[data-page=\"/stellenangebote/\"] section#stellen": {
+    "padding-bottom": "70px",
+    "padding-top": "70px"
   }
 }
