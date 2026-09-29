@@ -96,8 +96,8 @@ export const benefits: Feature[] = [
   },
   {
     icon: 'car',
-    title: 'Geschäftswagen',
-    text: 'Für den Außendienst – oder optional auch darüber hinaus. Sprechen Sie uns an.',
+    title: 'Geschäftswagen (Außendienst / optional)',
+    text: 'Ein Firmenwagen für den Außendienst – oder optional nach Absprache.',
   },
   {
     icon: 'cup-soda',

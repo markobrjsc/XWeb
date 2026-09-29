@@ -103,6 +103,8 @@
      gelbe Schrift wäre auf Weiß nicht lesbar */
   --color-highlight: var(--onyx-950);
   --color-highlight-mark: var(--yellow-500);
+  /* Marker-Strich: unten kräftig gelb, nach oben weich ins Transparente auslaufend */
+  --marker-fade: linear-gradient(to top, transparent 6%, var(--color-highlight-mark) 6%, var(--color-highlight-mark) 14%, transparent 62%);
 
   /* Akzent auf dunklem Grund: Gelb */
   --color-accent: var(--yellow-500);

@@ -24,10 +24,19 @@ Stand: 29.09.2026 · Hinweis: Jede Speicherung im Bearbeiten-Modus ist ein Commi
 - [x] **Mehr gelbe Unterstreichungen** – Titel der Fachbereiche mit Marker (`.marker`), Leistungstitel beim Überfahren, gelbe Linien vor den Überzeilen, Header-Reiter
 - [x] **Gelb = rgb(243, 165, 5)** und **Farbwähler im Bearbeiten-Modus** (Stift → „Farben“): Akzent, drei Onyx-Töne, heller Hintergrund; Vorschau sofort, Speichern schreibt `src/styles/custom-colors.css` auf `main`
 
+## Erledigt (29.09.2026, Runde 3)
+
+- [x] **Header-Logo** wieder im alten Stil: weißes Label mit Maskottchen (SVG) und dunklem Schriftzug, ohne Akzentfarbe
+- [x] **Header-Reiter** ohne gelbe Unterstreichung, Schrift fetter (Reiter, aktiver Reiter, Telefonnummer)
+- [x] **Marker-Striche** laufen von unten gelb nach oben transparent aus (`--marker-fade` in `tokens.css`)
+- [x] **Abstände im Bearbeiten-Modus** (Stift → „Abstände“): Element überfahren zeigt Außen- (orange) und Innenabstände (grün), Klick öffnet Einstellfeld für alle 8 Werte; Speichern schreibt `src/content/spacing.json`, `scripts/build-spacing.mjs` erzeugt daraus `src/styles/custom-spacing.css`; Header/Footer seitenübergreifend, sonst je Seite
+- [x] **Zertifikat-Ansicht** mit zwei Karten: links Titel, Aussteller, Jahr, „PDF herunterladen“ und „Schließen“ (zentriert), rechts das Zertifikat mit X oben rechts; auf dem Handy untereinander
+- [x] **Geschäftswagen** → „Geschäftswagen (Außendienst / optional)“
+- [x] **Social-Vorschaubild** (`public/og-image.jpg`) im neuen Design: Onyx, Gelb, Startbild
+
 ## Offen / mit Kunde klären
 
 - [ ] **Gelbton** – jetzt `rgb(243, 165, 5)`; mit dem Kunden am Bildschirm gegenprüfen, Feinabstimmung direkt über Stift → „Farben“
-- [ ] **Geschäftswagen-Formulierung** bestätigen („Für den Außendienst – oder optional auch darüber hinaus“, `src/data/company.ts`)
 - [ ] **Zuordnung Projekte → Leistungen** prüfen (`references` in `src/data/services.ts`)
-- [ ] **Social-Vorschaubild** neu erzeugen, sobald die Seite final ist (`npm run build && npm run og-image`)
+- [ ] **Social-Vorschaubild** nach größeren Design-Änderungen neu erzeugen (`npm run build && npm run og-image`)
 - [ ] Vor dem Livegang: Formular-Empfänger zurück auf t-online, Resend-Domain bestätigen, Bearbeiten-Modus abschalten oder absichern (`EDIT_MODE` in `wrangler.jsonc`)

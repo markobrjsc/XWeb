@@ -53,13 +53,14 @@ try {
   await page.goto(`http://localhost:${port}/`, { waitUntil: 'networkidle' });
 
   await page.evaluate(() => {
-    const plan = document.querySelector('.lageplan')?.outerHTML ?? '';
+    // Startbild der Startseite und Maskottchen-Logo aus dem gebauten Footer übernehmen
+    const heroImg = document.querySelector('.hero__bg img');
+    const photo = heroImg?.currentSrc || heroImg?.getAttribute('src') || '';
     const logo = document.querySelector('.logo__mark');
     const logoSrc = logo?.currentSrc || logo?.getAttribute('src') || '';
 
     document.body.innerHTML = `
-      <div id="og" data-tone="dark">
-        <div class="og-grid"></div>
+      <div id="og">
         <div class="og-text">
           <div class="og-brand">
             <img src="${logoSrc}" alt="" />
@@ -69,32 +70,29 @@ try {
           <p class="og-sub">Familienbetrieb aus Radolfzell am Bodensee · seit 1989</p>
           <p class="og-contact">07732 10374 &nbsp;·&nbsp; pflasterarbeiten-hildebrand.de</p>
         </div>
-        <div class="og-plan">${plan}</div>
+        <div class="og-photo"><img src="${photo}" alt="" /></div>
       </div>`;
 
+    // Farben wie auf der Website: Onyx, Gelb (RAL 1018), Weiß
     const style = document.createElement('style');
     style.textContent = `
-      html, body { margin: 0; background: #07172c; }
+      html, body { margin: 0; background: #0b0b0c; }
       #og { position: relative; width: 1200px; height: 630px; overflow: hidden; font-family: var(--font-sans);
-        background: linear-gradient(160deg, #07172c 0%, #0c2645 60%, #0e2b4d 100%); }
-      .og-grid { position: absolute; inset: 0;
-        background-image: linear-gradient(to bottom, rgb(255 255 255 / .06) 1px, transparent 1px),
-          linear-gradient(to right, rgb(255 255 255 / .06) 1px, transparent 1px),
-          linear-gradient(to bottom, rgb(255 255 255 / .025) 1px, transparent 1px),
-          linear-gradient(to right, rgb(255 255 255 / .025) 1px, transparent 1px);
-        background-size: 120px 120px, 120px 120px, 24px 24px, 24px 24px; }
-      .og-text { position: absolute; left: 72px; top: 70px; width: 560px; color: #fff; }
-      .og-brand { display: flex; align-items: center; gap: 18px; margin-bottom: 54px; }
+        background: linear-gradient(160deg, #0b0b0c 0%, #19191a 100%); }
+      .og-text { position: absolute; left: 72px; top: 64px; width: 560px; color: #fff; }
+      .og-brand { display: flex; align-items: center; gap: 18px; margin-bottom: 50px; }
       .og-brand img { height: 84px; width: auto; }
       .og-brand div { display: flex; flex-direction: column; gap: 6px; padding-left: 18px; border-left: 1px solid rgb(255 255 255 / .3); }
       .og-brand strong { font-size: 30px; letter-spacing: .08em; text-transform: uppercase; }
       .og-brand span { font-size: 14px; letter-spacing: .1em; text-transform: uppercase; color: rgb(255 255 255 / .7); }
-      h1 { margin: 0; font-size: 54px; line-height: 1.08; font-weight: 700; letter-spacing: -.02em; font-stretch: 96%; }
-      h1 em { font-style: normal; color: #91b8de; }
+      h1 { margin: 0; font-size: 54px; line-height: 1.08; font-weight: 700; letter-spacing: -.02em; font-stretch: 96%; color: #ffffff; }
+      h1 em { font-style: normal; color: #f3a505; }
       .og-sub { margin: 26px 0 0; font-size: 21px; color: rgb(255 255 255 / .82); }
-      .og-contact { margin: 12px 0 0; font-size: 18px; font-weight: 600; color: #c3d9ee; }
-      .og-plan { position: absolute; right: 48px; top: 50%; width: 500px; transform: translateY(-50%);
-        padding: 14px; border-radius: 8px; background: rgb(7 23 44 / .6); box-shadow: inset 0 0 0 1px rgb(255 255 255 / .12); }
+      .og-contact { display: inline-block; margin: 18px 0 0; padding: 8px 18px; font-size: 18px; font-weight: 700;
+        color: #0b0b0c; border-radius: 999px; background: #f3a505; }
+      .og-photo { position: absolute; right: 48px; top: 48px; bottom: 48px; width: 470px; overflow: hidden;
+        border-radius: 22px; box-shadow: 0 30px 60px -20px rgb(0 0 0 / .8), inset 0 0 0 1px rgb(255 255 255 / .12); }
+      .og-photo img { width: 100%; height: 100%; object-fit: cover; }
     `;
     document.head.append(style);
   });

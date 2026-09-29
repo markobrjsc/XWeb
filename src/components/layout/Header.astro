@@ -1,7 +1,7 @@
 ---
 /**
  * Header mit Hauptnavigation.
- * – Schwebende, runde Leiste auf allen Seiten: dunkel-milchig mit dünnem weißem Rand, links Maskottchen mit gelbem Namens-Label,
+ * – Schwebende, runde Leiste auf allen Seiten: dunkel-milchig mit dünnem weißem Rand, links das Logo im hellen Label,
  *   aktiver Menüpunkt im weißen Label, rechts Instagram, Telefonnummer und Kontakt.
  * – Bleibt bei Seitenwechseln stehen, während der Inhalt seitlich hinein- bzw. hinausgleitet.
  * – Unterhalb von 1100 px Breite: Menü-Button, der ein Vollbild-Menü aus- und einklappt.
@@ -26,7 +26,7 @@ const hasActiveNav = mainNav.some((item) => isCurrent(item.href));
   <div class="site-header__bar">
     <div class="site-header__inner">
       <a class="site-header__brand" href="/">
-        <Logo variant="badge" eager />
+        <Logo eager />
         <span class="visually-hidden"> – zur Startseite</span>
       </a>
 
@@ -197,20 +197,22 @@ const hasActiveNav = mainNav.some((item) => isCurrent(item.href));
     flex-shrink: 0;
     align-items: center;
     height: var(--header-item-h);
-    padding: 0;
+    padding: 0 1.1rem 0 0.75rem;
     color: var(--blue-950);
     text-decoration: none;
-    border-radius: var(--radius-sm);
-    transition: opacity var(--duration-base) ease;
+    border-radius: 999px;
+    background: #ffffff;
+    transition: background-color var(--duration-base) ease;
   }
 
   .site-header__brand:hover {
-    opacity: 0.88;
+    background: var(--gray-100);
   }
 
-  /* Logo (Maskottchen + gelbes Label im weißen Rahmen) in voller Leistenhöhe */
+  /* Maskottchen mit Schriftzug im hellen, runden Label (ohne Akzentfarbe) */
   .site-header__brand :global(.logo) {
-    --logo-height: var(--header-item-h);
+    --logo-height: calc(var(--header-item-h) - 0.75rem);
+    gap: 0.6rem;
   }
 
   .site-header__brand :global(.logo__text) {
@@ -249,17 +251,11 @@ const hasActiveNav = mainNav.some((item) => isCurrent(item.href));
     align-items: center;
     padding: 0.55rem 1rem;
     font-size: var(--text-sm);
-    font-weight: var(--weight-medium);
+    font-weight: var(--weight-semibold);
     color: var(--header-fg);
     text-decoration: none;
     border-radius: 999px;
-    text-decoration: underline;
-    text-decoration-color: transparent;
-    text-decoration-thickness: 3px;
-    text-underline-offset: 0.45em;
-    transition:
-      background-color var(--duration-base) ease,
-      text-decoration-color var(--duration-base) ease;
+    transition: background-color var(--duration-base) ease;
   }
 
   /* Während eines Seitenübergangs alle Menütexte weiß – siehe „site-nav-labels“ in global.css */
@@ -269,15 +265,13 @@ const hasActiveNav = mainNav.some((item) => isCurrent(item.href));
 
   .site-nav__link:hover {
     color: var(--header-fg);
-    background: rgb(255 255 255 / 0.1);
-    text-decoration-color: var(--color-accent);
+    background: rgb(255 255 255 / 0.14);
   }
 
   .site-nav__link[aria-current='page'] {
-    font-weight: var(--weight-semibold);
+    font-weight: var(--weight-bold);
     color: var(--blue-950);
     background: #ffffff;
-    text-decoration-color: var(--color-accent);
   }
 
   .site-nav__indicator {
@@ -349,7 +343,7 @@ const hasActiveNav = mainNav.some((item) => isCurrent(item.href));
     gap: var(--space-2);
     padding: 0.35rem;
     font-size: var(--text-sm);
-    font-weight: var(--weight-semibold);
+    font-weight: var(--weight-bold);
     color: var(--header-fg);
     text-decoration: none;
     border-radius: 999px;

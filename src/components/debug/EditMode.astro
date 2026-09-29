@@ -7,6 +7,8 @@
  *    (src/content/heroes.json, neue Bilder unter src/assets/images/hero/).
  *  · Farben: Farbwähler für Akzent (Gelb), Onyx-Töne und hellen Hintergrund – Vorschau sofort,
  *    Speichern schreibt src/styles/custom-colors.css (überschreibt tokens.css).
+ *  · Abstände: Element anklicken → Außen- (margin, orange) und Innenabstände (padding, grün) werden angezeigt
+ *    und lassen sich einstellen; Speichern schreibt src/content/spacing.json (→ scripts/build-spacing.mjs).
  *  · Galerien (Carousel mit `folder`): Bilder hinzufügen, Reihenfolge per Ziehen ändern, ausblenden
  *    (src/content/galleries.json, neue Bilder als Dateien unter src/assets/images/<ordner>/).
  * Erscheint nur, wenn der Worker den Modus meldet (GET /api/edit/status/) – Server-Teil: worker/edit.ts.
@@ -34,9 +36,44 @@ const heroChoices = await Promise.all(
   <div class="edit-bar" data-edit-bar hidden>
     <span class="edit-bar__dot" aria-hidden="true"></span>
     <p class="edit-bar__text" data-edit-status aria-live="polite">Bearbeiten-Modus: Text anklicken und ändern.</p>
+    <button class="edit-bar__btn" type="button" data-spacing-toggle aria-pressed="false">Abstände</button>
     <button class="edit-bar__btn" type="button" data-colors-open>Farben</button>
     <button class="edit-bar__btn" type="button" data-edit-discard>Verwerfen</button>
     <button class="edit-bar__btn edit-bar__btn--primary" type="button" data-edit-save>Speichern</button>
+  </div>
+
+  <!-- Abstände: Markierung (margin orange, padding grün) und Einstell-Feld -->
+  <div class="spacing-overlay" data-spacing-overlay hidden aria-hidden="true">
+    <div class="spacing-overlay__margin" data-spacing-margin></div>
+    <div class="spacing-overlay__padding" data-spacing-padding></div>
+    <div class="spacing-overlay__label" data-spacing-label></div>
+  </div>
+
+  <div class="spacing-panel" data-spacing-panel hidden>
+    <div class="spacing-panel__head">
+      <p class="spacing-panel__title">Abstände</p>
+      <code class="spacing-panel__target" data-spacing-target></code>
+    </div>
+    <fieldset class="spacing-panel__group spacing-panel__group--margin">
+      <legend>Außen (margin) in px</legend>
+      <label>Oben <input type="number" step="1" data-spacing-prop="margin-top" /></label>
+      <label>Rechts <input type="number" step="1" data-spacing-prop="margin-right" /></label>
+      <label>Unten <input type="number" step="1" data-spacing-prop="margin-bottom" /></label>
+      <label>Links <input type="number" step="1" data-spacing-prop="margin-left" /></label>
+    </fieldset>
+    <fieldset class="spacing-panel__group spacing-panel__group--padding">
+      <legend>Innen (padding) in px</legend>
+      <label>Oben <input type="number" step="1" min="0" data-spacing-prop="padding-top" /></label>
+      <label>Rechts <input type="number" step="1" min="0" data-spacing-prop="padding-right" /></label>
+      <label>Unten <input type="number" step="1" min="0" data-spacing-prop="padding-bottom" /></label>
+      <label>Links <input type="number" step="1" min="0" data-spacing-prop="padding-left" /></label>
+    </fieldset>
+    <p class="spacing-panel__status" data-spacing-status aria-live="polite"></p>
+    <div class="spacing-panel__actions">
+      <button class="spacing-panel__btn" type="button" data-spacing-reset>Element zurücksetzen</button>
+      <button class="spacing-panel__btn" type="button" data-spacing-done>Fertig</button>
+      <button class="spacing-panel__btn spacing-panel__btn--primary" type="button" data-spacing-save disabled>Abstände speichern</button>
+    </div>
   </div>
 
   <dialog class="gallery-dialog colors-dialog" data-colors-dialog aria-labelledby="colors-dialog-title">
@@ -167,6 +204,8 @@ const heroChoices = await Promise.all(
     const statusText = ui.querySelector<HTMLElement>('[data-edit-status]')!;
     const saveButton = ui.querySelector<HTMLButtonElement>('[data-edit-save]')!;
     let tracked: Tracked[] = [];
+    // wird unten vom Abstands-Modus gesetzt
+    let spacingToggleOff = () => {};
     let editing = false;
 
     const supportsPlain = (() => {
@@ -251,6 +290,7 @@ const heroChoices = await Promise.all(
       });
       document.querySelectorAll('[data-gallery-edit], [data-hero-edit-btn]').forEach((button) => button.remove());
       document.documentElement.classList.remove('is-editing');
+      spacingToggleOff();
       toggle.setAttribute('aria-pressed', 'false');
       bar.hidden = true;
     };
@@ -326,6 +366,187 @@ const heroChoices = await Promise.all(
     document.addEventListener('input', () => editing && updateBar());
     window.addEventListener('beforeunload', (event) => {
       if (editing && changes().length) event.preventDefault();
+    });
+
+    /* ---------------- Abstände ---------------- */
+    const spacingToggle = ui.querySelector<HTMLButtonElement>('[data-spacing-toggle]')!;
+    const overlay = ui.querySelector<HTMLElement>('[data-spacing-overlay]')!;
+    const marginBox = overlay.querySelector<HTMLElement>('[data-spacing-margin]')!;
+    const paddingBox = overlay.querySelector<HTMLElement>('[data-spacing-padding]')!;
+    const spacingLabel = overlay.querySelector<HTMLElement>('[data-spacing-label]')!;
+    const panel = ui.querySelector<HTMLElement>('[data-spacing-panel]')!;
+    const panelTarget = panel.querySelector<HTMLElement>('[data-spacing-target]')!;
+    const spacingStatus = panel.querySelector<HTMLElement>('[data-spacing-status]')!;
+    const spacingSave = panel.querySelector<HTMLButtonElement>('[data-spacing-save]')!;
+    const propInputs = [...panel.querySelectorAll<HTMLInputElement>('[data-spacing-prop]')];
+    const SIDES = ['top', 'right', 'bottom', 'left'] as const;
+    let spacingMode = false;
+    let selected: HTMLElement | null = null;
+    const pending = new Map<string, Record<string, string | null> | null>();
+
+    const isUi = (el: Element | null) => Boolean(el?.closest('[data-edit-ui], [data-design-panel], [data-gallery-edit], [data-hero-edit-btn]'));
+
+    // Eindeutiger, stabiler Selektor – Header/Footer gelten auf allen Seiten, sonst nur auf dieser Seite
+    const selectorFor = (el: HTMLElement) => {
+      const parts: string[] = [];
+      let node: HTMLElement | null = el;
+      while (node && node !== document.body) {
+        const tag = node.tagName.toLowerCase();
+        if (node.id && /^[a-zA-Z][a-zA-Z0-9_-]*$/.test(node.id)) {
+          parts.unshift(`${tag}#${node.id}`);
+          break;
+        }
+        const classes = [...node.classList].filter((c) => /^[a-zA-Z][a-zA-Z0-9_-]*$/.test(c) && !/^(is-|js$)/.test(c));
+        let part = tag + classes.map((c) => `.${c}`).join('');
+        const parent: HTMLElement | null = node.parentElement;
+        if (parent) {
+          const same = [...parent.children].filter((child) => child.tagName === node!.tagName);
+          if (same.length > 1) part += `:nth-of-type(${same.indexOf(node) + 1})`;
+        }
+        parts.unshift(part);
+        node = parent;
+      }
+      const chain = parts.join(' > ');
+      const rooted = node === document.body ? `> ${chain}` : chain;
+      return el.closest('header, footer')
+        ? `body ${rooted}`
+        : `body[data-page="${location.pathname}"] ${rooted}`;
+    };
+
+    const px = (value: string) => Math.round(parseFloat(value) || 0);
+
+    const draw = (el: HTMLElement | null) => {
+      if (!el) {
+        overlay.hidden = true;
+        return;
+      }
+      const cs = getComputedStyle(el);
+      const r = el.getBoundingClientRect();
+      const m = SIDES.map((side) => px(cs.getPropertyValue(`margin-${side}`)));
+      const pd = SIDES.map((side) => px(cs.getPropertyValue(`padding-${side}`)));
+      const b = SIDES.map((side) => px(cs.getPropertyValue(`border-${side}-width`)));
+      const pos = Math.max.bind(null, 0);
+      const set = (box: HTMLElement, left: number, top: number, width: number, height: number, widths: number[]) => {
+        box.style.left = `${left}px`;
+        box.style.top = `${top}px`;
+        box.style.width = `${Math.max(0, width)}px`;
+        box.style.height = `${Math.max(0, height)}px`;
+        box.style.borderWidth = widths.map((w) => `${pos(w)}px`).join(' ');
+      };
+      set(marginBox, r.left - pos(m[3]), r.top - pos(m[0]), r.width + pos(m[1]) + pos(m[3]), r.height + pos(m[0]) + pos(m[2]), m);
+      set(paddingBox, r.left + b[3], r.top + b[0], r.width - b[1] - b[3], r.height - b[0] - b[2], pd);
+      const name = el.tagName.toLowerCase() + (el.classList[0] ? `.${el.classList[0]}` : '');
+      spacingLabel.textContent = `${name}   Außen ${m.join(' ')} · Innen ${pd.join(' ')}`;
+      spacingLabel.style.left = `${Math.max(4, r.left - pos(m[3]))}px`;
+      spacingLabel.style.top = `${Math.max(4, r.top - pos(m[0]) - 26)}px`;
+      overlay.hidden = false;
+    };
+
+    const updateSaveButton = () => {
+      spacingSave.disabled = pending.size === 0;
+      spacingSave.textContent = pending.size ? `Abstände speichern (${pending.size})` : 'Abstände speichern';
+    };
+
+    const select = (el: HTMLElement) => {
+      selected = el;
+      const cs = getComputedStyle(el);
+      propInputs.forEach((input) => (input.value = String(px(cs.getPropertyValue(input.dataset.spacingProp!)))));
+      panelTarget.textContent = el.tagName.toLowerCase() + [...el.classList].slice(0, 2).map((c) => `.${c}`).join('');
+      panelTarget.title = selectorFor(el);
+      spacingStatus.textContent = el.closest('header, footer') ? 'Gilt auf allen Seiten (Header/Footer).' : 'Gilt nur auf dieser Seite.';
+      panel.hidden = false;
+      draw(el);
+    };
+
+    const setSpacingMode = (on: boolean) => {
+      spacingMode = on;
+      spacingToggle.setAttribute('aria-pressed', String(on));
+      document.documentElement.classList.toggle('is-spacing', on);
+      if (!on) {
+        selected = null;
+        panel.hidden = true;
+        overlay.hidden = true;
+      }
+    };
+    spacingToggle.addEventListener('click', () => setSpacingMode(!spacingMode));
+    spacingToggleOff = () => setSpacingMode(false);
+
+    document.addEventListener('mousemove', (event) => {
+      if (!spacingMode || selected) return;
+      const target = event.target as HTMLElement;
+      draw(isUi(target) || target === document.body || target === document.documentElement ? null : target);
+    });
+    // Im Abstands-Modus: Klick wählt ein Element (kein Textcursor, keine Links)
+    const intercept = (event: Event) => {
+      if (!spacingMode) return;
+      const target = event.target as HTMLElement;
+      if (isUi(target)) return;
+      event.preventDefault();
+      event.stopPropagation();
+      if (event.type === 'click' && target !== document.body) select(target);
+    };
+    document.addEventListener('mousedown', intercept, true);
+    document.addEventListener('click', intercept, true);
+    window.addEventListener('scroll', () => selected && draw(selected), { passive: true });
+    window.addEventListener('resize', () => selected && draw(selected));
+
+    propInputs.forEach((input) =>
+      input.addEventListener('input', () => {
+        if (!selected) return;
+        const prop = input.dataset.spacingProp!;
+        const value = input.value === '' ? null : `${Math.round(Number(input.value))}px`;
+        if (value) selected.style.setProperty(prop, value, 'important');
+        else selected.style.removeProperty(prop);
+        const key = selectorFor(selected);
+        const entry = pending.get(key) ?? {};
+        pending.set(key, { ...entry, [prop]: value });
+        updateSaveButton();
+        draw(selected);
+      }),
+    );
+
+    panel.querySelector('[data-spacing-reset]')!.addEventListener('click', () => {
+      if (!selected) return;
+      propInputs.forEach((input) => selected!.style.removeProperty(input.dataset.spacingProp!));
+      pending.set(selectorFor(selected), null);
+      updateSaveButton();
+      select(selected);
+      spacingStatus.textContent = 'Zurückgesetzt – gespeicherte Abstände dieses Elements werden beim Speichern entfernt.';
+    });
+
+    panel.querySelector('[data-spacing-done]')!.addEventListener('click', () => {
+      selected = null;
+      panel.hidden = true;
+      overlay.hidden = true;
+    });
+
+    spacingSave.addEventListener('click', async () => {
+      if (!pending.size) return;
+      spacingSave.disabled = true;
+      spacingStatus.textContent = 'Wird gespeichert …';
+      try {
+        const response = await fetch('/api/edit/abstaende/', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ rules: Object.fromEntries(pending) }),
+        });
+        const result = await response.json();
+        if (!response.ok || !result.ok) throw new Error(result.error || 'Speichern fehlgeschlagen.');
+        pending.clear();
+        updateSaveButton();
+        spacingStatus.textContent = 'Gespeichert – nach dem automatischen Build in ca. 2 Minuten live.';
+      } catch (error) {
+        spacingStatus.textContent = error instanceof Error ? error.message : 'Speichern fehlgeschlagen.';
+        spacingSave.disabled = false;
+      }
+    });
+
+    document.addEventListener('keydown', (event) => {
+      if (event.key === 'Escape' && spacingMode && selected) {
+        selected = null;
+        panel.hidden = true;
+        overlay.hidden = true;
+      }
     });
 
     /* ---------------- Farben ---------------- */
@@ -732,6 +953,26 @@ const heroChoices = await Promise.all(
     display: none;
   }
 
+  /* Schmale Bildschirme: Hinweistext über den Knöpfen */
+  @media (max-width: 48rem) {
+    .edit-bar {
+      flex-wrap: wrap;
+      justify-content: center;
+      width: calc(100vw - 2rem);
+      padding: 0.6rem;
+      border-radius: 1.25rem;
+    }
+
+    .edit-bar__dot {
+      display: none;
+    }
+
+    .edit-bar__text {
+      flex-basis: 100%;
+      text-align: center;
+    }
+  }
+
   .edit-bar__dot {
     flex: none;
     width: 0.55rem;
@@ -831,6 +1072,183 @@ const heroChoices = await Promise.all(
     width: 100%;
     height: 100%;
     object-fit: cover;
+  }
+
+  /* Abstände: Markierung wie in den Entwicklerwerkzeugen – außen orange, innen grün */
+  .spacing-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 1000;
+    pointer-events: none;
+  }
+
+  .spacing-overlay[hidden] {
+    display: none;
+  }
+
+  .spacing-overlay__margin,
+  .spacing-overlay__padding {
+    position: fixed;
+    box-sizing: border-box;
+    border-style: solid;
+  }
+
+  .spacing-overlay__margin {
+    border-color: rgb(246 178 107 / 0.55);
+    outline: 1px dashed rgb(230 126 34 / 0.9);
+  }
+
+  .spacing-overlay__padding {
+    border-color: rgb(147 196 125 / 0.55);
+    background: rgb(111 168 220 / 0.12);
+  }
+
+  .spacing-overlay__label {
+    position: fixed;
+    max-width: calc(100vw - 1rem);
+    padding: 0.2rem 0.5rem;
+    overflow: hidden;
+    font: 600 0.72rem/1.4 ui-monospace, 'Cascadia Code', monospace;
+    white-space: pre;
+    text-overflow: ellipsis;
+    color: #ffffff;
+    border-radius: 0.35rem;
+    background: #111a24;
+  }
+
+  :global(.is-spacing) :global(body *) {
+    cursor: crosshair !important;
+  }
+
+  .spacing-panel {
+    position: fixed;
+    right: 1rem;
+    bottom: 5rem;
+    z-index: 1002;
+    display: grid;
+    gap: 0.7rem;
+    width: min(21rem, calc(100vw - 2rem));
+    padding: 1rem;
+    color: #1f2a36;
+    border-radius: 1rem;
+    background: #ffffff;
+    box-shadow:
+      0 0 0 1px rgb(0 0 0 / 0.08),
+      0 20px 50px -18px rgb(0 0 0 / 0.5);
+  }
+
+  .spacing-panel[hidden] {
+    display: none;
+  }
+
+  .spacing-panel__head {
+    display: grid;
+    gap: 0.15rem;
+  }
+
+  .spacing-panel__title {
+    font-size: 0.95rem;
+    font-weight: 700;
+  }
+
+  .spacing-panel__target {
+    overflow: hidden;
+    font-size: 0.72rem;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    color: #4b4b48;
+  }
+
+  .spacing-panel__group {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 0.4rem;
+    margin: 0;
+    padding: 0.6rem;
+    border: 0;
+    border-radius: 0.7rem;
+  }
+
+  .spacing-panel__group--margin {
+    background: rgb(246 178 107 / 0.18);
+  }
+
+  .spacing-panel__group--padding {
+    background: rgb(147 196 125 / 0.2);
+  }
+
+  .spacing-panel__group legend {
+    float: left;
+    grid-column: 1 / -1;
+    width: 100%;
+    margin-bottom: 0.2rem;
+    padding: 0;
+    font-size: 0.72rem;
+    font-weight: 700;
+  }
+
+  .spacing-panel__group label {
+    display: grid;
+    gap: 0.15rem;
+    font-size: 0.68rem;
+    color: #4b4b48;
+  }
+
+  .spacing-panel__group input {
+    width: 100%;
+    min-width: 0;
+    padding: 0.35rem 0.4rem;
+    font: inherit;
+    font-size: 0.85rem;
+    color: #0b0b0c;
+    border: 1px solid #cacac6;
+    border-radius: 0.45rem;
+    background: #ffffff;
+  }
+
+  .spacing-panel__status {
+    font-size: 0.75rem;
+    color: #4b4b48;
+  }
+
+  .spacing-panel__status:empty {
+    display: none;
+  }
+
+  .spacing-panel__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+  }
+
+  .spacing-panel__btn {
+    padding: 0.45rem 0.85rem;
+    font: inherit;
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: #1f2a36;
+    border: 1px solid #cacac6;
+    border-radius: 999px;
+    background: #ffffff;
+    cursor: pointer;
+  }
+
+  .spacing-panel__btn--primary {
+    margin-left: auto;
+    color: #ffffff;
+    border-color: #111a24;
+    background: #111a24;
+  }
+
+  .spacing-panel__btn:disabled {
+    opacity: 0.45;
+    cursor: default;
+  }
+
+  .edit-bar__btn[aria-pressed='true'] {
+    color: #111a24;
+    border-color: var(--color-accent, #f3a505);
+    background: var(--color-accent, #f3a505);
   }
 
   /* Farben-Dialog */

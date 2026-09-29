@@ -7,6 +7,7 @@
  *  POST /api/edit/galerie/           { folder, order: [..], hidden: [..] }                        → src/content/galleries.json
  *  POST /api/edit/hero/             { page, image }  – Kopfbild einer Seite                            → src/content/heroes.json
  *  POST /api/edit/farben/           { colors: { "--yellow-500": "#f3a505", … } }                    → src/styles/custom-colors.css
+ *  POST /api/edit/abstaende/        { rules: { "<Selektor>": { "margin-top": "24px", … } | null } } → src/content/spacing.json
  *  PUT  /api/edit/bild/?folder=&name=  Bild als Base64-Text (vom Browser verkleinert)             → src/assets/images/<folder>/<name>
  *
  * Einrichtung: GitHub-Token (Fine-grained, nur dieses Repository, „Contents: Read and write“)
@@ -35,6 +36,21 @@ const EDITS_PATH = 'src/content/edits.json';
 const GALLERIES_PATH = 'src/content/galleries.json';
 const HEROES_PATH = 'src/content/heroes.json';
 const COLORS_PATH = 'src/styles/custom-colors.css';
+const SPACING_PATH = 'src/content/spacing.json';
+
+/** Abstände: erlaubte Eigenschaften, Selektoren und Werte (gleiche Regeln wie scripts/build-spacing.mjs) */
+const SPACING_PROPS = new Set([
+  'margin-top',
+  'margin-right',
+  'margin-bottom',
+  'margin-left',
+  'padding-top',
+  'padding-right',
+  'padding-bottom',
+  'padding-left',
+]);
+const SPACING_SELECTOR = /^[a-zA-Z0-9\s\-_.#[\]="/:>()*,]{1,500}$/;
+const SPACING_VALUE = /^(-?\d{1,4}(\.\d{1,3})?(px|rem|em|%)|0|auto)$/;
 
 /** Farb-Variablen, die der Bearbeiten-Modus setzen darf (Standardwerte: src/styles/tokens.css) */
 const COLOR_VARIABLES = new Set([
@@ -233,6 +249,45 @@ async function saveColors(request: Request, env: EditEnv) {
   return json({ ok: true, saved: entries.length });
 }
 
+/* ------------------------------------------------------------------------ */
+/* Abstände                                                                  */
+/* ------------------------------------------------------------------------ */
+type Spacing = Record<string, Record<string, string>>;
+
+async function saveSpacing(request: Request, env: EditEnv) {
+  const body = (await request.json()) as { rules?: Record<string, Record<string, unknown> | null> };
+  if (!body.rules || typeof body.rules !== 'object') return fail('Abstände fehlen.');
+
+  const changes = Object.entries(body.rules)
+    .slice(0, 200)
+    .filter(([selector]) => SPACING_SELECTOR.test(selector));
+  if (!changes.length) return fail('Ungültige Angaben.');
+
+  await updateJsonFile<Spacing>(
+    env,
+    SPACING_PATH,
+    {},
+    (file) => {
+      for (const [selector, props] of changes) {
+        if (props === null) {
+          delete file[selector];
+          continue;
+        }
+        const next = { ...(file[selector] ?? {}) };
+        for (const [prop, raw] of Object.entries(props)) {
+          if (!SPACING_PROPS.has(prop)) continue;
+          if (raw === null || raw === '') delete next[prop];
+          else if (SPACING_VALUE.test(String(raw).trim())) next[prop] = String(raw).trim();
+        }
+        if (Object.keys(next).length) file[selector] = next;
+        else delete file[selector];
+      }
+    },
+    `Abstände bearbeitet (${changes.length} ${changes.length === 1 ? 'Element' : 'Elemente'})`,
+  );
+  return json({ ok: true, saved: changes.length });
+}
+
 /** Bild als Datei committen – der Base64-Text wird unverändert durchgereicht (kostet kaum Rechenzeit) */
 async function uploadImage(request: Request, env: EditEnv, url: URL) {
   const folder = url.searchParams.get('folder') ?? '';
@@ -287,6 +342,7 @@ export async function handleEdit(request: Request, env: EditEnv, url: URL, pathn
     if (pathname === '/api/edit/galerie' && request.method === 'POST') return await saveGallery(request, env);
     if (pathname === '/api/edit/hero' && request.method === 'POST') return await saveHero(request, env);
     if (pathname === '/api/edit/farben' && request.method === 'POST') return await saveColors(request, env);
+    if (pathname === '/api/edit/abstaende' && request.method === 'POST') return await saveSpacing(request, env);
     if (pathname === '/api/edit/bild' && request.method === 'PUT') return await uploadImage(request, env, url);
   } catch (error) {
     console.error(error);

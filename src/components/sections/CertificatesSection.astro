@@ -1,7 +1,8 @@
 ---
 /**
  * CertificatesSection – Zertifikate als anklickbare Vorschau (ca. 35 % der Bildschirmhöhe).
- * Klick: Die Vorschau zoomt in die Großansicht – geöffnet auf der Seite selbst (kein PDF im neuen Tab).
+ * Klick: Die Vorschau zoomt in die Großansicht – geöffnet auf der Seite selbst (kein PDF im neuen Tab):
+ * links eine Karte mit Titel, Aussteller, Jahr, Download und Schließen, rechts das Zertifikat mit eigenem X.
  *
  * Neues Zertifikat: PDF in src/assets/zertifikate/ legen, optional Titel/Aussteller/Jahr in
  * src/assets/zertifikate/zertifikate.json. Die Seitenbilder erzeugt scripts/build-zertifikate.mjs vor jedem Build.
@@ -75,23 +76,37 @@ const certificates = await Promise.all(
             </button>
 
             <template data-cert-template={cert.name}>
-              <h2 class="cert-viewer__title">{cert.title}</h2>
-              <p class="cert-viewer__meta">{[cert.issuer, cert.year].filter(Boolean).join(' · ')}</p>
-              <div class="cert-viewer__pages">
-                {cert.full.map((image, index) => (
-                  <img
-                    class="cert-viewer__page"
-                    src={image.src}
-                    alt={`${cert.title} – Seite ${index + 1}`}
-                    width={cert.pages[index].width}
-                    height={cert.pages[index].height}
-                    decoding="async"
-                  />
-                ))}
+              <div class="cert-viewer__layout">
+                <div class="cert-viewer__info">
+                  <p class="cert-viewer__kicker">Zertifikat</p>
+                  <h2 class="cert-viewer__title">{cert.title}</h2>
+                  {cert.issuer && <p class="cert-viewer__issuer">{cert.issuer}</p>}
+                  {cert.year && <p class="cert-viewer__year">{cert.year}</p>}
+                  <a class="cert-viewer__download" href={cert.pdf} download>
+                    <Icon name="download" size="1rem" /> PDF herunterladen
+                  </a>
+                  <button class="cert-viewer__close-text" type="button" data-cert-close>
+                    <Icon name="x" size="1rem" /> Schließen
+                  </button>
+                </div>
+                <div class="cert-viewer__doc">
+                  <button class="cert-viewer__close" type="button" aria-label="Schließen" data-cert-close>
+                    <Icon name="x" size="1.1rem" />
+                  </button>
+                  <div class="cert-viewer__pages">
+                    {cert.full.map((image, index) => (
+                      <img
+                        class="cert-viewer__page"
+                        src={image.src}
+                        alt={`${cert.title} – Seite ${index + 1}`}
+                        width={cert.pages[index].width}
+                        height={cert.pages[index].height}
+                        decoding="async"
+                      />
+                    ))}
+                  </div>
+                </div>
               </div>
-              <a class="cert-viewer__download" href={cert.pdf} download>
-                PDF herunterladen
-              </a>
             </template>
           </li>
         ))}
@@ -99,9 +114,6 @@ const certificates = await Promise.all(
 
       <dialog class="cert-viewer" data-cert-viewer aria-label="Zertifikat">
         <div class="cert-viewer__inner" data-cert-body></div>
-        <button class="cert-viewer__close" type="button" aria-label="Schließen" data-cert-close>
-          <Icon name="x" size="1.2rem" />
-        </button>
       </dialog>
     </Section>
   )
@@ -159,11 +171,15 @@ const certificates = await Promise.all(
   document.querySelectorAll<HTMLButtonElement>('[data-cert]').forEach((button) =>
     button.addEventListener('click', () => open(button)),
   );
-  viewer?.querySelector('[data-cert-close]')?.addEventListener('click', close);
+  viewer?.addEventListener('click', (event) => {
+    if ((event.target as HTMLElement).closest('[data-cert-close]')) close();
+  });
   // Klick daneben schließt – aber nur, wenn der Klick auch dort begonnen hat (sonst schließt der
   // öffnende Klick den Dialog sofort wieder)
   const isBackdrop = (target: EventTarget | null) =>
-    target === viewer || (target instanceof HTMLElement && target.classList.contains('cert-viewer__inner'));
+    target === viewer ||
+    (target instanceof HTMLElement &&
+      (target.classList.contains('cert-viewer__inner') || target.classList.contains('cert-viewer__layout')));
   let pressedOnBackdrop = false;
   viewer?.addEventListener('pointerdown', (event) => (pressedOnBackdrop = isBackdrop(event.target)));
   viewer?.addEventListener('click', (event) => {
@@ -311,87 +327,157 @@ const certificates = await Promise.all(
     overflow: hidden;
   }
 
+  /* ::backdrop erbt in manchen Browsern keine CSS-Variablen – daher fester Onyx-Wert */
   .cert-viewer::backdrop {
-    background: rgb(var(--ink) / 0);
+    background: rgb(11 11 12 / 0);
     transition: background-color 380ms ease;
   }
 
   .cert-viewer.is-open::backdrop {
-    background: rgb(var(--ink) / 0.82);
+    background: rgb(11 11 12 / 0.82);
   }
 
   .cert-viewer__inner {
+    display: grid;
+    place-items: center;
+    height: 100%;
+    padding: clamp(0.75rem, 3vh, 1.5rem) var(--gutter);
+    overflow-y: auto;
+  }
+
+  /* Zwei Karten: links Angaben (zentriert), rechts das Zertifikat */
+  .cert-viewer__inner :global(.cert-viewer__layout) {
+    display: grid;
+    grid-template-columns: minmax(15rem, 20rem) auto;
+    align-items: center;
+    gap: clamp(0.75rem, 0.5rem + 1vw, 1.5rem);
+    max-width: 100%;
+  }
+
+  .cert-viewer__inner :global(.cert-viewer__info),
+  .cert-viewer__inner :global(.cert-viewer__doc) {
+    border-radius: var(--radius-xl);
+    background: #ffffff;
+    box-shadow: 0 30px 80px -20px rgb(0 0 0 / 0.7);
+  }
+
+  .cert-viewer__inner :global(.cert-viewer__info) {
     display: flex;
     flex-direction: column;
     align-items: center;
     gap: var(--space-3);
-    height: 100%;
-    padding: clamp(1rem, 4vh, 2.5rem) var(--gutter) var(--space-8);
-    overflow-y: auto;
-    color: #ffffff;
+    padding: clamp(1.5rem, 1rem + 1.5vw, 2.25rem);
     text-align: center;
+    color: var(--color-text);
+    opacity: 0;
+    translate: -0.75rem 0;
+    transition:
+      opacity 300ms ease 180ms,
+      translate 400ms var(--ease-out) 180ms;
+  }
+
+  .cert-viewer.is-open :global(.cert-viewer__info) {
+    opacity: 1;
+    translate: 0 0;
+  }
+
+  .cert-viewer__inner :global(.cert-viewer__kicker) {
+    font-size: var(--text-2xs);
+    font-weight: var(--weight-bold);
+    letter-spacing: var(--tracking-wider);
+    text-transform: uppercase;
+    color: var(--color-text-subtle);
   }
 
   .cert-viewer__inner :global(.cert-viewer__title) {
-    max-width: 44rem;
-    font-size: var(--text-lg);
-    color: #ffffff;
-    opacity: 0;
-    transition: opacity 300ms ease 200ms;
+    font-size: var(--text-xl);
+    line-height: 1.25;
+    color: var(--color-heading);
   }
 
-  .cert-viewer__inner :global(.cert-viewer__meta) {
-    font-size: var(--text-xs);
-    color: rgb(255 255 255 / 0.7);
-    opacity: 0;
-    transition: opacity 300ms ease 200ms;
+  .cert-viewer__inner :global(.cert-viewer__issuer) {
+    font-size: var(--text-sm);
+    color: var(--color-text-muted);
   }
 
-  .cert-viewer.is-open :global(.cert-viewer__title),
-  .cert-viewer.is-open :global(.cert-viewer__meta),
-  .cert-viewer.is-open :global(.cert-viewer__download) {
-    opacity: 1;
-  }
-
-  .cert-viewer__inner :global(.cert-viewer__pages) {
-    display: grid;
-    gap: var(--space-4);
-    width: min(100%, 52rem, calc((100vh - 10rem) * 0.727));
-    min-width: min(100%, 22rem);
-  }
-
-  .cert-viewer__inner :global(.cert-viewer__page) {
-    display: block;
-    width: 100%;
-    height: auto;
-    border-radius: 10px;
-    background: #ffffff;
-    box-shadow: 0 30px 80px -20px rgb(0 0 0 / 0.7);
-    transform-origin: center;
+  .cert-viewer__inner :global(.cert-viewer__year) {
+    padding: 0.2rem 0.8rem;
+    font-size: var(--text-sm);
+    font-weight: var(--weight-bold);
+    color: var(--color-heading);
+    border-radius: var(--radius-full);
+    background: var(--color-bg-subtle);
   }
 
   .cert-viewer__inner :global(.cert-viewer__download) {
     display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
     margin-top: var(--space-2);
-    padding: 0.55rem 1.2rem;
+    padding: 0.65rem 1.3rem;
     font-size: var(--text-sm);
     font-weight: var(--weight-semibold);
     color: var(--color-cta-fg);
     text-decoration: none;
     border-radius: var(--radius-full);
     background: var(--color-cta);
-    opacity: 0;
-    transition: opacity 300ms ease 200ms;
   }
 
-  .cert-viewer__close {
-    position: fixed;
-    top: 1rem;
-    right: 1rem;
+  .cert-viewer__inner :global(.cert-viewer__download:hover) {
+    background: var(--color-cta-hover);
+  }
+
+  .cert-viewer__inner :global(.cert-viewer__close-text) {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+    padding: 0.55rem 1.2rem;
+    font: inherit;
+    font-size: var(--text-sm);
+    font-weight: var(--weight-semibold);
+    color: var(--color-heading);
+    border: 1.5px solid var(--color-border-strong);
+    border-radius: var(--radius-full);
+    background: #ffffff;
+    cursor: pointer;
+  }
+
+  .cert-viewer__inner :global(.cert-viewer__close-text:hover) {
+    border-color: var(--color-heading);
+  }
+
+  .cert-viewer__inner :global(.cert-viewer__doc) {
+    position: relative;
+    padding: clamp(0.5rem, 0.3rem + 0.6vw, 0.9rem);
+  }
+
+  .cert-viewer__inner :global(.cert-viewer__pages) {
+    display: grid;
+    gap: var(--space-3);
+    width: min(calc((100dvh - 5rem) * 0.707), 46rem, calc(100vw - 2 * var(--gutter)));
+    max-height: calc(100dvh - 5rem);
+    overflow-y: auto;
+  }
+
+  .cert-viewer__inner :global(.cert-viewer__page) {
+    display: block;
+    width: 100%;
+    height: auto;
+    border-radius: 8px;
+    background: #ffffff;
+    box-shadow: 0 0 0 1px var(--color-border);
+    transform-origin: center;
+  }
+
+  .cert-viewer__inner :global(.cert-viewer__close) {
+    position: absolute;
+    top: 0.5rem;
+    right: 0.5rem;
+    z-index: 2;
     display: grid;
     place-items: center;
-    width: 2.9rem;
-    height: 2.9rem;
+    width: 2.6rem;
+    height: 2.6rem;
     color: var(--color-cta-fg);
     border: 0;
     border-radius: 50%;
@@ -400,8 +486,30 @@ const certificates = await Promise.all(
     cursor: pointer;
   }
 
-  .cert-viewer__close:focus-visible {
-    outline: 3px solid #ffffff;
+  .cert-viewer__inner :global(.cert-viewer__close:focus-visible),
+  .cert-viewer__inner :global(.cert-viewer__close-text:focus-visible),
+  .cert-viewer__inner :global(.cert-viewer__download:focus-visible) {
+    outline: 3px solid var(--color-focus);
     outline-offset: 3px;
+  }
+
+  /* Schmale Bildschirme: Zertifikat oben, Angaben darunter */
+  @media (max-width: 48rem) {
+    .cert-viewer__inner {
+      place-items: start center;
+    }
+
+    .cert-viewer__inner :global(.cert-viewer__layout) {
+      grid-template-columns: minmax(0, 1fr);
+    }
+
+    .cert-viewer__inner :global(.cert-viewer__info) {
+      order: 2;
+    }
+
+    .cert-viewer__inner :global(.cert-viewer__pages) {
+      width: 100%;
+      max-height: none;
+    }
   }
 </style>

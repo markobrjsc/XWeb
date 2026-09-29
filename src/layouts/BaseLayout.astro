@@ -63,7 +63,7 @@ const jsonLd = graph([
   <head>
     <SEOHead title={pageTitle} description={description} canonical={canonical} image={image} noindex={noindex} jsonLd={jsonLd} />
   </head>
-  <body class={bodyClass}>
+  <body class={bodyClass} data-page={Astro.url.pathname}>
     <a class="skip-link" href="#main">Zum Inhalt springen</a>
     <Header />
     <main id="main" tabindex="-1">
