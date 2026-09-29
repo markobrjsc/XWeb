@@ -212,7 +212,13 @@ import Icon from '@/components/ui/Icon.astro';
       },
       true,
     );
-    document.addEventListener('submit', (event) => editing && event.preventDefault(), true);
+    document.addEventListener(
+      'submit',
+      (event) => {
+        if (editing && !(event.target as HTMLElement).closest('[data-edit-ui]')) event.preventDefault();
+      },
+      true,
+    );
     document.addEventListener('keydown', (event) => {
       if (editing && event.key === 'Enter' && (event.target as HTMLElement).isContentEditable) event.preventDefault();
     });
@@ -237,6 +243,15 @@ import Icon from '@/components/ui/Icon.astro';
     let items: Item[] = [];
     let folder = '';
     let dragIndex = -1;
+
+    // Schließen: X-Knopf und Klick auf den abgedunkelten Hintergrund
+    dialog.querySelector('.gallery-dialog__close')!.addEventListener('click', (event) => {
+      event.preventDefault();
+      dialog.close();
+    });
+    dialog.addEventListener('click', (event) => {
+      if (event.target === dialog) dialog.close();
+    });
 
     function addGalleryButton(carousel: HTMLElement) {
       const button = document.createElement('button');
@@ -525,8 +540,14 @@ import Icon from '@/components/ui/Icon.astro';
   }
 
   /* Galerie-Dialog */
+  /* Mittig im Bildschirm (der globale Reset setzt margin: 0 – daher hier ausdrücklich) */
   .gallery-dialog {
+    position: fixed;
+    inset: 0;
+    margin: auto;
+    overflow-y: auto;
     width: min(56rem, calc(100vw - 2rem));
+    height: fit-content;
     max-height: calc(100dvh - 2rem);
     padding: 0;
     border: 0;
