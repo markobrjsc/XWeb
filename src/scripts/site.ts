@@ -6,6 +6,7 @@
  *  Zähler ........... [data-count-to] zählt beim Sichtbarwerden hoch
  *  Scroll-Effekte ... [data-parallax] Parallaxe, [data-progress] Fortschrittslinie
  *  Galerien ......... [data-carousel] Zähler „2/13“, Punkte und Pfeile (Instagram-Stil)
+ *  Textmarker ....... .accent/.marker bekommen abwechselnd eine von vier Marker-Formen (data-mark)
  *  Nach oben ........ [data-scroll-top] scrollt sanft an den Seitenanfang
  *  Vollbild-Kopf .... [data-hero-snap] erster Scroll nach unten gleitet direkt unter den Kopf
  *
@@ -360,5 +361,7 @@ initReveal();
 initCounters();
 initScrollEffects();
 initCarousels();
+// Textmarker-Formen abwechseln (Pinselstrich, schräges Band, ausgefranstes Band, Doppelzug)
+document.querySelectorAll<HTMLElement>('.accent, .marker').forEach((el, index) => (el.dataset.mark = String(index % 4)));
 initScrollTop();
 initHeroSnap();

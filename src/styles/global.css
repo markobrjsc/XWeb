@@ -242,25 +242,62 @@ b {
   text-align: center;
 }
 
-/* Gelber Marker-Strich unter Text (wie bei .accent, aber ohne Farbwechsel) – z. B. Titel der Fachbereiche */
+/*
+ * Textmarker: Hervorhebungen sehen aus wie mit einem Leuchtstift markiert – eine Form in Akzentfarbe hinter dem
+ * Text (Pinselstrich, schräges Band, ausgefranstes Band, Doppelzug). Die Variante setzt src/scripts/site.ts
+ * seitenweit abwechselnd über data-mark="0…3"; ohne JavaScript gilt der Pinselstrich.
+ * .accent  – Hervorhebung in Überschriften (auf dunklem Grund stattdessen gelbe Schrift, siehe unten)
+ * .marker  – gleiche Markierung ohne Farbwechsel des Textes
+ */
+.accent,
 .marker {
-  background: var(--marker-fade);
-  -webkit-box-decoration-break: clone;
-  box-decoration-break: clone;
+  --mark-shape: var(--mark-shape-0);
+  --mark-tilt: -1deg;
+  position: relative;
+  z-index: 0;
+  display: inline-block;
+  padding-inline: 0.08em;
+  color: var(--color-highlight);
 }
 
-/* Hervorhebung: auf hellem Grund dunkle Schrift mit gelbem Marker-Strich, auf dunklem Grund gelbe Schrift */
-.accent {
-  color: var(--color-highlight);
-  background: var(--marker-fade);
-  -webkit-box-decoration-break: clone;
-  box-decoration-break: clone;
+.accent::before,
+.marker::before {
+  content: '';
+  position: absolute;
+  z-index: -1;
+  inset: 0.06em -0.22em -0.04em -0.26em;
+  background: var(--color-highlight-mark);
+  -webkit-mask: var(--mark-shape) center / 100% 100% no-repeat;
+  mask: var(--mark-shape) center / 100% 100% no-repeat;
+  rotate: var(--mark-tilt);
+  pointer-events: none;
+}
+
+[data-mark='1'] {
+  --mark-shape: var(--mark-shape-1);
+  --mark-tilt: 0.4deg;
+}
+
+[data-mark='2'] {
+  --mark-shape: var(--mark-shape-2);
+  --mark-tilt: 0.8deg;
+}
+
+[data-mark='3'] {
+  --mark-shape: var(--mark-shape-3);
+  --mark-tilt: -0.6deg;
 }
 
 [data-tone='dark'] .accent,
 [data-tone='brand'] .accent {
+  display: inline;
+  padding-inline: 0;
   color: var(--color-accent);
-  background: none;
+}
+
+[data-tone='dark'] .accent::before,
+[data-tone='brand'] .accent::before {
+  content: none;
 }
 
 /* Fließtext-Bereich, z. B. für Impressum & Datenschutz */
