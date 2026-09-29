@@ -4,15 +4,20 @@
  * Zähler oben rechts („2/13“) und Punkte am unteren Rand.
  * Ohne JavaScript bleibt die Galerie per Wischen bzw. horizontalem Scrollen bedienbar.
  *
- * <Carousel images={findImages('referenzen/hofeinfahrt-betonpflaster')} label="Hofeinfahrt" />
+ * <Carousel folder="referenzen/hofeinfahrt-betonpflaster" label="Hofeinfahrt" />
+ * Mit `folder` ist die Galerie im Bearbeiten-Modus pflegbar (Bilder hinzufügen, sortieren, ausblenden).
  * Verhalten: initCarousels() in src/scripts/site.ts
  */
 import type { ImageMetadata } from 'astro';
 import { Image } from 'astro:assets';
+import { findGallery } from '@/lib/images';
 import Icon from './Icon.astro';
 
 interface Props {
-  images: ImageMetadata[];
+  /** Bildordner unter src/assets/images (empfohlen) … */
+  folder?: string;
+  /** … oder eine feste Bildliste */
+  images?: ImageMetadata[];
   /** Name der Galerie – für Screenreader und Alternativtexte („<label> – Foto 2 von 13“) */
   label: string;
   aspect?: '4 / 3' | '3 / 2' | '16 / 10' | '1 / 1';
@@ -23,7 +28,8 @@ interface Props {
 }
 
 const {
-  images,
+  folder,
+  images: imageList,
   label,
   aspect = '4 / 3',
   sizes = '(min-width: 64rem) 33vw, (min-width: 40rem) 50vw, 100vw',
@@ -31,15 +37,31 @@ const {
   class: className,
 } = Astro.props;
 
+const entries = folder ? findGallery(folder) : (imageList ?? []).map((image) => ({ name: '', image }));
+const images = entries.map((entry) => entry.image);
+// Für den Bearbeiten-Modus: ausgeblendete Fotos der Galerie
+const hiddenNames = folder
+  ? findGallery(folder, { includeHidden: true })
+      .filter((entry) => entry.hidden)
+      .map((entry) => entry.name)
+  : [];
 const count = images.length;
 const aspectKey = aspect.replace(/\s/g, '');
 ---
 
-<div class:list={['carousel', className]} data-carousel data-aspect={aspectKey} data-count={count}>
+<div
+  class:list={['carousel', className]}
+  data-carousel
+  data-aspect={aspectKey}
+  data-count={count}
+  data-gallery={folder}
+  data-gallery-hidden={folder ? hiddenNames.join(',') : undefined}
+  data-gallery-label={folder ? label : undefined}
+>
   <ul class="carousel__track" role="list" tabindex="0" aria-label={`${label}: ${count} ${count === 1 ? 'Foto' : 'Fotos'}`} data-carousel-track>
     {
-      images.map((image, index) => (
-        <li class="carousel__slide">
+      entries.map(({ image, name }, index) => (
+        <li class="carousel__slide" data-name={name || undefined}>
           <Image
             src={image}
             alt={`${label} – Foto ${index + 1} von ${count}`}

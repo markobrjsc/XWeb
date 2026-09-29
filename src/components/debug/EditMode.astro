@@ -1,0 +1,688 @@
+---
+/**
+ * EditMode – Bearbeiten-Modus der Website (Stift oben rechts).
+ *  · Jeder sichtbare Text wird anklickbar und direkt editierbar. Speichern → Commit auf main
+ *    (src/content/edits.json), beim nächsten Build eingesetzt von src/middleware.ts.
+ *  · Galerien (Carousel mit `folder`): Bilder hinzufügen, Reihenfolge per Ziehen ändern, ausblenden
+ *    (src/content/galleries.json, neue Bilder als Dateien unter src/assets/images/<ordner>/).
+ * Erscheint nur, wenn der Worker den Modus meldet (GET /api/edit/status/) – Server-Teil: worker/edit.ts.
+ */
+import Icon from '@/components/ui/Icon.astro';
+---
+
+<div class="edit-ui" data-edit-ui hidden>
+  <button class="edit-toggle" type="button" data-edit-toggle aria-pressed="false" title="Bearbeiten-Modus">
+    <Icon name="pencil" size="1.15rem" class="edit-toggle__on" />
+    <Icon name="x" size="1.15rem" class="edit-toggle__off" />
+    <span class="visually-hidden">Bearbeiten-Modus</span>
+  </button>
+
+  <div class="edit-bar" data-edit-bar hidden>
+    <span class="edit-bar__dot" aria-hidden="true"></span>
+    <p class="edit-bar__text" data-edit-status aria-live="polite">Bearbeiten-Modus: Text anklicken und ändern.</p>
+    <button class="edit-bar__btn" type="button" data-edit-discard>Verwerfen</button>
+    <button class="edit-bar__btn edit-bar__btn--primary" type="button" data-edit-save>Speichern</button>
+  </div>
+
+  <dialog class="gallery-dialog" data-gallery-dialog aria-labelledby="gallery-dialog-title">
+    <form method="dialog" class="gallery-dialog__inner">
+      <header class="gallery-dialog__head">
+        <div>
+          <p class="gallery-dialog__kicker">Galerie bearbeiten</p>
+          <h2 class="gallery-dialog__title" id="gallery-dialog-title" data-gallery-title></h2>
+        </div>
+        <button class="gallery-dialog__close" type="submit" value="cancel" aria-label="Schließen">
+          <Icon name="x" size="1.1rem" />
+        </button>
+      </header>
+      <p class="gallery-dialog__hint">
+        Ziehen zum Sortieren (oder Pfeile) · Auge zum Aus-/Einblenden · neue Bilder werden automatisch verkleinert.
+      </p>
+      <ol class="gallery-dialog__grid" data-gallery-grid></ol>
+      <footer class="gallery-dialog__foot">
+        <label class="gallery-dialog__add">
+          <input type="file" accept="image/jpeg,image/png,image/webp,image/heic" multiple data-gallery-add />
+          <Icon name="image-plus" size="1rem" /> Bilder hinzufügen
+        </label>
+        <p class="gallery-dialog__status" data-gallery-status aria-live="polite"></p>
+        <button class="edit-bar__btn edit-bar__btn--primary" type="button" data-gallery-save>Galerie speichern</button>
+      </footer>
+    </form>
+  </dialog>
+</div>
+
+<script>
+  const ui = document.querySelector<HTMLElement>('[data-edit-ui]');
+
+  type Tracked = { block: HTMLElement; nodes: { node: Text; original: string }[]; scope: 'global' | 'page' };
+  const SKIP = 'script, style, noscript, template, svg, textarea, select, option, input, [data-edit-ui], [data-design-panel], [data-count-to], [data-carousel], .visually-hidden, [aria-hidden="true"]';
+  const normalize = (text: string) => text.replace(/\s+/g, ' ').trim();
+
+  async function init() {
+    if (!ui) return;
+    try {
+      const status = await (await fetch('/api/edit/status/')).json();
+      if (!status?.enabled) return;
+    } catch {
+      return;
+    }
+    ui.hidden = false;
+
+    const toggle = ui.querySelector<HTMLButtonElement>('[data-edit-toggle]')!;
+    const bar = ui.querySelector<HTMLElement>('[data-edit-bar]')!;
+    const statusText = ui.querySelector<HTMLElement>('[data-edit-status]')!;
+    const saveButton = ui.querySelector<HTMLButtonElement>('[data-edit-save]')!;
+    let tracked: Tracked[] = [];
+    let editing = false;
+
+    const supportsPlain = (() => {
+      const probe = document.createElement('div');
+      probe.contentEditable = 'plaintext-only';
+      return probe.contentEditable === 'plaintext-only';
+    })();
+
+    /* ---------------- Texte ---------------- */
+    const collect = () => {
+      const blocks = new Map<HTMLElement, Tracked>();
+      const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT, {
+        acceptNode: (node) => {
+          const parent = node.parentElement;
+          if (!parent || !normalize(node.textContent ?? '')) return NodeFilter.FILTER_REJECT;
+          if (parent.closest(SKIP)) return NodeFilter.FILTER_REJECT;
+          return NodeFilter.FILTER_ACCEPT;
+        },
+      });
+      for (let node = walker.nextNode() as Text | null; node; node = walker.nextNode() as Text | null) {
+        const block = node.parentElement!;
+        const entry = blocks.get(block) ?? {
+          block,
+          nodes: [],
+          scope: block.closest('header, footer, .hero__legal') ? ('global' as const) : ('page' as const),
+        };
+        entry.nodes.push({ node, original: node.textContent ?? '' });
+        blocks.set(block, entry);
+      }
+      return [...blocks.values()];
+    };
+
+    const changes = () => {
+      const list: { scope: 'global' | 'page'; from: string; to: string }[] = [];
+      for (const entry of tracked) {
+        const detached = entry.nodes.some(({ node }) => !node.isConnected || node.parentElement !== entry.block);
+        if (detached && entry.nodes.length === 1) {
+          const to = normalize(entry.block.textContent ?? '');
+          const from = normalize(entry.nodes[0].original);
+          if (from !== to) list.push({ scope: entry.scope, from, to });
+          continue;
+        }
+        for (const { node, original } of entry.nodes) {
+          const from = normalize(original);
+          const to = normalize(node.isConnected ? (node.textContent ?? '') : '');
+          if (from !== to) list.push({ scope: entry.scope, from, to });
+        }
+      }
+      return list;
+    };
+
+    const updateBar = () => {
+      const count = changes().length;
+      statusText.textContent = count
+        ? `${count} ${count === 1 ? 'Änderung' : 'Änderungen'} – noch nicht gespeichert`
+        : 'Bearbeiten-Modus: Text anklicken und ändern.';
+      saveButton.disabled = count === 0;
+    };
+
+    const start = () => {
+      editing = true;
+      document.querySelectorAll('[data-reveal]').forEach((el) => el.classList.add('is-revealed'));
+      tracked = collect();
+      tracked.forEach(({ block }) => {
+        block.setAttribute('contenteditable', supportsPlain ? 'plaintext-only' : 'true');
+        block.dataset.editable = '';
+        block.spellcheck = true;
+      });
+      document.querySelectorAll<HTMLElement>('[data-carousel][data-gallery]').forEach(addGalleryButton);
+      document.documentElement.classList.add('is-editing');
+      toggle.setAttribute('aria-pressed', 'true');
+      bar.hidden = false;
+      updateBar();
+    };
+
+    const stop = () => {
+      editing = false;
+      tracked.forEach(({ block }) => {
+        block.removeAttribute('contenteditable');
+        delete block.dataset.editable;
+      });
+      document.querySelectorAll('[data-gallery-edit]').forEach((button) => button.remove());
+      document.documentElement.classList.remove('is-editing');
+      toggle.setAttribute('aria-pressed', 'false');
+      bar.hidden = true;
+    };
+
+    const discard = () => {
+      for (const entry of tracked) {
+        if (entry.nodes.length === 1 && !entry.nodes[0].node.isConnected) {
+          entry.block.textContent = entry.nodes[0].original;
+          entry.nodes[0].node = entry.block.firstChild as Text;
+          continue;
+        }
+        entry.nodes.forEach(({ node, original }) => node.isConnected && (node.textContent = original));
+      }
+      updateBar();
+    };
+
+    toggle.addEventListener('click', () => {
+      if (!editing) return start();
+      if (changes().length && !confirm('Es gibt ungespeicherte Änderungen. Trotzdem beenden (Änderungen bleiben nur bis zum Neuladen sichtbar)?')) return;
+      stop();
+    });
+    ui.querySelector('[data-edit-discard]')!.addEventListener('click', discard);
+
+    saveButton.addEventListener('click', async () => {
+      const list = changes();
+      if (!list.length) return;
+      saveButton.disabled = true;
+      statusText.textContent = 'Wird gespeichert …';
+      try {
+        const response = await fetch('/api/edit/texte/', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ page: location.pathname, changes: list }),
+        });
+        const result = await response.json();
+        if (!response.ok || !result.ok) throw new Error(result.error || 'Speichern fehlgeschlagen.');
+        // Gespeicherter Stand ist der neue Ausgangspunkt
+        tracked = collect();
+        statusText.textContent = `Gespeichert (${list.length}) – nach dem automatischen Build in ca. 2 Minuten live.`;
+      } catch (error) {
+        statusText.textContent = error instanceof Error ? error.message : 'Speichern fehlgeschlagen.';
+        saveButton.disabled = false;
+      }
+    });
+
+    // Während des Bearbeitens: keine Links/Buttons auslösen, keine Zeilenumbrüche, nur reiner Text
+    document.addEventListener(
+      'click',
+      (event) => {
+        if (!editing) return;
+        const target = event.target as HTMLElement;
+        if (target.closest('[data-edit-ui], [data-design-panel], [data-gallery-edit]')) return;
+        if (target.closest('a, button, summary, label')) event.preventDefault();
+      },
+      true,
+    );
+    document.addEventListener('submit', (event) => editing && event.preventDefault(), true);
+    document.addEventListener('keydown', (event) => {
+      if (editing && event.key === 'Enter' && (event.target as HTMLElement).isContentEditable) event.preventDefault();
+    });
+    document.addEventListener('paste', (event) => {
+      const target = event.target as HTMLElement;
+      if (!editing || !target.isContentEditable || supportsPlain) return;
+      event.preventDefault();
+      document.execCommand('insertText', false, event.clipboardData?.getData('text/plain') ?? '');
+    });
+    document.addEventListener('input', () => editing && updateBar());
+    window.addEventListener('beforeunload', (event) => {
+      if (editing && changes().length) event.preventDefault();
+    });
+
+    /* ---------------- Galerien ---------------- */
+    const dialog = ui.querySelector<HTMLDialogElement>('[data-gallery-dialog]')!;
+    const grid = dialog.querySelector<HTMLOListElement>('[data-gallery-grid]')!;
+    const galleryStatus = dialog.querySelector<HTMLElement>('[data-gallery-status]')!;
+    const addInput = dialog.querySelector<HTMLInputElement>('[data-gallery-add]')!;
+    const gallerySave = dialog.querySelector<HTMLButtonElement>('[data-gallery-save]')!;
+    type Item = { name: string; thumb: string; hidden: boolean; file?: File };
+    let items: Item[] = [];
+    let folder = '';
+    let dragIndex = -1;
+
+    function addGalleryButton(carousel: HTMLElement) {
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.className = 'gallery-edit-btn';
+      button.dataset.galleryEdit = '';
+      button.textContent = 'Galerie bearbeiten';
+      button.addEventListener('click', (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        openGallery(carousel);
+      });
+      carousel.append(button);
+    }
+
+    const renderGrid = () => {
+      grid.replaceChildren(
+        ...items.map((item, index) => {
+          const li = document.createElement('li');
+          li.className = 'gallery-item';
+          li.draggable = true;
+          if (item.hidden) li.dataset.hidden = '';
+          if (item.file) li.dataset.new = '';
+          const img = document.createElement('img');
+          img.alt = item.name;
+          if (item.thumb) img.src = item.thumb;
+          const label = document.createElement('span');
+          label.className = 'gallery-item__label';
+          label.textContent = item.file ? 'neu' : item.hidden ? 'ausgeblendet' : `${index + 1}`;
+          const tools = document.createElement('span');
+          tools.className = 'gallery-item__tools';
+          const mk = (text: string, title: string, fn: () => void) => {
+            const b = document.createElement('button');
+            b.type = 'button';
+            b.textContent = text;
+            b.title = title;
+            b.setAttribute('aria-label', title);
+            b.addEventListener('click', fn);
+            return b;
+          };
+          tools.append(
+            mk('←', 'Nach vorne', () => move(index, index - 1)),
+            mk(item.hidden ? '◌' : '◉', item.hidden ? 'Einblenden' : 'Ausblenden', () => {
+              if (item.file) items.splice(index, 1);
+              else item.hidden = !item.hidden;
+              renderGrid();
+            }),
+            mk('→', 'Nach hinten', () => move(index, index + 1)),
+          );
+          li.append(img, label, tools);
+          li.addEventListener('dragstart', () => (dragIndex = index));
+          li.addEventListener('dragover', (event) => event.preventDefault());
+          li.addEventListener('drop', (event) => {
+            event.preventDefault();
+            move(dragIndex, index);
+          });
+          return li;
+        }),
+      );
+    };
+
+    const move = (from: number, to: number) => {
+      if (from < 0 || to < 0 || from >= items.length || to >= items.length || from === to) return;
+      const [item] = items.splice(from, 1);
+      items.splice(to, 0, item);
+      renderGrid();
+    };
+
+    function openGallery(carousel: HTMLElement) {
+      folder = carousel.dataset.gallery ?? '';
+      dialog.querySelector('[data-gallery-title]')!.textContent = carousel.dataset.galleryLabel ?? folder;
+      const visible = [...carousel.querySelectorAll<HTMLElement>('.carousel__slide[data-name]')].map((slide) => {
+        const img = slide.querySelector('img');
+        return { name: slide.dataset.name ?? '', thumb: img?.currentSrc || img?.src || '', hidden: false };
+      });
+      const hidden = (carousel.dataset.galleryHidden ?? '')
+        .split(',')
+        .filter(Boolean)
+        .map((name) => ({ name, thumb: '', hidden: true }));
+      items = [...visible, ...hidden];
+      galleryStatus.textContent = '';
+      gallerySave.disabled = false;
+      renderGrid();
+      dialog.showModal();
+    }
+
+    const readAsDataUrl = (blob: Blob) =>
+      new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(String(reader.result));
+        reader.onerror = () => reject(reader.error);
+        reader.readAsDataURL(blob);
+      });
+
+    addInput.addEventListener('change', async () => {
+      for (const file of addInput.files ?? []) {
+        items.push({ name: '', thumb: await readAsDataUrl(file), hidden: false, file });
+      }
+      addInput.value = '';
+      renderGrid();
+    });
+
+    // Neue Bilder vor dem Hochladen auf max. 2400 px verkleinern (JPEG)
+    const shrink = async (file: File) => {
+      const bitmap = await createImageBitmap(file);
+      const scale = Math.min(1, 2400 / Math.max(bitmap.width, bitmap.height));
+      const canvas = document.createElement('canvas');
+      canvas.width = Math.round(bitmap.width * scale);
+      canvas.height = Math.round(bitmap.height * scale);
+      canvas.getContext('2d')!.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+      const blob = await new Promise<Blob>((resolve, reject) =>
+        canvas.toBlob((b) => (b ? resolve(b) : reject(new Error('Bild konnte nicht verarbeitet werden.'))), 'image/jpeg', 0.85),
+      );
+      return (await readAsDataUrl(blob)).split(',')[1];
+    };
+
+    gallerySave.addEventListener('click', async () => {
+      gallerySave.disabled = true;
+      try {
+        const pending = items.filter((item) => item.file);
+        for (const [index, item] of pending.entries()) {
+          galleryStatus.textContent = `Lade Bild ${index + 1} von ${pending.length} hoch …`;
+          const base64 = await shrink(item.file!);
+          const name = `neu-${Date.now().toString(36)}-${index}.jpg`;
+          const response = await fetch(`/api/edit/bild/?folder=${encodeURIComponent(folder)}&name=${name}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'text/plain' },
+            body: base64,
+          });
+          const result = await response.json();
+          if (!response.ok || !result.ok) throw new Error(result.error || 'Hochladen fehlgeschlagen.');
+          item.name = result.name;
+          item.file = undefined;
+        }
+        galleryStatus.textContent = 'Speichere Reihenfolge …';
+        const response = await fetch('/api/edit/galerie/', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            folder,
+            order: items.map((item) => item.name),
+            hidden: items.filter((item) => item.hidden).map((item) => item.name),
+          }),
+        });
+        const result = await response.json();
+        if (!response.ok || !result.ok) throw new Error(result.error || 'Speichern fehlgeschlagen.');
+        galleryStatus.textContent = 'Gespeichert – nach dem automatischen Build in ca. 2 Minuten live.';
+        renderGrid();
+      } catch (error) {
+        galleryStatus.textContent = error instanceof Error ? error.message : 'Speichern fehlgeschlagen.';
+      } finally {
+        gallerySave.disabled = false;
+      }
+    });
+  }
+
+  init();
+</script>
+
+<style>
+  .edit-ui[hidden] {
+    display: none;
+  }
+
+  .edit-toggle {
+    position: fixed;
+    top: calc(var(--header-height) + 0.75rem);
+    right: 1rem;
+    z-index: 1001;
+    display: grid;
+    place-items: center;
+    width: 2.9rem;
+    height: 2.9rem;
+    color: #111a24;
+    border: 1px solid rgb(0 0 0 / 0.08);
+    border-radius: 50%;
+    background: #ffffff;
+    box-shadow: 0 10px 28px -10px rgb(0 0 0 / 0.45);
+    cursor: pointer;
+  }
+
+  .edit-toggle :global(.edit-toggle__off),
+  .edit-toggle[aria-pressed='true'] :global(.edit-toggle__on) {
+    display: none;
+  }
+
+  .edit-toggle[aria-pressed='true'] {
+    color: #ffffff;
+    background: #111a24;
+  }
+
+  .edit-toggle[aria-pressed='true'] :global(.edit-toggle__off) {
+    display: block;
+  }
+
+  .edit-bar {
+    position: fixed;
+    left: 50%;
+    bottom: 1rem;
+    z-index: 1001;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    max-width: calc(100vw - 2rem);
+    padding: 0.5rem 0.5rem 0.5rem 1rem;
+    color: #ffffff;
+    border-radius: 999px;
+    background: #111a24;
+    box-shadow: 0 16px 40px -14px rgb(0 0 0 / 0.6);
+    translate: -50% 0;
+  }
+
+  .edit-bar[hidden] {
+    display: none;
+  }
+
+  .edit-bar__dot {
+    flex: none;
+    width: 0.55rem;
+    height: 0.55rem;
+    border-radius: 50%;
+    background: #f6c945;
+  }
+
+  .edit-bar__text {
+    min-width: 0;
+    font-size: 0.85rem;
+  }
+
+  .edit-bar__btn {
+    flex: none;
+    padding: 0.5rem 1rem;
+    font: inherit;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #ffffff;
+    border: 1px solid rgb(255 255 255 / 0.3);
+    border-radius: 999px;
+    background: transparent;
+    cursor: pointer;
+  }
+
+  .edit-bar__btn--primary {
+    color: #111a24;
+    border-color: #ffffff;
+    background: #ffffff;
+  }
+
+  .edit-bar__btn:disabled {
+    opacity: 0.45;
+    cursor: default;
+  }
+
+  /* Editierbare Texte auf der Seite */
+  :global(.is-editing [data-editable]) {
+    outline: 1px dashed rgb(246 201 69 / 0.9);
+    outline-offset: 2px;
+    cursor: text;
+  }
+
+  :global(.is-editing [data-editable]:hover) {
+    outline-style: solid;
+    background: rgb(246 201 69 / 0.12);
+  }
+
+  :global(.is-editing [data-editable]:focus) {
+    outline: 2px solid #f6c945;
+    background: rgb(246 201 69 / 0.16);
+  }
+
+  :global(.gallery-edit-btn) {
+    position: absolute;
+    left: 0.6rem;
+    bottom: 0.6rem;
+    z-index: 5;
+    padding: 0.45rem 0.9rem;
+    font: inherit;
+    font-size: 0.8rem;
+    font-weight: 700;
+    color: #111a24;
+    border: 0;
+    border-radius: 999px;
+    background: #f6c945;
+    box-shadow: 0 6px 18px -6px rgb(0 0 0 / 0.5);
+    cursor: pointer;
+  }
+
+  /* Galerie-Dialog */
+  .gallery-dialog {
+    width: min(56rem, calc(100vw - 2rem));
+    max-height: calc(100dvh - 2rem);
+    padding: 0;
+    border: 0;
+    border-radius: 1.2rem;
+    box-shadow: 0 30px 80px -20px rgb(0 0 0 / 0.6);
+  }
+
+  .gallery-dialog::backdrop {
+    background: rgb(0 0 0 / 0.55);
+  }
+
+  .gallery-dialog__inner {
+    display: grid;
+    gap: 1rem;
+    padding: 1.25rem;
+  }
+
+  .gallery-dialog__head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1rem;
+  }
+
+  .gallery-dialog__kicker {
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: #5f6e80;
+  }
+
+  .gallery-dialog__title {
+    font-size: 1.25rem;
+  }
+
+  .gallery-dialog__close {
+    display: grid;
+    place-items: center;
+    width: 2.2rem;
+    height: 2.2rem;
+    border: 1px solid #dfe5ec;
+    border-radius: 50%;
+    background: #ffffff;
+    cursor: pointer;
+  }
+
+  .gallery-dialog__hint {
+    font-size: 0.8rem;
+    color: #5f6e80;
+  }
+
+  .gallery-dialog__grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(8.5rem, 1fr));
+    gap: 0.6rem;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .gallery-dialog__grid :global(.gallery-item) {
+    position: relative;
+    overflow: hidden;
+    aspect-ratio: 4 / 3;
+    border: 2px solid transparent;
+    border-radius: 0.7rem;
+    background: #eef2f6;
+    cursor: grab;
+  }
+
+  .gallery-dialog__grid :global(.gallery-item[data-new]) {
+    border-color: #f6c945;
+  }
+
+  .gallery-dialog__grid :global(.gallery-item[data-hidden] img) {
+    opacity: 0.3;
+  }
+
+  .gallery-dialog__grid :global(.gallery-item img) {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    pointer-events: none;
+  }
+
+  .gallery-dialog__grid :global(.gallery-item__label) {
+    position: absolute;
+    top: 0.35rem;
+    left: 0.35rem;
+    padding: 0.05rem 0.45rem;
+    font-size: 0.7rem;
+    font-weight: 700;
+    color: #ffffff;
+    border-radius: 999px;
+    background: rgb(17 26 36 / 0.75);
+  }
+
+  .gallery-dialog__grid :global(.gallery-item__tools) {
+    position: absolute;
+    right: 0.3rem;
+    bottom: 0.3rem;
+    left: 0.3rem;
+    display: flex;
+    justify-content: space-between;
+  }
+
+  .gallery-dialog__grid :global(.gallery-item__tools button) {
+    width: 1.8rem;
+    height: 1.8rem;
+    font-size: 0.9rem;
+    color: #111a24;
+    border: 0;
+    border-radius: 50%;
+    background: rgb(255 255 255 / 0.92);
+    cursor: pointer;
+  }
+
+  .gallery-dialog__foot {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.75rem;
+    padding-top: 0.75rem;
+    border-top: 1px solid #eef2f6;
+  }
+
+  .gallery-dialog__add {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.5rem 1rem;
+    font-size: 0.85rem;
+    font-weight: 600;
+    border: 1px solid #c5cfda;
+    border-radius: 999px;
+    cursor: pointer;
+  }
+
+  .gallery-dialog__add input {
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    cursor: pointer;
+  }
+
+  .gallery-dialog__status {
+    flex: 1;
+    font-size: 0.8rem;
+    color: #5f6e80;
+  }
+
+  .gallery-dialog__foot .edit-bar__btn--primary {
+    color: #ffffff;
+    border-color: #111a24;
+    background: #111a24;
+  }
+</style>

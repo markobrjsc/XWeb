@@ -15,6 +15,7 @@
  * Einrichtung: siehe README.md, Abschnitt „Formulare & E-Mail-Versand“.
  */
 import { site } from '../src/config/site';
+import { handleEdit, type EditEnv } from './edit';
 import { MIN_FILL_MS, UPLOAD_LIMITS, fileExtension, formatBytes, forms, type FormId, type FormSpec } from '../src/lib/forms';
 
 interface KVNamespace {
@@ -26,7 +27,7 @@ interface KVNamespace {
   getWithMetadata<M>(key: string, type: 'stream'): Promise<{ value: ReadableStream | null; metadata: M | null }>;
 }
 
-interface Env {
+interface Env extends EditEnv {
   ASSETS: { fetch(request: Request): Promise<Response> };
   UPLOADS: KVNamespace;
   /** Geheimer Schlüssel von resend.com – `npx wrangler secret put RESEND_API_KEY` */
@@ -295,6 +296,9 @@ export default {
       requestOrigin === url.origin ||
       (isLocal(url.hostname) && isLocal(new URL(requestOrigin).hostname));
     if (request.method !== 'GET' && !allowed) return fail('Nicht erlaubt.', 403);
+
+    const edit = await handleEdit(request, env, url, pathname);
+    if (edit) return edit;
 
     try {
       if (pathname === '/api/upload' && request.method === 'PUT') return await handleUpload(request, env);

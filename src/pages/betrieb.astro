@@ -15,10 +15,6 @@ import Section from '@/components/ui/Section.astro';
 import SectionHeader from '@/components/ui/SectionHeader.astro';
 import { site } from '@/config/site';
 import { clientGroups } from '@/data/company';
-import { findImages } from '@/lib/images';
-
-const teamPhotos = findImages('betrieb/team');
-const historyPhotos = findImages('betrieb/historie');
 
 const breadcrumbs = [
   { label: 'Start', href: '/' },
@@ -102,7 +98,7 @@ const facts = [
           />
         </div>
         <figure class="split__aside split__media" data-reveal="fade">
-          <Carousel images={teamPhotos} label="Unser Team bei der Arbeit" sizes="(min-width: 64rem) 45vw, 100vw" />
+          <Carousel folder="betrieb/team" label="Unser Team bei der Arbeit" sizes="(min-width: 64rem) 45vw, 100vw" />
           <figcaption class="split__caption">Unser Team bei der Arbeit – vom Pflastern bis zum Steinschnitt</figcaption>
         </figure>
       </div>
@@ -155,7 +151,7 @@ const facts = [
           </div>
         </div>
         <figure class="split__aside split__media" data-reveal="fade">
-          <Carousel images={historyPhotos} label="Fotos aus der Firmengeschichte" sizes="(min-width: 64rem) 45vw, 100vw" />
+          <Carousel folder="betrieb/historie" label="Fotos aus der Firmengeschichte" sizes="(min-width: 64rem) 45vw, 100vw" />
           <figcaption class="split__caption">Aus unserem Fotoarchiv</figcaption>
         </figure>
       </div>

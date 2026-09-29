@@ -8,6 +8,7 @@
  * Fehlt ein Foto, zeigen die Komponenten automatisch einen gestalteten Platzhalter.
  */
 import type { ImageMetadata } from 'astro';
+import galleries from '@/content/galleries.json';
 
 const modules = import.meta.glob<{ default: ImageMetadata }>(
   '/src/assets/images/**/*.{jpg,jpeg,png,webp,avif,JPG,JPEG,PNG,WEBP,AVIF}',
@@ -38,15 +39,36 @@ export function findImage(name: string | undefined): ImageMetadata | undefined {
   return imagesByName.get(name.toLowerCase());
 }
 
+/** Reihenfolge und ausgeblendete Fotos je Galerie – gepflegt über den Bearbeiten-Modus der Website */
+type GallerySettings = Record<string, { order?: string[]; hidden?: string[] }>;
+const gallerySettings = galleries as GallerySettings;
+
 /**
- * Alle Fotos eines Ordners, sortiert nach Dateiname (01.jpg, 02.jpg …) – z. B. für Bildergalerien:
+ * Alle Fotos eines Ordners mit Dateinamen – Reihenfolge laut src/content/galleries.json,
+ * sonst nach Dateiname (01.jpg, 02.jpg …). `includeHidden`: auch ausgeblendete (für den Bearbeiten-Modus).
+ */
+export function findGallery(folder: string | undefined, { includeHidden = false } = {}) {
+  if (!folder) return [];
+  const key = folder.toLowerCase().replace(/\/$/, '');
+  const prefix = `${key}/`;
+  const settings = gallerySettings[key] ?? {};
+  const order = settings.order ?? [];
+  const hidden = new Set(settings.hidden ?? []);
+  const rank = (name: string) => {
+    const index = order.indexOf(name);
+    return index === -1 ? Number.MAX_SAFE_INTEGER : index;
+  };
+  return [...imagesByName.entries()]
+    .filter(([name]) => name.startsWith(prefix) && !name.slice(prefix.length).includes('/'))
+    .map(([name, image]) => ({ name: name.slice(prefix.length), image, hidden: hidden.has(name.slice(prefix.length)) }))
+    .filter((entry) => includeHidden || !entry.hidden)
+    .sort((a, b) => rank(a.name) - rank(b.name) || a.name.localeCompare(b.name, 'de', { numeric: true }));
+}
+
+/**
+ * Alle sichtbaren Fotos eines Ordners in Galerie-Reihenfolge – z. B. für Bildergalerien:
  *   findImages('referenzen/hofeinfahrt-betonpflaster')
  */
 export function findImages(folder: string | undefined): ImageMetadata[] {
-  if (!folder) return [];
-  const prefix = `${folder.toLowerCase().replace(/\/$/, '')}/`;
-  return [...imagesByName.entries()]
-    .filter(([name]) => name.startsWith(prefix) && !name.slice(prefix.length).includes('/'))
-    .sort(([a], [b]) => a.localeCompare(b, 'de', { numeric: true }))
-    .map(([, image]) => image);
+  return findGallery(folder).map((entry) => entry.image);
 }

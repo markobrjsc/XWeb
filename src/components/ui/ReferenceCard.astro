@@ -23,12 +23,13 @@ interface Props {
 const { entry, headingLevel: Heading = 'h3', eager = false, class: className } = Astro.props;
 const { title, category, location, year, summary, services, icon, gallery, placeholder } = entry.data;
 const pillar = getPillar(category);
-const photos = findImages(gallery ?? `referenzen/${entry.id}`);
+const folder = gallery ?? `referenzen/${entry.id}`;
+const photos = findImages(folder);
 ---
 
 <Card reveal="up" class:list={['ref-card', className]} data-category={category} id={`ref-${entry.id}`}>
   <div slot="media">
-    {photos.length > 0 ? <Carousel images={photos} label={title} eager={eager} /> : <MediaPlaceholder icon={icon} />}
+    {photos.length > 0 ? <Carousel folder={folder} label={title} eager={eager} /> : <MediaPlaceholder icon={icon} />}
   </div>
   <div class="ref-card__meta">
     <Badge tone="soft" icon={pillar.icon} size="sm">{pillar.title}</Badge>

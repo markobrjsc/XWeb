@@ -28,7 +28,14 @@
     // (Domain muss bei Resend bestätigt sein) und die Zeile MAIL_TO löschen – dann geht alles an die
     // E-Mail aus src/config/site.ts.
     "MAIL_FROM": "Website Hildebrand <onboarding@resend.dev>",
-    "MAIL_TO": "markobarjasic66@gmail.com"
+    "MAIL_TO": "markobarjasic66@gmail.com",
+
+    // Bearbeiten-Modus (Stift oben rechts, worker/edit.ts): speichert Änderungen als Commit in diesem Repository.
+    // OHNE Zugangsschutz – jeder mit der Adresse kann Inhalte ändern. Zusätzlich nötig:
+    // npx wrangler secret put GITHUB_TOKEN · Abschalten (z. B. zum Livegang): "EDIT_MODE": "0"
+    "GITHUB_REPO": "markobrjsc/XWeb",
+    "GITHUB_BRANCH": "main",
+    "EDIT_MODE": "1"
   },
   "observability": {
     "enabled": true
