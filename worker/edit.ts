@@ -219,6 +219,10 @@ async function saveColors(request: Request, env: EditEnv) {
     .map(([name, value]) => [name, String(value).trim().toLowerCase()] as const)
     .filter(([name, value]) => (name === '--ink' ? /^\d{1,3} \d{1,3} \d{1,3}$/.test(value) : /^#[0-9a-f]{6}$/.test(value)));
 
+  // Nur ein ausdrücklich leeres Objekt setzt zurück – fehlende oder ungültige Angaben werden abgelehnt
+  if (!body.colors || typeof body.colors !== 'object') return fail('Farben fehlen.');
+  if (Object.keys(body.colors).length > 0 && entries.length === 0) return fail('Ungültige Farbwerte.');
+
   const lines = entries.map(([name, value]) => `  ${name}: ${value};`).join('\n');
   const css =
     '/* Farbänderungen aus dem Bearbeiten-Modus der Website (Stift oben rechts → Farben).\n' +
