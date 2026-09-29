@@ -12,8 +12,7 @@ import Breadcrumbs, { type Crumb } from '@/components/ui/Breadcrumbs.astro';
 import Container from '@/components/ui/Container.astro';
 import Eyebrow from '@/components/ui/Eyebrow.astro';
 import Icon from '@/components/ui/Icon.astro';
-import TechGrid from '@/components/ui/TechGrid.astro';
-import { findImage } from '@/lib/images';
+import { findImage, heroImageName } from '@/lib/images';
 
 interface Props {
   title: string;
@@ -30,13 +29,14 @@ interface Props {
 }
 
 const { title, eyebrow, eyebrowIcon, lead, breadcrumbs, size = 'md', image, imagePosition = 'center', scrollTarget } = Astro.props;
-const photo = findImage(image);
+const photo = findImage(heroImageName(Astro.url.pathname, image));
 const hasAside = Astro.slots.has('aside');
 ---
 
 <section
   class:list={['page-hero', `page-hero--${size}`, { 'page-hero--aside': hasAside, 'page-hero--photo': photo }]}
   data-tone="dark"
+  data-hero-edit={Astro.url.pathname}
   data-hero-snap={size === 'full' ? '' : undefined}
 >
   {
@@ -54,10 +54,6 @@ const hasAside = Astro.slots.has('aside');
       </div>
     )
   }
-  <div class="page-hero__bg" aria-hidden="true" data-parallax="0.12">
-    <TechGrid tone="light" class="page-hero__grid" />
-  </div>
-
   <Container class="page-hero__container">
     <div class="page-hero__content">
       {breadcrumbs && <Breadcrumbs items={breadcrumbs} class="page-hero__crumbs" />}
@@ -132,10 +128,6 @@ const hasAside = Astro.slots.has('aside');
 
   .page-hero--photo {
     background: var(--blue-950);
-  }
-
-  .page-hero--photo .page-hero__bg {
-    opacity: 0.5;
   }
 
   .page-hero--sm {
@@ -221,19 +213,6 @@ const hasAside = Astro.slots.has('aside');
     50% {
       transform: translateY(5px);
     }
-  }
-
-  .page-hero__bg {
-    position: absolute;
-    inset: -15% 0 0;
-    z-index: -1;
-    translate: 0 var(--parallax, 0px);
-  }
-
-  .page-hero__bg :global(.page-hero__grid) {
-    position: absolute;
-    inset: 0;
-    mask-image: radial-gradient(ellipse 80% 90% at 80% 20%, #000 10%, transparent 75%);
   }
 
   .page-hero :global(.page-hero__container) {

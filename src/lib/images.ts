@@ -9,6 +9,7 @@
  */
 import type { ImageMetadata } from 'astro';
 import galleries from '@/content/galleries.json';
+import heroes from '@/content/heroes.json';
 
 const modules = import.meta.glob<{ default: ImageMetadata }>(
   '/src/assets/images/**/*.{jpg,jpeg,png,webp,avif,JPG,JPEG,PNG,WEBP,AVIF}',
@@ -28,10 +29,15 @@ for (const [path, module] of Object.entries(modules)) {
 /** Alle Fotos mit Name und Dateipfad (für Auswertungen beim Build, z. B. Helligkeit in der Design-Vorschau) */
 export function listImages(): { name: string; image: ImageMetadata; file: string }[] {
   return Object.entries(modules).map(([path, module]) => ({
-    name: path.replace('/src/assets/images/', '').replace(/.[^.]+$/, '').toLowerCase(),
+    name: path.replace('/src/assets/images/', '').replace(/\.[^.]+$/, '').toLowerCase(),
     image: module.default,
     file: path.slice(1),
   }));
+}
+
+/** Kopfbild einer Seite – im Bearbeiten-Modus änderbar (src/content/heroes.json: { "/pfad/": "bildname" }) */
+export function heroImageName(path: string, fallback?: string): string | undefined {
+  return (heroes as Record<string, string>)[path] ?? fallback;
 }
 
 export function findImage(name: string | undefined): ImageMetadata | undefined {

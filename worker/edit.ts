@@ -5,6 +5,7 @@
  *  GET  /api/edit/status/            { enabled } – ist der Bearbeiten-Modus verfügbar?
  *  POST /api/edit/texte/             { page, changes: [{ scope: 'global' | 'page', from, to }] } → src/content/edits.json
  *  POST /api/edit/galerie/           { folder, order: [..], hidden: [..] }                        → src/content/galleries.json
+ *  POST /api/edit/hero/             { page, image }  – Kopfbild einer Seite                            → src/content/heroes.json
  *  PUT  /api/edit/bild/?folder=&name=  Bild als Base64-Text (vom Browser verkleinert)             → src/assets/images/<folder>/<name>
  *
  * Einrichtung: GitHub-Token (Fine-grained, nur dieses Repository, „Contents: Read and write“)
@@ -31,6 +32,7 @@ declare const FixedLengthStream: {
 
 const EDITS_PATH = 'src/content/edits.json';
 const GALLERIES_PATH = 'src/content/galleries.json';
+const HEROES_PATH = 'src/content/heroes.json';
 const FOLDER_PATTERN = /^[a-z0-9-]+(\/[a-z0-9-]+){0,2}$/;
 const NAME_PATTERN = /^[a-z0-9][a-z0-9_-]{0,80}$/;
 const FILE_PATTERN = /^[a-z0-9][a-z0-9_-]{0,80}\.(jpg|jpeg|png|webp)$/;
@@ -162,6 +164,17 @@ async function saveGallery(request: Request, env: EditEnv) {
   return json({ ok: true });
 }
 
+async function saveHero(request: Request, env: EditEnv) {
+  const body = (await request.json()) as { page?: unknown; image?: unknown };
+  const page = String(body.page ?? '');
+  const image = String(body.image ?? '').toLowerCase();
+  if (!/^\/[a-z0-9/_-]*$/i.test(page) || !/^[a-z0-9][a-z0-9/_-]{0,160}$/.test(image)) return fail('Ungültige Angaben.');
+  await updateJsonFile<Record<string, string>>(env, HEROES_PATH, {}, (file) => {
+    file[page] = image;
+  }, `Kopfbild geändert: ${page} → ${image}`);
+  return json({ ok: true });
+}
+
 /** Bild als Datei committen – der Base64-Text wird unverändert durchgereicht (kostet kaum Rechenzeit) */
 async function uploadImage(request: Request, env: EditEnv, url: URL) {
   const folder = url.searchParams.get('folder') ?? '';
@@ -214,6 +227,7 @@ export async function handleEdit(request: Request, env: EditEnv, url: URL, pathn
   try {
     if (pathname === '/api/edit/texte' && request.method === 'POST') return await saveTexts(request, env);
     if (pathname === '/api/edit/galerie' && request.method === 'POST') return await saveGallery(request, env);
+    if (pathname === '/api/edit/hero' && request.method === 'POST') return await saveHero(request, env);
     if (pathname === '/api/edit/bild' && request.method === 'PUT') return await uploadImage(request, env, url);
   } catch (error) {
     console.error(error);

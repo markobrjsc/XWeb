@@ -12,14 +12,14 @@ import Icon from '@/components/ui/Icon.astro';
 import { legalNav } from '@/config/navigation';
 import { site } from '@/config/site';
 import { pillars } from '@/data/services';
-import { findImage } from '@/lib/images';
+import { findImage, heroImageName } from '@/lib/images';
 
-const heroPhoto = findImage('hero');
+const heroPhoto = findImage(heroImageName('/', 'hero'));
 // Reihenfolge der Plakette: Impressum · © Firmenname · Datenschutz
 const [firstLegal, ...otherLegal] = legalNav;
 ---
 
-<section class="hero" aria-labelledby="hero-titel">
+<section class="hero" aria-labelledby="hero-titel" data-hero-edit="/">
   <div class="hero__bg" aria-hidden="true">
     {
       heroPhoto && (

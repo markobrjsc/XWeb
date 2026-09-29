@@ -10,7 +10,6 @@ import Container from '@/components/ui/Container.astro';
 import CopyButton from '@/components/ui/CopyButton.astro';
 import Icon from '@/components/ui/Icon.astro';
 import Logo from '@/components/ui/Logo.astro';
-import TechGrid from '@/components/ui/TechGrid.astro';
 import SocialLinks from '@/components/ui/SocialLinks.astro';
 
 const year = new Date().getFullYear();
@@ -22,7 +21,6 @@ const companyLinks = mainNav.filter((item) => item.href !== '/' && !item.href.in
 ---
 
 <footer class="site-footer" data-tone="dark">
-  <TechGrid tone="light" class="site-footer__pattern" />
   <Container>
     <div class="site-footer__top">
       <div class="site-footer__brand">
@@ -121,13 +119,6 @@ const companyLinks = mainNav.filter((item) => item.href !== '/' && !item.href.in
     overflow: hidden;
     padding-top: clamp(1.75rem, 1.25rem + 1.25vw, 2.25rem);
     background: linear-gradient(180deg, var(--blue-950) 0%, color-mix(in srgb, var(--blue-950) 70%, #000) 100%);
-  }
-
-  .site-footer :global(.site-footer__pattern) {
-    position: absolute;
-    inset: 0;
-    z-index: -1;
-    mask-image: linear-gradient(to bottom, #000, transparent 70%);
   }
 
   .site-footer__top {

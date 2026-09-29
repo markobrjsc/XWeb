@@ -13,7 +13,6 @@ import Button from '@/components/ui/Button.astro';
 import ContactList from '@/components/ui/ContactList.astro';
 import Icon from '@/components/ui/Icon.astro';
 import Logo from '@/components/ui/Logo.astro';
-import TechGrid from '@/components/ui/TechGrid.astro';
 
 const currentPath = Astro.url.pathname;
 const isCurrent = (href: string) => {
@@ -71,7 +70,6 @@ const hasActiveNav = mainNav.some((item) => isCurrent(item.href));
   </div>
 
   <div class="mobile-menu" id="mobile-menu" data-mobile-menu data-tone="dark">
-    <TechGrid tone="light" class="mobile-menu__pattern" />
     <div class="mobile-menu__inner">
       <nav aria-label="Mobile Navigation">
         <ul class="mobile-menu__list" role="list">
@@ -463,13 +461,6 @@ const hasActiveNav = mainNav.some((item) => isCurrent(item.href));
       clip-path 500ms var(--ease-out),
       opacity var(--duration-base) ease,
       visibility 0s;
-  }
-
-  .mobile-menu :global(.mobile-menu__pattern) {
-    position: absolute;
-    inset: 0;
-    z-index: -1;
-    mask-image: linear-gradient(to bottom, transparent, #000 50%);
   }
 
   .mobile-menu__inner {

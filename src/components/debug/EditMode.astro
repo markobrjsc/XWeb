@@ -3,11 +3,23 @@
  * EditMode – Bearbeiten-Modus der Website (Stift oben rechts).
  *  · Jeder sichtbare Text wird anklickbar und direkt editierbar. Speichern → Commit auf main
  *    (src/content/edits.json), beim nächsten Build eingesetzt von src/middleware.ts.
+ *  · Kopfbilder (Startseite + Seitenköpfe, [data-hero-edit]): aus allen Fotos wählen oder neues hochladen
+ *    (src/content/heroes.json, neue Bilder unter src/assets/images/hero/).
  *  · Galerien (Carousel mit `folder`): Bilder hinzufügen, Reihenfolge per Ziehen ändern, ausblenden
  *    (src/content/galleries.json, neue Bilder als Dateien unter src/assets/images/<ordner>/).
  * Erscheint nur, wenn der Worker den Modus meldet (GET /api/edit/status/) – Server-Teil: worker/edit.ts.
  */
+import { getImage } from 'astro:assets';
 import Icon from '@/components/ui/Icon.astro';
+import { listImages } from '@/lib/images';
+
+// Auswahl fürs Kopfbild: alle Querformat-Fotos als kleine Vorschau (erst beim Öffnen des Dialogs geladen)
+const heroChoices = await Promise.all(
+  listImages()
+    .filter(({ image }) => image.width > image.height)
+    .sort((a, b) => a.name.localeCompare(b.name, 'de', { numeric: true }))
+    .map(async ({ name, image }) => ({ name, thumb: (await getImage({ src: image, width: 320, format: 'webp', quality: 60 })).src })),
+);
 ---
 
 <div class="edit-ui" data-edit-ui hidden>
@@ -23,6 +35,38 @@ import Icon from '@/components/ui/Icon.astro';
     <button class="edit-bar__btn" type="button" data-edit-discard>Verwerfen</button>
     <button class="edit-bar__btn edit-bar__btn--primary" type="button" data-edit-save>Speichern</button>
   </div>
+
+  <dialog class="gallery-dialog" data-hero-dialog aria-labelledby="hero-dialog-title">
+    <form method="dialog" class="gallery-dialog__inner">
+      <header class="gallery-dialog__head">
+        <div>
+          <p class="gallery-dialog__kicker">Kopfbild ändern</p>
+          <h2 class="gallery-dialog__title" id="hero-dialog-title">Foto auswählen oder neues hochladen</h2>
+        </div>
+        <button class="gallery-dialog__close" type="button" aria-label="Schließen">
+          <Icon name="x" size="1.1rem" />
+        </button>
+      </header>
+      <ol class="gallery-dialog__grid hero-choices" data-hero-grid>
+        {
+          heroChoices.map((choice) => (
+            <li>
+              <button type="button" class="hero-choice" data-hero-choice={choice.name} title={choice.name}>
+                <img src={choice.thumb} alt={choice.name} loading="lazy" decoding="async" width="320" height="200" />
+              </button>
+            </li>
+          ))
+        }
+      </ol>
+      <footer class="gallery-dialog__foot">
+        <label class="gallery-dialog__add">
+          <input type="file" accept="image/jpeg,image/png,image/webp" data-hero-upload />
+          <Icon name="image-plus" size="1rem" /> Neues Bild hochladen
+        </label>
+        <p class="gallery-dialog__status" data-hero-status aria-live="polite"></p>
+      </footer>
+    </form>
+  </dialog>
 
   <dialog class="gallery-dialog" data-gallery-dialog aria-labelledby="gallery-dialog-title">
     <form method="dialog" class="gallery-dialog__inner">
@@ -142,6 +186,7 @@ import Icon from '@/components/ui/Icon.astro';
         block.spellcheck = true;
       });
       document.querySelectorAll<HTMLElement>('[data-carousel][data-gallery]').forEach(addGalleryButton);
+      document.querySelectorAll<HTMLElement>('[data-hero-edit]').forEach(addHeroButton);
       document.documentElement.classList.add('is-editing');
       toggle.setAttribute('aria-pressed', 'true');
       bar.hidden = false;
@@ -154,7 +199,7 @@ import Icon from '@/components/ui/Icon.astro';
         block.removeAttribute('contenteditable');
         delete block.dataset.editable;
       });
-      document.querySelectorAll('[data-gallery-edit]').forEach((button) => button.remove());
+      document.querySelectorAll('[data-gallery-edit], [data-hero-edit-btn]').forEach((button) => button.remove());
       document.documentElement.classList.remove('is-editing');
       toggle.setAttribute('aria-pressed', 'false');
       bar.hidden = true;
@@ -207,7 +252,7 @@ import Icon from '@/components/ui/Icon.astro';
       (event) => {
         if (!editing) return;
         const target = event.target as HTMLElement;
-        if (target.closest('[data-edit-ui], [data-design-panel], [data-gallery-edit]')) return;
+        if (target.closest('[data-edit-ui], [data-design-panel], [data-gallery-edit], [data-hero-edit-btn]')) return;
         if (target.closest('a, button, summary, label')) event.preventDefault();
       },
       true,
@@ -233,6 +278,81 @@ import Icon from '@/components/ui/Icon.astro';
       if (editing && changes().length) event.preventDefault();
     });
 
+    /* ---------------- Kopfbilder ---------------- */
+    const heroDialog = ui.querySelector<HTMLDialogElement>('[data-hero-dialog]')!;
+    const heroStatus = heroDialog.querySelector<HTMLElement>('[data-hero-status]')!;
+    let heroSection: HTMLElement | null = null;
+
+    function addHeroButton(section: HTMLElement) {
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.className = 'gallery-edit-btn hero-edit-btn';
+      button.dataset.heroEditBtn = '';
+      button.textContent = 'Bild ändern';
+      button.addEventListener('click', (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        heroSection = section;
+        heroStatus.textContent = '';
+        heroDialog.showModal();
+      });
+      section.append(button);
+    }
+
+    // Vorschau sofort auf der Seite zeigen (volle Qualität nach dem Build)
+    const previewHero = (src: string) => {
+      const img = heroSection?.querySelector<HTMLImageElement>('.hero__bg img, .page-hero__photo img');
+      if (!img) return;
+      img.closest('picture')?.querySelectorAll('source').forEach((source) => source.remove());
+      img.removeAttribute('srcset');
+      img.src = src;
+    };
+
+    const saveHero = async (image: string, preview: string) => {
+      heroStatus.textContent = 'Wird gespeichert …';
+      const response = await fetch('/api/edit/hero/', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ page: heroSection?.dataset.heroEdit ?? location.pathname, image }),
+      });
+      const result = await response.json();
+      if (!response.ok || !result.ok) throw new Error(result.error || 'Speichern fehlgeschlagen.');
+      previewHero(preview);
+      heroStatus.textContent = 'Gespeichert – nach dem automatischen Build in ca. 2 Minuten live.';
+    };
+
+    heroDialog.querySelectorAll<HTMLButtonElement>('[data-hero-choice]').forEach((button) =>
+      button.addEventListener('click', async () => {
+        try {
+          await saveHero(button.dataset.heroChoice ?? '', button.querySelector('img')?.src ?? '');
+        } catch (error) {
+          heroStatus.textContent = error instanceof Error ? error.message : 'Speichern fehlgeschlagen.';
+        }
+      }),
+    );
+
+    heroDialog.querySelector<HTMLInputElement>('[data-hero-upload]')!.addEventListener('change', async (event) => {
+      const input = event.target as HTMLInputElement;
+      const file = input.files?.[0];
+      input.value = '';
+      if (!file) return;
+      try {
+        heroStatus.textContent = 'Bild wird hochgeladen …';
+        const base64 = await shrink(file);
+        const name = `neu-${Date.now().toString(36)}.jpg`;
+        const response = await fetch(`/api/edit/bild/?folder=hero&name=${name}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'text/plain' },
+          body: base64,
+        });
+        const result = await response.json();
+        if (!response.ok || !result.ok) throw new Error(result.error || 'Hochladen fehlgeschlagen.');
+        await saveHero(`hero/${result.name}`, `data:image/jpeg;base64,${base64}`);
+      } catch (error) {
+        heroStatus.textContent = error instanceof Error ? error.message : 'Hochladen fehlgeschlagen.';
+      }
+    });
+
     /* ---------------- Galerien ---------------- */
     const dialog = ui.querySelector<HTMLDialogElement>('[data-gallery-dialog]')!;
     const grid = dialog.querySelector<HTMLOListElement>('[data-gallery-grid]')!;
@@ -244,13 +364,15 @@ import Icon from '@/components/ui/Icon.astro';
     let folder = '';
     let dragIndex = -1;
 
-    // Schließen: X-Knopf und Klick auf den abgedunkelten Hintergrund
-    dialog.querySelector('.gallery-dialog__close')!.addEventListener('click', (event) => {
-      event.preventDefault();
-      dialog.close();
-    });
-    dialog.addEventListener('click', (event) => {
-      if (event.target === dialog) dialog.close();
+    // Schließen: X-Knopf und Klick auf den abgedunkelten Hintergrund (alle Dialoge)
+    ui.querySelectorAll<HTMLDialogElement>('dialog').forEach((dlg) => {
+      dlg.querySelector('.gallery-dialog__close')?.addEventListener('click', (event) => {
+        event.preventDefault();
+        dlg.close();
+      });
+      dlg.addEventListener('click', (event) => {
+        if (event.target === dlg) dlg.close();
+      });
     });
 
     function addGalleryButton(carousel: HTMLElement) {
@@ -537,6 +659,36 @@ import Icon from '@/components/ui/Icon.astro';
     background: #f6c945;
     box-shadow: 0 6px 18px -6px rgb(0 0 0 / 0.5);
     cursor: pointer;
+  }
+
+  :global(.hero-edit-btn) {
+    top: calc(var(--header-height) + 0.75rem);
+    bottom: auto;
+    left: 1rem;
+    z-index: 20;
+  }
+
+  .hero-choices :global(.hero-choice) {
+    display: block;
+    width: 100%;
+    padding: 0;
+    overflow: hidden;
+    aspect-ratio: 16 / 10;
+    border: 2px solid transparent;
+    border-radius: 0.6rem;
+    background: #eef2f6;
+    cursor: pointer;
+  }
+
+  .hero-choices :global(.hero-choice:hover),
+  .hero-choices :global(.hero-choice:focus-visible) {
+    border-color: #f6c945;
+  }
+
+  .hero-choices :global(.hero-choice img) {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
   }
 
   /* Galerie-Dialog */
