@@ -19,16 +19,14 @@ const { tone = 'default', showLink = true } = Astro.props;
 <Section tone={tone} labelledby="werte-titel" class="values">
   <div class="values__layout">
     <div class="values__intro">
-      <div class="values__sticky">
-        <SectionHeader
-          id="werte-titel"
-          eyebrow="Warum Hildebrand?"
-          title={'Handwerk, auf das <span class="accent">Verlass ist.</span>'}
-          lead="Als Familienbetrieb stehen wir mit unserem Namen für jedes Projekt ein. Das spüren unsere Kundinnen und Kunden – von der ersten Beratung bis zur Abnahme."
-        >
-          {showLink && <Button href="/betrieb/" variant="secondary" icon="arrow-right">Mehr über unseren Betrieb</Button>}
-        </SectionHeader>
-      </div>
+      <SectionHeader
+        id="werte-titel"
+        eyebrow="Warum Hildebrand?"
+        title={'Handwerk, auf das <span class="accent">Verlass ist.</span>'}
+        lead="Als Familienbetrieb stehen wir mit unserem Namen für jedes Projekt ein. Das spüren unsere Kundinnen und Kunden – von der ersten Beratung bis zur Abnahme."
+      >
+        {showLink && <Button href="/betrieb/" variant="secondary" icon="arrow-right">Mehr über unseren Betrieb</Button>}
+      </SectionHeader>
     </div>
 
     <ul class="values__grid" role="list" data-reveal-group="100">
@@ -44,26 +42,14 @@ const { tone = 'default', showLink = true } = Astro.props;
 </Section>
 
 <style>
+  /*
+   * Handy: Text, darunter die Karten · Tablet: Karten in 2, ab 64rem in 3 Spalten
+   * Ab 72rem: Text links über zwei Spalten, die ersten zwei Karten rechts daneben,
+   * die übrigen laufen darunter über die volle Breite weiter (statt einer langen Spalte rechts)
+   */
   .values__layout {
     display: grid;
     gap: var(--space-4);
-  }
-
-  @media (min-width: 64rem) {
-    .values__layout {
-      grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.2fr);
-      gap: clamp(2.5rem, 1rem + 4vw, 5rem);
-      align-items: start;
-    }
-
-    .values__sticky {
-      position: sticky;
-      top: calc(var(--header-height-compact) + var(--space-10));
-    }
-
-    .values__sticky :global(.section-header) {
-      margin-bottom: 0;
-    }
   }
 
   .values__grid {
@@ -76,6 +62,34 @@ const { tone = 'default', showLink = true } = Astro.props;
   @media (min-width: 40rem) {
     .values__grid {
       grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+  }
+
+  @media (min-width: 64rem) {
+    .values__grid {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+  }
+
+  @media (min-width: 72rem) {
+    .values__layout {
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: var(--grid-gap);
+    }
+
+    .values__intro {
+      grid-column: span 2;
+      align-self: center;
+      padding-right: var(--space-8);
+    }
+
+    .values__intro :global(.section-header) {
+      margin-bottom: 0;
+    }
+
+    /* Karten stehen direkt im Raster neben bzw. unter dem Text */
+    .values__grid {
+      display: contents;
     }
   }
 
