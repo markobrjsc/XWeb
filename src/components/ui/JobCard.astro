@@ -17,10 +17,10 @@ const { job, class: className } = Astro.props;
 const { title, type, start, location, summary, icon } = job.data;
 ---
 
-<Card interactive reveal="up" padding="lg" class:list={['job-card', className]}>
+<Card interactive reveal="up" padding="sm" class:list={['job-card', className]}>
   <div class="job-card__layout">
     <div class="job-card__head">
-      <IconBadge name={icon} tone="soft" size="lg" />
+      <IconBadge name={icon} tone="soft" />
       <div class="job-card__meta">
         <Badge tone="primary" size="sm">{type}</Badge>
         <span class="job-card__detail"><Icon name="calendar" size="1em" /> {start}</span>
@@ -49,13 +49,13 @@ const { title, type, start, location, summary, icon } = job.data;
     display: flex;
     flex: 1;
     flex-direction: column;
-    gap: var(--space-4);
+    gap: var(--space-3);
   }
 
   .job-card__head {
     display: flex;
     align-items: center;
-    gap: var(--space-4);
+    gap: var(--space-3);
   }
 
   .job-card__main {
@@ -67,7 +67,7 @@ const { title, type, start, location, summary, icon } = job.data;
   .job-card__more {
     align-self: flex-start;
     margin-top: auto;
-    padding-top: var(--space-2);
+    padding-top: var(--space-1);
   }
 
   .job-card__meta {
@@ -86,12 +86,13 @@ const { title, type, start, location, summary, icon } = job.data;
   }
 
   .job-card__title {
-    font-size: var(--text-xl);
+    font-size: var(--text-lg);
     line-height: 1.25;
   }
 
   .job-card__summary {
-    font-size: var(--text-sm);
+    font-size: var(--text-xs);
+    line-height: var(--leading-normal);
     color: var(--color-text-muted);
   }
 

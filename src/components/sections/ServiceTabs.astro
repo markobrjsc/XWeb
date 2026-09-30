@@ -13,9 +13,16 @@ import Icon from '@/components/ui/Icon.astro';
 import { pillars } from '@/data/services';
 ---
 
+<!-- Überschrift scrollt normal weg, nur die Auswahl darunter klebt -->
+<header class="svc-tabs__head" data-tabhead hidden>
+  <h2 class="svc-tabs__heading">Unsere Leistungsbereiche</h2>
+  <p class="svc-tabs__hint">Bereich wählen, um die passenden Leistungen zu sehen</p>
+</header>
+
 <div class="svc-tabs" data-tabbar hidden>
   <Container>
     <div class="svc-tabs__list" role="tablist" aria-label="Fachbereich wählen">
+      <span class="svc-tabs__indicator" aria-hidden="true"></span>
       {
         pillars.map((pillar, index) => (
           <button
@@ -60,6 +67,7 @@ import { pillars } from '@/data/services';
     tabbar.before(sentinel);
 
     tabbar.hidden = false;
+    document.querySelector<HTMLElement>('[data-tabhead]')?.removeAttribute('hidden');
     panels.forEach((panel) => {
       panel.setAttribute('role', 'tabpanel');
       panel.setAttribute('aria-labelledby', `tab-${panel.dataset.panel}`);
@@ -71,6 +79,8 @@ import { pillars } from '@/data/services';
     const isStuck = () => sentinel.getBoundingClientRect().top < stickyTop() - 1;
 
     const markTabs = (id: string, focus: boolean) => {
+      // Das Label gleitet zum gewählten Fachbereich (alle gleich breit → Position = Index)
+      tabbar.style.setProperty('--active', String(Math.max(0, tabs.findIndex((tab) => tab.dataset.tab === id))));
       tabs.forEach((tab) => {
         const active = tab.dataset.tab === id;
         tab.setAttribute('aria-selected', String(active));
@@ -202,71 +212,103 @@ import { pillars } from '@/data/services';
     opacity: 1;
   }
 
-  .svc-tabs__list {
+  /*
+   * Wie die Navigation im Header: drei gleich breite Punkte ohne gemeinsamen Rahmen,
+   * der gewählte sitzt in einem kräftigen Label (Onyx), das beim Wechsel hinübergleitet.
+   */
+  .svc-tabs__head {
     display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: var(--space-1);
-    max-width: 58rem;
-    margin-inline: auto;
-    padding: var(--space-1);
-    border-radius: var(--radius-full);
-    background: #ffffff;
-    box-shadow:
-      inset 0 0 0 1px var(--color-border),
-      var(--shadow-xs);
-    transition: box-shadow var(--duration-base) ease;
+    justify-items: center;
+    gap: 0.15rem;
+    padding-top: clamp(1.5rem, 1rem + 1.5vw, 2.5rem);
+    text-align: center;
+    background: var(--color-bg-subtle);
   }
 
-  .svc-tabs.is-stuck .svc-tabs__list {
-    box-shadow:
-      inset 0 0 0 1px var(--color-border),
-      var(--shadow-md);
+  .svc-tabs__heading {
+    font-size: var(--text-2xl);
+    line-height: 1.2;
+  }
+
+  .svc-tabs__hint {
+    font-size: var(--text-2xs);
+    color: var(--color-text-subtle);
+  }
+
+  .svc-tabs__list {
+    --gap: var(--space-2);
+    position: relative;
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: var(--gap);
+    max-width: 44rem;
+    margin-inline: auto;
+  }
+
+  .svc-tabs__indicator {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    width: calc((100% - 2 * var(--gap)) / 3);
+    border-radius: var(--radius-full);
+    background: var(--onyx-950);
+    box-shadow: var(--shadow-md);
+    translate: calc(var(--active, 0) * (100% + var(--gap))) 0;
+    transition: translate var(--duration-slow) var(--ease-in-out);
   }
 
   .svc-tabs__tab {
+    position: relative;
+    z-index: 1;
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: var(--space-3);
+    gap: var(--space-2);
     min-width: 0;
-    min-height: 3rem;
-    padding: var(--space-2) var(--space-4) var(--space-2) var(--space-2);
+    padding: 0.4rem var(--space-4) 0.4rem 0.4rem;
     font: inherit;
     text-align: left;
     color: var(--color-heading);
     border: 0;
+    /* Nicht gewählt: grauer Rahmen und weiße Fläche – erkennbar als Auswahl */
+    box-shadow: inset 0 0 0 1.5px var(--color-border-strong);
     border-radius: var(--radius-full);
-    background: transparent;
+    background: #ffffff;
     cursor: pointer;
     transition:
       background-color var(--duration-base) ease,
       box-shadow var(--duration-base) ease,
-      color var(--duration-base) ease;
+      color var(--duration-slow) ease;
   }
 
   .svc-tabs__tab:hover {
-    background: var(--blue-50);
+    box-shadow: inset 0 0 0 1.5px var(--onyx-400);
   }
 
-  /* Ausgewählter Fachbereich: kräftiger gelber Rahmen auf Weiß (Rahmen als Schatten – nichts verschiebt sich) */
   .svc-tabs__tab[aria-selected='true'] {
-    color: var(--color-heading);
-    background: #ffffff;
-    box-shadow: inset 0 0 0 3px var(--color-cta);
+    color: #ffffff;
+    background: transparent;
+    box-shadow: none;
+  }
+
+  .svc-tabs__tab:focus-visible {
+    outline: 3px solid var(--color-focus);
+    outline-offset: 2px;
   }
 
   .svc-tabs__icon {
     display: grid;
     place-items: center;
     flex: none;
-    width: 2.25rem;
-    height: 2.25rem;
+    width: 2rem;
+    height: 2rem;
     border-radius: 50%;
-    color: var(--blue-700);
-    background: var(--blue-50);
+    color: var(--color-heading);
+    background: rgb(var(--ink) / 0.07);
     transition:
-      background-color var(--duration-base) ease,
-      color var(--duration-base) ease;
+      background-color var(--duration-slow) ease,
+      color var(--duration-slow) ease;
   }
 
   .svc-tabs__tab[aria-selected='true'] .svc-tabs__icon {
@@ -297,7 +339,11 @@ import { pillars } from '@/data/services';
 
   @media (max-width: 47.99rem) {
     .svc-tabs__list {
-      border-radius: calc(var(--radius-xl) + var(--space-1));
+      --gap: var(--space-1);
+    }
+
+    .svc-tabs__indicator {
+      border-radius: var(--radius-xl);
     }
 
     .svc-tabs__tab {
@@ -309,8 +355,8 @@ import { pillars } from '@/data/services';
     }
 
     .svc-tabs__icon {
-      width: 1.9rem;
-      height: 1.9rem;
+      width: 1.8rem;
+      height: 1.8rem;
     }
 
     .svc-tabs__sub {

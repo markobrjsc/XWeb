@@ -101,15 +101,9 @@ const interestOptions = [
       </aside>
 
       <div class="apply__form">
-        <header class="apply__form-head">
-          <h2 class="apply__title" id="bewerbung-titel">Jetzt online bewerben</h2>
-          <p class="apply__lead">
-            In wenigen Minuten erledigt: Kontaktdaten eintragen, Unterlagen anhängen, absenden. Kein Lebenslauf zur Hand?
-            Kein Problem – schicken Sie uns einfach Ihre Kontaktdaten, wir melden uns.
-          </p>
-        </header>
-
         <Form
+          title="Jetzt online bewerben"
+          titleId="bewerbung-titel"
           form="bewerbung"
           submitLabel="Bewerbung absenden"
           successTitle="Vielen Dank für Ihre Bewerbung!"
@@ -140,16 +134,17 @@ const interestOptions = [
           </Fieldset>
 
           <Fieldset legend="Zu Ihnen" step={3}>
-            <Field name="eintritt" label="Frühester Eintritt" placeholder="z. B. ab sofort oder 01.03." span="half" maxlength={100} />
-            <Choice name="fuehrerschein" label="Führerschein" options={licenseClasses} multiple span="half" />
             <Field
               name="nachricht"
+              span="half"
               label="Kurz zu Ihnen"
               as="textarea"
               rows={3}
               maxlength={5000}
               placeholder="Berufserfahrung, Qualifikationen, Fragen an uns …"
             />
+            <Field name="eintritt" label="Frühester Eintritt" placeholder="z. B. ab sofort oder 01.03." span="half" maxlength={100} />
+            <Choice name="fuehrerschein" label="Führerschein" options={licenseClasses} multiple span="half" />
           </Fieldset>
 
           <Fieldset legend="Unterlagen" step={4} hint="PDF, Word oder Foto – auch ein Handyfoto Ihrer Zeugnisse genügt.">
@@ -166,7 +161,7 @@ const interestOptions = [
 
 <style>
   .apply {
-    padding-block: var(--section-space-sm) var(--section-space);
+    padding-block: var(--space-5) var(--section-space);
   }
 
   .apply__layout {
@@ -181,9 +176,18 @@ const interestOptions = [
       gap: clamp(2rem, 1rem + 2.5vw, 3.5rem);
     }
 
-    .apply__layout > .apply__info {
-      position: sticky;
-      top: calc(var(--header-height-compact) + var(--space-6));
+    /* Beide Karten gleich hoch – sie scrollen gemeinsam mit der Seite */
+    .apply__layout {
+      align-items: stretch;
+    }
+
+    .apply__form {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .apply__form > :global(.form-shell) {
+      flex: 1;
     }
   }
 
@@ -317,20 +321,6 @@ const interestOptions = [
     min-width: 0;
   }
 
-  .apply__form-head {
-    display: grid;
-    justify-items: center;
-    gap: var(--space-2);
-    text-align: center;
-  }
 
-  .apply__title {
-    font-size: var(--text-3xl);
-  }
 
-  .apply__lead {
-    max-width: 40rem;
-    color: var(--color-text-muted);
-    line-height: var(--leading-relaxed);
-  }
 </style>

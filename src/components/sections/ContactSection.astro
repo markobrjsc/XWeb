@@ -39,15 +39,9 @@ import { ACCEPT_IMAGES, contactAreas, contactChannels, contactTimeframes, contac
       </aside>
 
       <div class="contact__form">
-        <header class="contact__form-head">
-          <h2 class="contact__title" id="kontakt-titel">Anfrage senden</h2>
-          <p class="contact__lead">
-            Beschreiben Sie kurz Ihr Vorhaben – wir melden uns zeitnah, beraten Sie persönlich und erstellen Ihnen ein
-            individuelles Angebot.
-          </p>
-        </header>
-
         <Form
+          title="Anfrage senden"
+          titleId="kontakt-titel"
           form="kontakt"
           submitLabel="Anfrage senden"
           successTitle="Vielen Dank für Ihre Anfrage!"
@@ -63,6 +57,7 @@ import { ACCEPT_IMAGES, contactAreas, contactChannels, contactTimeframes, contac
               name="nachricht"
               label="Beschreibung"
               as="textarea"
+              span="half"
               required
               rows={3}
               maxlength={5000}
@@ -86,7 +81,7 @@ import { ACCEPT_IMAGES, contactAreas, contactChannels, contactTimeframes, contac
             <Field name="firma" label="Firma / Gemeinde" autocomplete="organization" span="third" maxlength={160} />
             <Field name="email" label="E-Mail" type="email" required autocomplete="email" span="third" maxlength={200} />
             <Field name="telefon" label="Telefon" type="tel" autocomplete="tel" span="third" maxlength={40} />
-            <Field name="adresse" label="Straße und Hausnummer" autocomplete="street-address" span="third" maxlength={160} />
+            <Field name="adresse" label="Straße und Nr." autocomplete="street-address" span="third" maxlength={160} />
             <Field name="ort" label="PLZ und Ort" autocomplete="address-level2" span="third" maxlength={120} />
             <Choice name="kontaktweg" label="Wie dürfen wir Sie erreichen?" options={contactChannels} value="E-Mail" />
           </Fieldset>
@@ -99,7 +94,7 @@ import { ACCEPT_IMAGES, contactAreas, contactChannels, contactTimeframes, contac
 <style>
   .contact {
     position: relative;
-    padding-block: var(--section-space-sm) var(--section-space);
+    padding-block: var(--space-5) var(--section-space);
   }
 
   .contact__layout {
@@ -114,9 +109,18 @@ import { ACCEPT_IMAGES, contactAreas, contactChannels, contactTimeframes, contac
       gap: clamp(2rem, 1rem + 2.5vw, 3.5rem);
     }
 
-    .contact__layout > .contact__info {
-      position: sticky;
-      top: calc(var(--header-height-compact) + var(--space-6));
+    /* Beide Karten gleich hoch – sie scrollen gemeinsam mit der Seite */
+    .contact__layout {
+      align-items: stretch;
+    }
+
+    .contact__form {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .contact__form > :global(.form-shell) {
+      flex: 1;
     }
   }
 
@@ -189,20 +193,6 @@ import { ACCEPT_IMAGES, contactAreas, contactChannels, contactTimeframes, contac
     min-width: 0;
   }
 
-  .contact__form-head {
-    display: grid;
-    justify-items: center;
-    gap: var(--space-2);
-    text-align: center;
-  }
 
-  .contact__title {
-    font-size: var(--text-3xl);
-  }
 
-  .contact__lead {
-    max-width: 40rem;
-    color: var(--color-text-muted);
-    line-height: var(--leading-relaxed);
-  }
 </style>
