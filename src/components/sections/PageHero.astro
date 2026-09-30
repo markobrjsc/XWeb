@@ -229,6 +229,72 @@ const hasAside = Astro.slots.has('aside');
     }
   }
 
+  @media (max-width: 40rem) {
+    .page-hero--compact {
+      padding-top: calc(var(--header-height-compact) + var(--space-3));
+      padding-bottom: var(--space-3);
+    }
+
+    .page-hero--compact .page-hero__container {
+      gap: var(--space-3);
+    }
+
+    .page-hero--compact .page-hero__content {
+      gap: var(--space-2);
+    }
+
+    .page-hero--compact .page-hero__title {
+      font-size: var(--text-xl);
+      line-height: 1.1;
+    }
+
+    .page-hero--compact .page-hero__lead {
+      display: -webkit-box;
+      overflow: hidden;
+      font-size: var(--text-xs);
+      line-height: 1.4;
+      -webkit-box-orient: vertical;
+      -webkit-line-clamp: 2;
+    }
+
+    .page-hero--full {
+      min-height: 100vh;
+      min-height: 100svh;
+      padding-top: calc(var(--header-height-compact) + var(--space-3));
+      padding-bottom: 3.75rem;
+    }
+
+    .page-hero--full .page-hero__container {
+      gap: var(--space-4);
+    }
+
+    .page-hero--full .page-hero__content {
+      gap: var(--space-3);
+    }
+
+    .page-hero--full .page-hero__title {
+      font-size: var(--text-3xl);
+      line-height: 1.08;
+    }
+
+    .page-hero--full .page-hero__lead {
+      font-size: var(--text-sm);
+      line-height: 1.5;
+    }
+
+    .page-hero--full .page-hero__actions {
+      gap: var(--space-2);
+      margin-top: 0;
+    }
+
+    .page-hero--full .page-hero__actions :global(.btn) {
+      --btn-height: 2.625rem;
+      --btn-px: 0.8rem;
+      --btn-font: var(--text-xs);
+      --btn-gap: 0.4rem;
+    }
+  }
+
   .page-hero__content {
     display: flex;
     flex-direction: column;

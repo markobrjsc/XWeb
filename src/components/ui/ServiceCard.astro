@@ -148,18 +148,20 @@ const key = (projectId: string) => `projekt-${service.id}-${projectId}`;
 
 <style>
   .service__head {
-    display: flex;
-    flex-direction: column;
-    align-items: flex-start;
-    gap: var(--space-4);
+    display: grid;
+    grid-template-columns: 2.75rem minmax(0, 1fr);
+    align-items: center;
+    gap: var(--space-3);
     margin-bottom: var(--space-1);
   }
 
   .service__title {
     min-width: 0;
+    width: 100%;
     font-size: var(--text-xl);
     line-height: 1.2;
     hyphens: manual;
+    text-align: center;
   }
 
   /* Beim Überfahren der Karte: Titel wie mit Textmarker markiert (Form wie bei .marker) */
@@ -242,16 +244,6 @@ const key = (projectId: string) => `projekt-${service.id}-${projectId}`;
     grid-area: current;
   }
 
-  /* Schmale Karte: Projektname über die ganze Breite, Pfeile darunter links und rechts */
-  @container (max-width: 20rem) {
-    .service__switch {
-      grid-template-columns: auto 1fr auto;
-      grid-template-areas:
-        'current current current'
-        'prev . next';
-    }
-  }
-
   .service__nav {
     position: relative;
     display: grid;
@@ -317,15 +309,16 @@ const key = (projectId: string) => `projekt-${service.id}-${projectId}`;
     translate: 0 0;
   }
 
-  /* Immer zwei Zeilen hoch – so sind alle Projekt-Labels gleich groß und die Namen lesbar */
+  /* Der Projekttitel darf umbrechen, während beide Pfeile auf derselben Höhe bleiben. */
   .service__current {
     display: flex;
     align-items: center;
     justify-content: center;
     gap: var(--space-2);
     min-width: 0;
-    height: 3.5rem;
-    padding: 0.25rem 0.85rem;
+    min-height: 2.75rem;
+    height: auto;
+    padding: 0.3rem 0.45rem;
     font-size: 0.875rem;
     line-height: 1.25;
     font-weight: var(--weight-semibold);
@@ -336,13 +329,10 @@ const key = (projectId: string) => `projekt-${service.id}-${projectId}`;
   }
 
   .service__current-title {
-    display: -webkit-box;
+    display: block;
     min-width: 0;
-    overflow: hidden;
+    overflow-wrap: anywhere;
     text-align: center;
-    -webkit-box-orient: vertical;
-    -webkit-line-clamp: 2;
-    line-clamp: 2;
   }
 
   .service__current-count {

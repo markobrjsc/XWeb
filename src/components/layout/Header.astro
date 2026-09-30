@@ -7,7 +7,7 @@
  * – Unterhalb von 1100 px Breite: Menü-Button, der ein Vollbild-Menü aus- und einklappt.
  * Menüpunkte kommen aus src/config/navigation.ts, das Verhalten aus src/scripts/site.ts.
  */
-import { contactNavItem, mainNav, navOrder } from '@/config/navigation';
+import { contactNavItem, legalNav, mainNav, navOrder } from '@/config/navigation';
 import { site } from '@/config/site';
 import Button from '@/components/ui/Button.astro';
 import ContactList from '@/components/ui/ContactList.astro';
@@ -26,7 +26,8 @@ const hasActiveNav = mainNav.some((item) => isCurrent(item.href));
   <div class="site-header__bar">
     <div class="site-header__inner">
       <a class="site-header__brand" href="/">
-        <Logo eager />
+        <Logo eager class="site-header__logo-desktop" />
+        <Logo eager markOnly size="sm" class="site-header__logo-mobile" />
         <span class="visually-hidden"> – zur Startseite</span>
       </a>
 
@@ -78,17 +79,13 @@ const hasActiveNav = mainNav.some((item) => isCurrent(item.href));
       <nav aria-label="Mobile Navigation">
         <ul class="mobile-menu__list" role="list">
           {
-            navOrder.map((item, index) => (
+            navOrder.map((item) => (
               <li class="mobile-menu__item">
                 <a class="mobile-menu__link" href={item.href} aria-current={isCurrent(item.href) ? 'page' : undefined}>
-                  <span class="mobile-menu__index" aria-hidden="true">
-                    {String(index + 1).padStart(2, '0')}
-                  </span>
                   <span class="mobile-menu__text">
                     <span class="mobile-menu__label">{item.label}</span>
                     {item.description && <span class="mobile-menu__desc">{item.description}</span>}
                   </span>
-                  <Icon name="arrow-right" class="mobile-menu__arrow" />
                 </a>
               </li>
             ))
@@ -101,6 +98,11 @@ const hasActiveNav = mainNav.some((item) => isCurrent(item.href));
           <Icon name="instagram" size="1.1rem" /> Instagram
         </a>
         <Button href={contactNavItem.href} variant="light" block icon="arrow-right">Projekt anfragen</Button>
+        <nav class="mobile-menu__legal" aria-label="Rechtliches">
+          <ul role="list">
+            {legalNav.map((item) => <li><a href={item.href}>{item.label}</a></li>)}
+          </ul>
+        </nav>
       </div>
     </div>
   </div>
@@ -225,6 +227,10 @@ const hasActiveNav = mainNav.some((item) => isCurrent(item.href));
 
   .site-header__brand :global(.logo__sub) {
     font-size: 0.56rem;
+  }
+
+  .site-header__brand :global(.site-header__logo-mobile) {
+    display: none;
   }
 
   /* Desktop-Navigation: Menüpunkte nebeneinander, aktiver Punkt im weißen Label */
@@ -469,9 +475,12 @@ const hasActiveNav = mainNav.some((item) => isCurrent(item.href));
     z-index: 1;
     display: flex;
     flex-direction: column;
+    height: 100vh;
+    height: 100svh;
     padding-top: var(--header-h);
-    overflow-y: auto;
+    overflow: hidden;
     overscroll-behavior: contain;
+    pointer-events: none;
     background: var(--blue-950);
     visibility: hidden;
     opacity: 0;
@@ -486,6 +495,7 @@ const hasActiveNav = mainNav.some((item) => isCurrent(item.href));
     visibility: visible;
     opacity: 1;
     clip-path: inset(0 0 0 0);
+    pointer-events: auto;
     transition:
       clip-path 500ms var(--ease-out),
       opacity var(--duration-base) ease,
@@ -576,19 +586,6 @@ const hasActiveNav = mainNav.some((item) => isCurrent(item.href));
     color: rgb(255 255 255 / 0.6);
   }
 
-  .mobile-menu :global(.mobile-menu__arrow) {
-    color: rgb(255 255 255 / 0.4);
-    transition:
-      transform var(--duration-base) var(--ease-out),
-      color var(--duration-base) ease;
-  }
-
-  .mobile-menu__link:hover :global(.mobile-menu__arrow),
-  .mobile-menu__link[aria-current='page'] :global(.mobile-menu__arrow) {
-    color: var(--blue-300);
-    transform: translateX(3px);
-  }
-
   .mobile-menu__link[aria-current='page'] .mobile-menu__label {
     color: var(--blue-200);
   }
@@ -620,9 +617,167 @@ const hasActiveNav = mainNav.some((item) => isCurrent(item.href));
     transition: opacity 400ms var(--ease-out) 0s;
   }
 
+  .mobile-menu__legal ul {
+    display: flex;
+    justify-content: center;
+    gap: var(--space-6);
+    margin: 0;
+    padding: var(--space-4) 0 0;
+    border-top: 1px solid rgb(255 255 255 / 0.12);
+  }
+
+  .mobile-menu__legal a {
+    display: inline-block;
+    padding: var(--space-1) var(--space-2);
+    font-size: var(--text-xs);
+    font-weight: var(--weight-semibold);
+    color: rgb(255 255 255 / 0.68);
+    text-decoration: none;
+  }
+
+  .mobile-menu__legal a:hover {
+    color: #ffffff;
+    text-decoration: underline;
+    text-underline-offset: 0.2em;
+  }
+
   [data-menu-open='true'] .mobile-menu__footer {
     opacity: 1;
     transition-delay: 300ms;
+  }
+
+  @media (max-width: 68.74rem) {
+    .mobile-menu__inner {
+      min-height: 0;
+      gap: var(--space-3);
+      overflow: hidden;
+      padding: var(--space-4) var(--gutter) max(var(--space-4), env(safe-area-inset-bottom));
+    }
+
+    .mobile-menu__link {
+      flex-direction: column;
+      justify-content: center;
+      gap: 0.2rem;
+      padding: 0.5rem var(--space-1);
+    }
+
+    .mobile-menu__text {
+      align-items: center;
+      gap: 0.2rem;
+    }
+
+    .mobile-menu__label {
+      font-size: 1.0625rem;
+      font-weight: var(--weight-bold);
+      line-height: 1.2;
+      text-align: center;
+    }
+
+    .mobile-menu__desc {
+      display: block;
+      font-size: var(--text-xs);
+      line-height: 1.3;
+      text-align: center;
+    }
+
+    .mobile-menu__footer {
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: var(--space-2);
+      padding: var(--space-3);
+      border-radius: var(--radius-md);
+    }
+
+    .mobile-menu__footer :global(.contact-list) {
+      grid-column: 1 / -1;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: var(--space-2);
+    }
+
+    .mobile-menu__footer :global(.contact-list__item) {
+      align-items: center;
+      gap: var(--space-2);
+      min-width: 0;
+    }
+
+    .mobile-menu__footer :global(.contact-list__icon) {
+      width: 1.75rem;
+      height: 1.75rem;
+      font-size: 0.8rem;
+    }
+
+    .mobile-menu__footer :global(.contact-list__label) {
+      font-size: 0.625rem;
+    }
+
+    .mobile-menu__footer :global(.contact-list__value) {
+      font-size: var(--text-xs);
+      line-height: 1.25;
+    }
+
+    .mobile-menu__footer :global(.contact-list__value--wrap) {
+      overflow-wrap: anywhere;
+    }
+
+    .mobile-menu__social {
+      align-self: center;
+      font-size: var(--text-xs);
+    }
+
+    .mobile-menu__footer > :global(.btn) {
+      min-height: 2.5rem;
+      padding-inline: 0.75rem;
+      font-size: var(--text-xs);
+    }
+
+    .mobile-menu__legal {
+      grid-column: 1 / -1;
+    }
+
+    .mobile-menu__legal ul {
+      padding-top: var(--space-2);
+    }
+
+    .mobile-menu__legal a {
+      font-size: var(--text-2xs);
+    }
+  }
+
+  @media (max-width: 68.74rem) and (max-height: 42rem) {
+    .mobile-menu__inner {
+      gap: var(--space-2);
+      padding-block: var(--space-2) max(var(--space-2), env(safe-area-inset-bottom));
+    }
+
+    .mobile-menu__link {
+      padding-block: 0.3rem;
+    }
+
+    .mobile-menu__label {
+      font-size: var(--text-base);
+      line-height: 1.15;
+    }
+
+    .mobile-menu__desc {
+      display: none;
+    }
+
+    .mobile-menu__footer {
+      gap: var(--space-1);
+      padding: var(--space-2);
+    }
+
+    .mobile-menu__footer :global(.contact-list) {
+      gap: var(--space-1) var(--space-2);
+    }
+
+    .mobile-menu__footer :global(.contact-list__icon) {
+      width: 1.5rem;
+      height: 1.5rem;
+    }
+
+    .mobile-menu__legal ul {
+      padding-top: var(--space-1);
+    }
   }
 
   /* Tablet: Kontakt-Button zeigen */
@@ -696,6 +851,31 @@ const hasActiveNav = mainNav.some((item) => isCurrent(item.href));
     .menu-toggle {
       position: relative;
       padding: 0 0.7rem;
+    }
+  }
+
+  @media (max-width: 40rem) {
+    .site-header {
+      --header-pad: 0.2rem;
+      --header-item-h: 2.6rem;
+      padding-top: 0.2rem;
+    }
+
+    .site-header__brand {
+      justify-content: center;
+      width: var(--header-item-h);
+      padding-inline: 0;
+      border: 2px solid var(--onyx-950);
+      border-radius: 50%;
+    }
+
+    .site-header__brand :global(.site-header__logo-desktop) {
+      display: none;
+    }
+
+    .site-header__brand :global(.site-header__logo-mobile) {
+      display: inline-flex;
+      --logo-height: 2.15rem;
     }
   }
 

@@ -45,7 +45,9 @@ const {
 } = Astro.props;
 
 const id = `feld-${name}`;
-const normalized = options.map((option) => (typeof option === 'string' ? { value: option, label: option } : option));
+const normalized: { value: string; label: string }[] = options.map((option: Option) =>
+  typeof option === 'string' ? { value: option, label: option } : option,
+);
 const hintId = hint ? `${id}-hinweis` : undefined;
 ---
 

@@ -1,0 +1,7 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    { "name": "dev", "runtimeExecutable": "npx", "runtimeArgs": ["astro", "dev", "--port", "4390"], "port": 4390, "autoPort": false },
+    { "name": "api", "runtimeExecutable": "npx", "runtimeArgs": ["wrangler", "dev", "--port", "8787"], "port": 8787, "autoPort": false }
+  ]
+}

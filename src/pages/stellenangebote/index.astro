@@ -248,4 +248,67 @@ const highlights = [
   .benefits__item > :global(*) {
     flex: 1;
   }
+
+  @media (max-width: 40rem) {
+    .hero-aside {
+      gap: var(--space-3);
+    }
+
+    .hero-aside :global(.facts) {
+      padding: 0.75rem;
+    }
+
+    .hero-aside :global(.facts__title) {
+      margin-bottom: var(--space-2);
+    }
+
+    .hero-aside :global(.facts__list) {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      column-gap: var(--space-3);
+    }
+
+    .hero-aside :global(.facts__row) {
+      display: block;
+      min-width: 0;
+      padding-block: 0.5rem;
+    }
+
+    .hero-aside :global(.facts__label) {
+      font-size: var(--text-2xs);
+    }
+
+    .hero-aside :global(.facts__value) {
+      font-size: var(--text-xs);
+      line-height: 1.35;
+    }
+
+    .jump {
+      display: none;
+    }
+
+    .jump__list {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: var(--space-2);
+    }
+
+    .jump__link {
+      width: 100%;
+      min-height: 2.5rem;
+      padding: 0.4rem 0.55rem;
+      font-size: var(--text-xs);
+      border-radius: var(--radius-sm);
+    }
+
+    .jump__link :global(.icon) {
+      flex: none;
+    }
+  }
+
+  @media (max-width: 40rem) and (max-height: 44rem) {
+    .hero-aside {
+      display: none;
+    }
+  }
 </style>
