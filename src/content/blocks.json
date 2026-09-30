@@ -1,1 +1,19 @@
-{}
+{
+  "/leistungen/": {
+    "2": [
+      {
+        "id": "bhvnftsi",
+        "type": "divider",
+        "props": {
+          "color": "#62625e",
+          "thickness": 2,
+          "line": "solid",
+          "width": "50"
+        },
+        "style": {
+          "align": "center"
+        }
+      }
+    ]
+  }
+}
