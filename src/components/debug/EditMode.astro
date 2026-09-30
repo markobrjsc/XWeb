@@ -11,9 +11,12 @@
  *    und lassen sich einstellen; Speichern schreibt src/content/spacing.json (→ scripts/build-spacing.mjs).
  *  · Galerien (Carousel mit `folder`): Bilder hinzufügen, Reihenfolge per Ziehen ändern, ausblenden
  *    (src/content/galleries.json, neue Bilder als Dateien unter src/assets/images/<ordner>/).
+ *  · Elemente: „+“ zwischen den Abschnitten und in Containern fügt Vorlagen, Basis-Elemente und Container ein;
+ *    Texte/Bilder direkt änderbar, verschachtelbar (src/scripts/block-editor.ts → src/content/blocks.json).
  * Erscheint nur, wenn der Worker den Modus meldet (GET /api/edit/status/) – Server-Teil: worker/edit.ts.
  */
 import { getImage } from 'astro:assets';
+import BlockEditorUI from './BlockEditorUI.astro';
 import Icon from '@/components/ui/Icon.astro';
 import { listImages } from '@/lib/images';
 
@@ -35,7 +38,7 @@ const heroChoices = await Promise.all(
 
   <div class="edit-bar" data-edit-bar hidden>
     <span class="edit-bar__dot" aria-hidden="true"></span>
-    <p class="edit-bar__text" data-edit-status aria-live="polite">Bearbeiten-Modus: Text anklicken und ändern.</p>
+    <p class="edit-bar__text" data-edit-status aria-live="polite">Bearbeiten-Modus: Text anklicken und ändern · „+“ fügt Elemente ein.</p>
     <button class="edit-bar__btn" type="button" data-spacing-toggle aria-pressed="false">Abstände</button>
     <button class="edit-bar__btn" type="button" data-colors-open>Farben</button>
     <button class="edit-bar__btn" type="button" data-edit-discard>Verwerfen</button>
@@ -180,13 +183,17 @@ const heroChoices = await Promise.all(
       </footer>
     </form>
   </dialog>
+
+  <BlockEditorUI />
 </div>
 
 <script>
+  import { createBlockEditor } from '@/scripts/block-editor';
+
   const ui = document.querySelector<HTMLElement>('[data-edit-ui]');
 
   type Tracked = { block: HTMLElement; nodes: { node: Text; original: string }[]; scope: 'global' | 'page' };
-  const SKIP = 'script, style, noscript, template, svg, textarea, select, option, input, [data-edit-ui], [data-design-panel], [data-count-to], [data-carousel], .visually-hidden, [aria-hidden="true"]';
+  const SKIP = 'script, style, noscript, template, svg, textarea, select, option, input, [data-edit-ui], [data-design-panel], ub-zone, [data-count-to], [data-carousel], .visually-hidden, [aria-hidden="true"]';
   const normalize = (text: string) => text.replace(/\s+/g, ' ').trim();
 
   async function init() {
@@ -207,6 +214,14 @@ const heroChoices = await Promise.all(
     // wird unten vom Abstands-Modus gesetzt
     let spacingToggleOff = () => {};
     let editing = false;
+    const IDLE = 'Bearbeiten-Modus: Text anklicken und ändern · „+“ fügt Elemente ein.';
+
+    // Elemente einfügen und bearbeiten (src/scripts/block-editor.ts)
+    const blocks = createBlockEditor(ui, {
+      onChange: () => updateBar(),
+      shrink: (file) => shrink(file),
+      status: (message) => (statusText.textContent = message),
+    });
 
     const supportsPlain = (() => {
       const probe = document.createElement('div');
@@ -259,11 +274,14 @@ const heroChoices = await Promise.all(
 
     const updateBar = () => {
       const count = changes().length;
-      statusText.textContent = count
-        ? `${count} ${count === 1 ? 'Änderung' : 'Änderungen'} – noch nicht gespeichert`
-        : 'Bearbeiten-Modus: Text anklicken und ändern.';
-      saveButton.disabled = count === 0;
+      const parts = [
+        ...(count ? [`${count} ${count === 1 ? 'Textänderung' : 'Textänderungen'}`] : []),
+        ...(blocks.dirty() ? ['Elemente geändert'] : []),
+      ];
+      statusText.textContent = parts.length ? `${parts.join(' · ')} – noch nicht gespeichert` : IDLE;
+      saveButton.disabled = parts.length === 0;
     };
+    const unsaved = () => changes().length > 0 || blocks.dirty();
 
     const start = () => {
       editing = true;
@@ -280,6 +298,7 @@ const heroChoices = await Promise.all(
       toggle.setAttribute('aria-pressed', 'true');
       bar.hidden = false;
       updateBar();
+      blocks.start();
     };
 
     const stop = () => {
@@ -289,6 +308,7 @@ const heroChoices = await Promise.all(
         delete block.dataset.editable;
       });
       document.querySelectorAll('[data-gallery-edit], [data-hero-edit-btn]').forEach((button) => button.remove());
+      blocks.stop();
       document.documentElement.classList.remove('is-editing');
       spacingToggleOff();
       toggle.setAttribute('aria-pressed', 'false');
@@ -304,32 +324,37 @@ const heroChoices = await Promise.all(
         }
         entry.nodes.forEach(({ node, original }) => node.isConnected && (node.textContent = original));
       }
+      blocks.discard();
       updateBar();
     };
 
     toggle.addEventListener('click', () => {
       if (!editing) return start();
-      if (changes().length && !confirm('Es gibt ungespeicherte Änderungen. Trotzdem beenden (Änderungen bleiben nur bis zum Neuladen sichtbar)?')) return;
+      if (unsaved() && !confirm('Es gibt ungespeicherte Änderungen. Trotzdem beenden (Änderungen bleiben nur bis zum Neuladen sichtbar)?')) return;
       stop();
     });
     ui.querySelector('[data-edit-discard]')!.addEventListener('click', discard);
 
     saveButton.addEventListener('click', async () => {
       const list = changes();
-      if (!list.length) return;
+      const blocksDirty = blocks.dirty();
+      if (!list.length && !blocksDirty) return;
       saveButton.disabled = true;
       statusText.textContent = 'Wird gespeichert …';
       try {
-        const response = await fetch('/api/edit/texte/', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ page: location.pathname, changes: list }),
-        });
-        const result = await response.json();
-        if (!response.ok || !result.ok) throw new Error(result.error || 'Speichern fehlgeschlagen.');
-        // Gespeicherter Stand ist der neue Ausgangspunkt
-        tracked = collect();
-        statusText.textContent = `Gespeichert (${list.length}) – nach dem automatischen Build in ca. 2 Minuten live.`;
+        if (list.length) {
+          const response = await fetch('/api/edit/texte/', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ page: location.pathname, changes: list }),
+          });
+          const result = await response.json();
+          if (!response.ok || !result.ok) throw new Error(result.error || 'Speichern fehlgeschlagen.');
+          // Gespeicherter Stand ist der neue Ausgangspunkt
+          tracked = collect();
+        }
+        if (blocksDirty) await blocks.save();
+        statusText.textContent = 'Gespeichert – nach dem automatischen Build in ca. 2 Minuten live.';
       } catch (error) {
         statusText.textContent = error instanceof Error ? error.message : 'Speichern fehlgeschlagen.';
         saveButton.disabled = false;
@@ -355,7 +380,9 @@ const heroChoices = await Promise.all(
       true,
     );
     document.addEventListener('keydown', (event) => {
-      if (editing && event.key === 'Enter' && (event.target as HTMLElement).isContentEditable) event.preventDefault();
+      // Zeilenumbrüche nur in mehrzeiligen Feldern von Elementen (Text, Antwort …)
+      const target = event.target as HTMLElement;
+      if (editing && event.key === 'Enter' && target.isContentEditable && !target.closest('[data-ub-multiline]')) event.preventDefault();
     });
     document.addEventListener('paste', (event) => {
       const target = event.target as HTMLElement;
@@ -365,7 +392,7 @@ const heroChoices = await Promise.all(
     });
     document.addEventListener('input', () => editing && updateBar());
     window.addEventListener('beforeunload', (event) => {
-      if (editing && changes().length) event.preventDefault();
+      if (editing && unsaved()) event.preventDefault();
     });
 
     /* ---------------- Abstände ---------------- */
@@ -896,7 +923,7 @@ const heroChoices = await Promise.all(
   init();
 </script>
 
-<style>
+<style is:global>
   .edit-ui[hidden] {
     display: none;
   }
@@ -918,8 +945,8 @@ const heroChoices = await Promise.all(
     cursor: pointer;
   }
 
-  .edit-toggle :global(.edit-toggle__off),
-  .edit-toggle[aria-pressed='true'] :global(.edit-toggle__on) {
+  .edit-toggle .edit-toggle__off,
+  .edit-toggle[aria-pressed='true'] .edit-toggle__on {
     display: none;
   }
 
@@ -928,7 +955,7 @@ const heroChoices = await Promise.all(
     background: #111a24;
   }
 
-  .edit-toggle[aria-pressed='true'] :global(.edit-toggle__off) {
+  .edit-toggle[aria-pressed='true'] .edit-toggle__off {
     display: block;
   }
 
@@ -1011,23 +1038,23 @@ const heroChoices = await Promise.all(
   }
 
   /* Editierbare Texte auf der Seite */
-  :global(.is-editing [data-editable]) {
+  .is-editing [data-editable] {
     outline: 1px dashed rgb(246 201 69 / 0.9);
     outline-offset: 2px;
     cursor: text;
   }
 
-  :global(.is-editing [data-editable]:hover) {
+  .is-editing [data-editable]:hover {
     outline-style: solid;
     background: rgb(246 201 69 / 0.12);
   }
 
-  :global(.is-editing [data-editable]:focus) {
+  .is-editing [data-editable]:focus {
     outline: 2px solid var(--color-accent, #f3a505);
     background: rgb(246 201 69 / 0.16);
   }
 
-  :global(.gallery-edit-btn) {
+  .gallery-edit-btn {
     position: absolute;
     left: 0.6rem;
     bottom: 0.6rem;
@@ -1044,14 +1071,14 @@ const heroChoices = await Promise.all(
     cursor: pointer;
   }
 
-  :global(.hero-edit-btn) {
+  .hero-edit-btn {
     top: calc(var(--header-height) + 0.75rem);
     bottom: auto;
     left: 1rem;
     z-index: 20;
   }
 
-  .hero-choices :global(.hero-choice) {
+  .hero-choices .hero-choice {
     display: block;
     width: 100%;
     padding: 0;
@@ -1063,12 +1090,12 @@ const heroChoices = await Promise.all(
     cursor: pointer;
   }
 
-  .hero-choices :global(.hero-choice:hover),
-  .hero-choices :global(.hero-choice:focus-visible) {
+  .hero-choices .hero-choice:hover,
+  .hero-choices .hero-choice:focus-visible {
     border-color: var(--color-accent, #f3a505);
   }
 
-  .hero-choices :global(.hero-choice img) {
+  .hero-choices .hero-choice img {
     width: 100%;
     height: 100%;
     object-fit: cover;
@@ -1116,7 +1143,7 @@ const heroChoices = await Promise.all(
     background: #111a24;
   }
 
-  :global(.is-spacing) :global(body *) {
+  .is-spacing body * {
     cursor: crosshair !important;
   }
 
@@ -1376,7 +1403,7 @@ const heroChoices = await Promise.all(
     list-style: none;
   }
 
-  .gallery-dialog__grid :global(.gallery-item) {
+  .gallery-dialog__grid .gallery-item {
     position: relative;
     overflow: hidden;
     aspect-ratio: 4 / 3;
@@ -1386,22 +1413,22 @@ const heroChoices = await Promise.all(
     cursor: grab;
   }
 
-  .gallery-dialog__grid :global(.gallery-item[data-new]) {
+  .gallery-dialog__grid .gallery-item[data-new] {
     border-color: var(--color-accent, #f3a505);
   }
 
-  .gallery-dialog__grid :global(.gallery-item[data-hidden] img) {
+  .gallery-dialog__grid .gallery-item[data-hidden] img {
     opacity: 0.3;
   }
 
-  .gallery-dialog__grid :global(.gallery-item img) {
+  .gallery-dialog__grid .gallery-item img {
     width: 100%;
     height: 100%;
     object-fit: cover;
     pointer-events: none;
   }
 
-  .gallery-dialog__grid :global(.gallery-item__label) {
+  .gallery-dialog__grid .gallery-item__label {
     position: absolute;
     top: 0.35rem;
     left: 0.35rem;
@@ -1413,7 +1440,7 @@ const heroChoices = await Promise.all(
     background: rgb(17 26 36 / 0.75);
   }
 
-  .gallery-dialog__grid :global(.gallery-item__tools) {
+  .gallery-dialog__grid .gallery-item__tools {
     position: absolute;
     right: 0.3rem;
     bottom: 0.3rem;
@@ -1422,7 +1449,7 @@ const heroChoices = await Promise.all(
     justify-content: space-between;
   }
 
-  .gallery-dialog__grid :global(.gallery-item__tools button) {
+  .gallery-dialog__grid .gallery-item__tools button {
     width: 1.8rem;
     height: 1.8rem;
     font-size: 0.9rem;

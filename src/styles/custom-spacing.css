@@ -1,1 +1,58 @@
 /* Automatisch erzeugt aus src/content/spacing.json (Bearbeiten-Modus → Abstände) – nicht von Hand ändern. */
+body[data-page="/leistungen/"] main#main > section.page-hero.page-hero--compact.page-hero--photo:nth-of-type(1) > div.container.container--default.page-hero__container:nth-of-type(2) > div.page-hero__content > nav.breadcrumbs.page-hero__crumbs > ol.breadcrumbs__list > li.breadcrumbs__item:nth-of-type(2) > span {
+  margin-top: 10px !important;
+}
+
+body[data-page="/leistungen/"] main#main > div > div.svc-tabs:nth-of-type(2) {
+  padding-top: 50px !important;
+  padding-bottom: 35px !important;
+}
+
+body[data-page="/leistungen/"] article#gartenbau > div.pillar-row__services.pillar-row__services--cols-3:nth-of-type(2) {
+  padding-top: 0px !important;
+  margin-top: 0px !important;
+}
+
+body[data-page="/leistungen/"] section#zertifikate {
+  padding-top: 70px !important;
+  padding-bottom: 70px !important;
+}
+
+body[data-page="/leistungen/"] section#ablauf {
+  padding-top: 90px !important;
+}
+
+body[data-page="/leistungen/"] main#main > section.cta-strip.cta-strip--tight:nth-of-type(2) > div.container.container--default > div.cta-strip__box {
+  padding-top: 10px !important;
+}
+
+body[data-page="/"] main#main > section.hero > div.hero__content:nth-of-type(2) > div.hero__card > div.hero__actions {
+  margin-top: 50px !important;
+}
+
+body[data-page="/"] main#main > section.hero > div.hero__content:nth-of-type(2) > div.hero__card {
+  padding-top: 40px !important;
+}
+
+body[data-page="/stellenangebote/"] li#stelle-strassenbauer > article.card.card--elevated.card--pad-lg.card--interactive.job-card > div.card__body > div.job-card__layout > div.job-card__main:nth-of-type(2) > h3.job-card__title > a.card__link {
+  margin-top: 0px !important;
+}
+
+body[data-page="/stellenangebote/"] main#main > section.cta-strip:nth-of-type(5) {
+  padding-top: 35px !important;
+}
+
+body[data-page="/stellenangebote/"] section#bewerbung {
+  padding-bottom: 70px !important;
+  padding-top: 70px !important;
+}
+
+body[data-page="/stellenangebote/"] main#main > section.section.section--space-default:nth-of-type(3) {
+  padding-top: 70px !important;
+  padding-bottom: 70px !important;
+}
+
+body[data-page="/stellenangebote/"] section#stellen {
+  padding-bottom: 70px !important;
+  padding-top: 70px !important;
+}

@@ -42,7 +42,12 @@ const key = (projectId: string) => `projekt-${service.id}-${projectId}`;
     projects.length > 0 && (
       <div slot="footer" class="service__projects" data-projects>
         <p class="service__projects-label">
-          {projects.length === 1 ? 'Referenzprojekt' : `${projects.length} Referenzprojekte`}
+          <span>{projects.length === 1 ? 'Referenzprojekt' : `${projects.length} Referenzprojekte`}</span>
+          {projects.length > 1 && (
+            <span class="service__current-count" data-project-count>
+              1 / {projects.length}
+            </span>
+          )}
         </p>
 
         {projects.length > 1 && (
@@ -54,14 +59,11 @@ const key = (projectId: string) => `projekt-${service.id}-${projectId}`;
               aria-label={`Vorheriges Projekt: ${projects.at(-1)?.data.title}`}
               data-tip={`Vorheriges: ${projects.at(-1)?.data.title}`}
             >
-              <Icon name="chevron-left" size="1.05rem" />
+              <Icon name="chevron-left" size="1.4rem" />
             </button>
             <p class="service__current" aria-live="polite">
               <span class="service__current-title" data-project-current title={projects[0].data.title}>
                 {projects[0].data.title}
-              </span>
-              <span class="service__current-count" data-project-count>
-                1 / {projects.length}
               </span>
             </p>
             <button
@@ -71,7 +73,7 @@ const key = (projectId: string) => `projekt-${service.id}-${projectId}`;
               aria-label={`Nächstes Projekt: ${projects[1].data.title}`}
               data-tip={`Nächstes: ${projects[1].data.title}`}
             >
-              <Icon name="chevron-right" size="1.05rem" />
+              <Icon name="chevron-right" size="1.4rem" />
             </button>
           </div>
         )}
@@ -201,6 +203,7 @@ const key = (projectId: string) => `projekt-${service.id}-${projectId}`;
 
   /* Referenzprojekte */
   .service__projects {
+    container-type: inline-size;
     display: grid;
     gap: var(--space-3);
     padding-top: var(--space-4);
@@ -208,6 +211,9 @@ const key = (projectId: string) => `projekt-${service.id}-${projectId}`;
   }
 
   .service__projects-label {
+    display: flex;
+    justify-content: space-between;
+    gap: var(--space-3);
     font-size: var(--text-2xs);
     font-weight: var(--weight-bold);
     letter-spacing: var(--tracking-wider);
@@ -219,16 +225,39 @@ const key = (projectId: string) => `projekt-${service.id}-${projectId}`;
   .service__switch {
     display: grid;
     grid-template-columns: auto minmax(0, 1fr) auto;
+    grid-template-areas: 'prev current next';
     align-items: center;
     gap: var(--space-2);
+  }
+
+  .service__switch > [data-project-step='-1'] {
+    grid-area: prev;
+  }
+
+  .service__switch > [data-project-step='1'] {
+    grid-area: next;
+  }
+
+  .service__switch > .service__current {
+    grid-area: current;
+  }
+
+  /* Schmale Karte: Projektname über die ganze Breite, Pfeile darunter links und rechts */
+  @container (max-width: 20rem) {
+    .service__switch {
+      grid-template-columns: auto 1fr auto;
+      grid-template-areas:
+        'current current current'
+        'prev . next';
+    }
   }
 
   .service__nav {
     position: relative;
     display: grid;
     place-items: center;
-    width: 2.25rem;
-    height: 2.25rem;
+    width: 2.75rem;
+    height: 2.75rem;
     padding: 0;
     color: var(--color-heading);
     border: 1.5px solid var(--color-border-strong);
@@ -242,8 +271,6 @@ const key = (projectId: string) => `projekt-${service.id}-${projectId}`;
 
   .service__nav:hover {
     border-color: var(--color-cta);
-    background: var(--color-cta);
-    color: var(--color-cta-fg);
   }
 
   .service__nav:focus-visible {
@@ -290,32 +317,38 @@ const key = (projectId: string) => `projekt-${service.id}-${projectId}`;
     translate: 0 0;
   }
 
+  /* Immer zwei Zeilen hoch – so sind alle Projekt-Labels gleich groß und die Namen lesbar */
   .service__current {
     display: flex;
     align-items: center;
     justify-content: center;
     gap: var(--space-2);
     min-width: 0;
-    min-height: 2.25rem;
-    padding: 0.3rem 0.9rem;
-    font-size: var(--text-xs);
+    height: 3.5rem;
+    padding: 0.25rem 0.85rem;
+    font-size: 0.875rem;
+    line-height: 1.25;
     font-weight: var(--weight-semibold);
-    color: var(--color-cta-fg);
+    color: var(--color-heading);
+    border: 3px solid var(--color-cta);
     border-radius: var(--radius-full);
-    background: var(--color-cta);
+    background: var(--color-surface);
   }
 
   .service__current-title {
+    display: -webkit-box;
     min-width: 0;
     overflow: hidden;
-    white-space: nowrap;
-    text-overflow: ellipsis;
+    text-align: center;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
   }
 
   .service__current-count {
     flex: none;
-    font-weight: var(--weight-medium);
-    opacity: 0.7;
+    letter-spacing: 0.04em;
+    color: var(--color-heading);
   }
 
   .service__project {

@@ -21,7 +21,7 @@ export default defineConfig({
 
   integrations: [
     sitemap({
-      filter: (page) => !page.includes('/404'),
+      filter: (page) => !page.includes('/404') && !page.includes('/bearbeiten/'),
       serialize(item) {
         // Startseite hat höchste Priorität, Rechtstexte die niedrigste.
         const path = new URL(item.url).pathname;

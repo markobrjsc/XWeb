@@ -240,6 +240,7 @@ import { pillars } from '@/data/services';
     cursor: pointer;
     transition:
       background-color var(--duration-base) ease,
+      box-shadow var(--duration-base) ease,
       color var(--duration-base) ease;
   }
 
@@ -247,10 +248,11 @@ import { pillars } from '@/data/services';
     background: var(--blue-50);
   }
 
-  /* Ausgewählter Fachbereich: gelb mit dunkler Schrift */
+  /* Ausgewählter Fachbereich: kräftiger gelber Rahmen auf Weiß (Rahmen als Schatten – nichts verschiebt sich) */
   .svc-tabs__tab[aria-selected='true'] {
-    color: var(--color-cta-fg);
-    background: var(--color-cta);
+    color: var(--color-heading);
+    background: #ffffff;
+    box-shadow: inset 0 0 0 3px var(--color-cta);
   }
 
   .svc-tabs__icon {
@@ -269,7 +271,7 @@ import { pillars } from '@/data/services';
 
   .svc-tabs__tab[aria-selected='true'] .svc-tabs__icon {
     color: var(--color-cta-fg);
-    background: rgb(255 255 255 / 0.45);
+    background: var(--color-cta);
   }
 
   .svc-tabs__text {

@@ -14,6 +14,8 @@ interface Props {
   badgeTone?: 'primary' | 'soft' | 'light' | 'outline';
   headingLevel?: 'h3' | 'h4';
   interactive?: boolean;
+  /** Innenabstand der Karte – 'sm' für flache Karten */
+  padding?: 'sm' | 'md';
   reveal?: boolean | 'up' | 'left' | 'right' | 'zoom' | 'fade';
   class?: string;
 }
@@ -27,12 +29,13 @@ const {
   badgeTone = 'soft',
   headingLevel: Heading = 'h3',
   interactive = true,
+  padding = 'md',
   reveal = true,
   class: className,
 } = Astro.props;
 ---
 
-<Card variant={variant} interactive={interactive} reveal={reveal} class:list={['feature', `feature--${layout}`, className]}>
+<Card variant={variant} interactive={interactive} padding={padding} reveal={reveal} class:list={['feature', `feature--${layout}`, className]}>
   <div class="feature__inner">
     <IconBadge name={icon} tone={badgeTone} class="feature__icon" />
     <div class="feature__content">

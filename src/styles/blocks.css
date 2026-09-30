@@ -1,0 +1,876 @@
+/* ==========================================================================
+   ELEMENTE aus dem Bearbeiten-Modus (src/lib/blocks/render.ts)
+   Alle Elemente nutzen die Design-Tokens – Farben, Schrift und Abstände passen
+   sich damit automatisch an. Spalten stapeln sich auf schmalen Bildschirmen.
+   ========================================================================== */
+
+ub-zone {
+  display: block;
+}
+
+/* Elemente ohne eigenen Abschnitt stehen im normalen Seitenraster */
+.ub-contain {
+  width: 100%;
+  max-width: calc(var(--container-max) + var(--gutter) * 2);
+  margin-inline: auto;
+  padding: var(--section-space-sm) var(--gutter);
+}
+
+.ub-contain,
+.ub-slot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  align-content: flex-start;
+  gap: var(--space-5) var(--space-3);
+}
+
+/* Alles untereinander – nur Buttons stehen nebeneinander */
+.ub-contain > *,
+.ub-slot > * {
+  flex: 1 1 100%;
+  min-width: 0;
+}
+
+.ub-contain > .ub-button,
+.ub-slot > .ub-button {
+  flex: 0 1 auto;
+}
+
+/* Überzeile rückt näher an die Überschrift */
+.ub-eyebrow + .ub-heading {
+  margin-top: calc(var(--space-2) * -1);
+}
+
+/* Überschrift → Inhalt: etwas mehr Luft vor großen Elementen */
+.ub-heading--gross + :is(.ub-columns, .ub-gallery, .ub-card, .ub-faq) {
+  margin-top: var(--space-3);
+}
+
+/* ---------------------------------------------------------------------------
+   Abschnitt
+   --------------------------------------------------------------------------- */
+.ub-section {
+  position: relative;
+  padding-block: var(--section-space);
+}
+
+.ub-section--s-klein {
+  padding-block: var(--section-space-sm);
+}
+
+.ub-section--s-ohne {
+  padding-block: 0;
+}
+
+.ub-section > .ub-slot {
+  width: 100%;
+  max-width: calc(var(--container-max) + var(--gutter) * 2);
+  margin-inline: auto;
+  padding-inline: var(--gutter);
+}
+
+.ub-section--w-schmal > .ub-slot {
+  max-width: calc(var(--container-narrow) + var(--gutter) * 2);
+}
+
+.ub-section--w-breit > .ub-slot {
+  max-width: calc(var(--container-wide) + var(--gutter) * 2);
+}
+
+.ub-section--bild {
+  background-color: var(--onyx-950);
+}
+
+/* Abschnitt in einem anderen Element: wird zur Fläche mit Innenabstand */
+.ub-slot .ub-section {
+  padding: clamp(1.25rem, 1rem + 1.5vw, 2.25rem);
+  border-radius: var(--radius-card);
+}
+
+.ub-slot .ub-section:not([data-tone]) {
+  border: 1px solid var(--color-border);
+}
+
+.ub-slot .ub-section > .ub-slot {
+  max-width: none;
+  padding-inline: 0;
+}
+
+/* ---------------------------------------------------------------------------
+   Spalten – Handy: untereinander · ab 40rem: 3/4 Spalten als 2er-Raster · ab 52rem: alle nebeneinander
+   --------------------------------------------------------------------------- */
+.ub-columns {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--grid-gap);
+}
+
+.ub-columns--2 {
+  column-gap: clamp(1.5rem, 0.5rem + 4vw, 4.5rem);
+}
+
+.ub-columns--v-strecken > .ub-slot > .ub-card:only-child {
+  height: 100%;
+}
+
+.ub-columns--v-strecken > .ub-slot {
+  align-content: stretch;
+}
+
+@media (max-width: 51.99rem) {
+  .ub-columns--rev.ub-columns--2 > .ub-slot:last-child {
+    order: -1;
+  }
+}
+
+@media (min-width: 40rem) {
+  .ub-columns--3,
+  .ub-columns--4 {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 52rem) {
+  .ub-columns--2 {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .ub-columns--r-links {
+    grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+  }
+
+  .ub-columns--r-rechts {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 2fr);
+  }
+
+  .ub-columns--3 {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .ub-columns--v-mitte {
+    align-items: center;
+  }
+}
+
+@media (min-width: 64rem) {
+  .ub-columns--4 {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+/* Buttons rechts in einer schmalen Spalte (Aufruf-Kasten): auf großen Bildschirmen rechtsbündig */
+@media (min-width: 52rem) {
+  .ub-columns--r-links > .ub-slot:last-child:has(> .ub-button:first-child) {
+    justify-content: flex-end;
+  }
+}
+
+/* ---------------------------------------------------------------------------
+   Karte
+   --------------------------------------------------------------------------- */
+.ub-card {
+  display: flex;
+  flex-direction: column;
+  padding: clamp(1.25rem, 1rem + 1vw, 1.9rem);
+  border-radius: var(--radius-card);
+  color: var(--color-text);
+}
+
+.ub-card > .ub-slot {
+  flex: 1;
+  gap: var(--space-3) var(--space-3);
+}
+
+.ub-card > .ub-slot > .ub-button:last-child {
+  margin-top: auto;
+}
+
+.ub-card > .ub-slot > .ub-image + * {
+  margin-top: var(--space-2);
+}
+
+.ub-card--rahmen,
+.ub-card--akzent {
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+}
+
+.ub-card--schatten {
+  background: var(--color-surface);
+  box-shadow: var(--shadow-md);
+}
+
+.ub-card--akzent {
+  border-top: 4px solid var(--color-accent);
+}
+
+.ub-card--grau,
+.ub-card--dunkel {
+  border: 1px solid transparent;
+}
+
+[data-tone='dark'] .ub-card--rahmen,
+[data-tone='dark'] .ub-card--schatten,
+[data-tone='dark'] .ub-card--akzent {
+  background: var(--color-surface-raised);
+  box-shadow: none;
+}
+
+[data-tone='subtle'] .ub-card--grau {
+  background: var(--color-bg);
+}
+
+/* ---------------------------------------------------------------------------
+   Texte
+   --------------------------------------------------------------------------- */
+.ub-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.7rem;
+  font-size: var(--text-xs);
+  font-weight: var(--weight-bold);
+  font-stretch: 100%;
+  letter-spacing: var(--tracking-wider);
+  text-transform: uppercase;
+  color: var(--blue-600);
+}
+
+[data-tone='dark'] .ub-eyebrow {
+  color: var(--blue-200);
+}
+
+.ub-eyebrow__line {
+  flex-shrink: 0;
+  width: 1.5rem;
+  height: 3px;
+  border-radius: 1px;
+  background: var(--color-accent);
+}
+
+.ub-heading {
+  max-width: 46rem;
+}
+
+.ub-heading--gross {
+  font-size: var(--text-4xl);
+  line-height: 1.08;
+}
+
+.ub-heading--mittel {
+  font-size: var(--text-2xl);
+  line-height: 1.2;
+}
+
+.ub-heading--klein {
+  font-size: var(--text-lg);
+  line-height: 1.3;
+}
+
+.ub-text {
+  max-width: 44rem;
+  white-space: pre-line;
+  color: var(--color-text);
+}
+
+.ub-text--gross {
+  font-size: var(--text-lg);
+  line-height: var(--leading-relaxed);
+  color: var(--color-text-muted);
+}
+
+.ub-text--klein {
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}
+
+/* ---------------------------------------------------------------------------
+   Bild & Galerie
+   --------------------------------------------------------------------------- */
+.ub-image {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.ub-image__frame {
+  overflow: hidden;
+  border-radius: var(--radius-media);
+  background: var(--color-bg-subtle);
+}
+
+.ub-image__frame img,
+.ub-gallery__item img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.ub-image--16-9 .ub-image__frame {
+  aspect-ratio: 16 / 9;
+}
+
+.ub-image--4-3 .ub-image__frame {
+  aspect-ratio: 4 / 3;
+}
+
+.ub-image--1-1 .ub-image__frame {
+  aspect-ratio: 1;
+}
+
+.ub-image--3-4 .ub-image__frame {
+  aspect-ratio: 3 / 4;
+}
+
+.ub-image--original .ub-image__frame img {
+  height: auto;
+}
+
+.ub-image__caption {
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+}
+
+.ub-image__empty {
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  gap: var(--space-2);
+  min-height: 10rem;
+  font-size: var(--text-sm);
+  font-weight: var(--weight-semibold);
+  color: var(--color-text-muted);
+  border: 2px dashed var(--color-border-strong);
+  border-radius: var(--radius-media);
+  background: var(--color-bg-subtle);
+}
+
+.ub-image__empty .icon {
+  font-size: 1.8rem;
+}
+
+.ub-gallery {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: clamp(0.5rem, 0.3rem + 0.8vw, 1rem);
+}
+
+.ub-gallery > .ub-image__empty {
+  grid-column: 1 / -1;
+}
+
+@media (min-width: 52rem) {
+  .ub-gallery--3 {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .ub-gallery--4 {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+.ub-gallery__item {
+  overflow: hidden;
+  aspect-ratio: 4 / 3;
+  border-radius: var(--radius-md);
+  background: var(--color-bg-subtle);
+}
+
+.ub-gallery--1-1 .ub-gallery__item {
+  aspect-ratio: 1;
+}
+
+.ub-gallery--3-4 .ub-gallery__item {
+  aspect-ratio: 3 / 4;
+}
+
+/* ---------------------------------------------------------------------------
+   Button (gleiches Aussehen wie Button.astro)
+   --------------------------------------------------------------------------- */
+.ub-button {
+  --btn-bg: var(--color-cta);
+  --btn-fg: var(--color-cta-fg);
+  --btn-border: var(--btn-bg);
+  --btn-bg-hover: var(--color-cta-hover);
+  --btn-border-hover: var(--btn-bg-hover);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.6rem;
+  min-height: 3rem;
+  padding: 0.5rem 1.6rem;
+  font-size: var(--text-sm);
+  font-weight: var(--weight-semibold);
+  line-height: 1.15;
+  letter-spacing: 0.01em;
+  text-align: center;
+  text-decoration: none;
+  color: var(--btn-fg);
+  background-color: var(--btn-bg);
+  border: 1.5px solid var(--btn-border);
+  border-radius: var(--radius-button);
+  transition:
+    background-color var(--duration-base) var(--ease-out),
+    border-color var(--duration-base) var(--ease-out),
+    color var(--duration-base) var(--ease-out);
+}
+
+.ub-button:hover {
+  color: var(--btn-fg);
+  background-color: var(--btn-bg-hover);
+  border-color: var(--btn-border-hover);
+}
+
+.ub-button .icon {
+  width: 1.15em;
+  height: 1.15em;
+  transition: transform var(--duration-base) var(--ease-out);
+}
+
+.ub-button:hover .icon {
+  transform: translateX(2px);
+}
+
+.ub-button--secondary {
+  --btn-bg: #ffffff;
+  --btn-fg: var(--onyx-800);
+  --btn-border: var(--gray-300);
+  --btn-bg-hover: var(--onyx-50);
+  --btn-border-hover: var(--onyx-400);
+}
+
+.ub-button--dunkel {
+  --btn-bg: var(--onyx-950);
+  --btn-fg: #ffffff;
+  --btn-bg-hover: var(--onyx-700);
+}
+
+/* Auf dunklem Grund: Nebenaktion mit hellem Rahmen, Onyx-Button weiß */
+[data-tone='dark'] .ub-button--secondary {
+  --btn-bg: transparent;
+  --btn-fg: #ffffff;
+  --btn-border: rgb(255 255 255 / 0.4);
+  --btn-bg-hover: rgb(255 255 255 / 0.1);
+  --btn-border-hover: rgb(255 255 255 / 0.85);
+}
+
+[data-tone='dark'] .ub-button--dunkel {
+  --btn-bg: #ffffff;
+  --btn-fg: var(--onyx-950);
+  --btn-bg-hover: var(--onyx-100);
+}
+
+/* Handy: Buttons über die ganze Breite – leichter zu treffen */
+@media (max-width: 30rem) {
+  .ub-contain > .ub-button,
+  .ub-slot > .ub-button {
+    flex: 1 1 100%;
+  }
+}
+
+/* ---------------------------------------------------------------------------
+   Liste
+   --------------------------------------------------------------------------- */
+.ub-list {
+  display: grid;
+  gap: var(--space-2);
+  max-width: 44rem;
+  padding-left: 1.25em;
+}
+
+.ub-list li::marker {
+  color: var(--color-text-muted);
+}
+
+.ub-list--haken {
+  padding-left: 0;
+  list-style: none;
+}
+
+.ub-list--haken li {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  text-align: left;
+}
+
+.ub-list__mark {
+  display: inline-grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 1.35rem;
+  height: 1.35rem;
+  margin-top: 0.15em;
+  font-size: 0.85rem;
+  color: var(--color-cta-fg);
+  border-radius: 50%;
+  background: var(--color-accent);
+}
+
+/* ---------------------------------------------------------------------------
+   Icon mit Text
+   --------------------------------------------------------------------------- */
+.ub-iconbox {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.ub-iconbox--links {
+  flex-direction: row;
+  align-items: flex-start;
+}
+
+
+.ub-iconbox__icon {
+  display: inline-grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 3rem;
+  height: 3rem;
+  font-size: 1.35rem;
+  color: var(--color-accent);
+  border-radius: 50%;
+  background: var(--onyx-950);
+}
+
+[data-tone='dark'] .ub-iconbox__icon {
+  background: rgb(255 255 255 / 0.08);
+}
+
+.ub-iconbox__body {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.ub-iconbox__title {
+  font-size: var(--text-lg);
+  line-height: 1.3;
+}
+
+.ub-iconbox__text {
+  font-size: var(--text-sm);
+  white-space: pre-line;
+  color: var(--color-text-muted);
+}
+
+/* ---------------------------------------------------------------------------
+   Kennzahl
+   --------------------------------------------------------------------------- */
+.ub-stat {
+  display: grid;
+  gap: var(--space-1);
+  padding-left: var(--space-4);
+  border-left: 3px solid var(--color-accent);
+}
+
+.ub-stat__value {
+  font-size: var(--text-5xl);
+  font-weight: var(--weight-extrabold);
+  font-stretch: var(--stretch-display);
+  line-height: 1;
+  letter-spacing: var(--tracking-tighter);
+  color: var(--color-heading);
+}
+
+.ub-stat__label {
+  font-size: var(--text-sm);
+  font-weight: var(--weight-semibold);
+  color: var(--color-text-muted);
+}
+
+/* ---------------------------------------------------------------------------
+   Zitat
+   --------------------------------------------------------------------------- */
+.ub-quote {
+  display: grid;
+  gap: var(--space-5);
+  max-width: 46rem;
+}
+
+
+.ub-quote__mark {
+  display: inline-grid;
+  place-items: center;
+  width: 3rem;
+  height: 3rem;
+  font-size: 1.3rem;
+  color: var(--color-cta-fg);
+  border-radius: 50%;
+  background: var(--color-accent);
+}
+
+.ub-quote__text {
+  font-size: var(--text-2xl);
+  font-weight: var(--weight-semibold);
+  font-stretch: var(--stretch-display);
+  line-height: 1.35;
+  letter-spacing: var(--tracking-tight);
+  white-space: pre-line;
+  color: var(--color-heading);
+}
+
+.ub-quote__by {
+  display: grid;
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}
+
+.ub-quote__by strong {
+  color: var(--color-heading);
+}
+
+/* ---------------------------------------------------------------------------
+   Frage & Antwort – mehrere untereinander ergeben eine Liste mit Trennlinien
+   --------------------------------------------------------------------------- */
+.ub-faq {
+  border-bottom: 1px solid var(--color-border);
+  text-align: left;
+}
+
+.ub-faq:first-child,
+:not(.ub-faq) + .ub-faq {
+  border-top: 1px solid var(--color-border);
+}
+
+.ub-slot > .ub-faq + .ub-faq,
+.ub-contain > .ub-faq + .ub-faq {
+  margin-top: calc(var(--space-5) * -1);
+}
+
+.ub-faq__q {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  padding-block: var(--space-4);
+  font-size: var(--text-lg);
+  font-weight: var(--weight-bold);
+  color: var(--color-heading);
+  list-style: none;
+  cursor: pointer;
+}
+
+.ub-faq__q::-webkit-details-marker {
+  display: none;
+}
+
+.ub-faq__chevron {
+  display: inline-grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 50%;
+  background: var(--color-bg-subtle);
+  transition: rotate var(--duration-base) var(--ease-out);
+}
+
+[data-tone] .ub-faq__chevron {
+  background: var(--color-primary-soft);
+}
+
+.ub-faq[open] .ub-faq__chevron {
+  rotate: 180deg;
+}
+
+.ub-faq__a {
+  padding-bottom: var(--space-5);
+  white-space: pre-line;
+  color: var(--color-text-muted);
+}
+
+/* ---------------------------------------------------------------------------
+   Abstand & Linie
+   --------------------------------------------------------------------------- */
+.ub-spacer--s {
+  height: var(--space-4);
+}
+
+.ub-spacer--m {
+  height: var(--space-10);
+}
+
+.ub-spacer--l {
+  height: var(--space-20);
+}
+
+.ub-divider {
+  height: 0;
+  border: 0;
+  border-top: 1px solid var(--color-border);
+}
+
+/* ---------------------------------------------------------------------------
+   Varianten aus den Element-Einstellungen
+   --------------------------------------------------------------------------- */
+.ub-columns.ub-columns--g-klein {
+  gap: var(--space-3);
+}
+
+.ub-columns.ub-columns--g-gross {
+  gap: clamp(1.5rem, 0.5rem + 4vw, 5rem);
+}
+
+.ub-image--pos-oben img {
+  object-position: top;
+}
+
+.ub-image--pos-unten img {
+  object-position: bottom;
+}
+
+a.ub-image__frame {
+  display: block;
+  transition: opacity var(--duration-base) ease;
+}
+
+a.ub-image__frame:hover {
+  opacity: 0.88;
+}
+
+.ub-button--s-klein {
+  min-height: 2.5rem;
+  padding: 0.4rem 1.15rem;
+  font-size: var(--text-xs);
+}
+
+.ub-button--s-gross {
+  min-height: 3.4rem;
+  padding: 0.6rem 1.9rem;
+  font-size: var(--text-base);
+}
+
+.ub-contain > .ub-button--full,
+.ub-slot > .ub-button--full {
+  flex: 1 1 100%;
+}
+
+/* Button „Nur Text mit Pfeil“ */
+.ub-button--link {
+  --btn-bg: transparent;
+  --btn-border: transparent;
+  --btn-bg-hover: transparent;
+  --btn-border-hover: transparent;
+  --btn-fg: var(--color-heading);
+  min-height: 0;
+  padding-inline: 0;
+  text-decoration: underline 2px var(--color-accent);
+  text-underline-offset: 0.35em;
+}
+
+/* Verlinkte Karte: ganze Fläche anklickbar, Buttons darin bleiben eigenständig */
+.ub-card--link {
+  position: relative;
+  transition:
+    box-shadow var(--duration-base) ease,
+    translate var(--duration-base) var(--ease-out);
+}
+
+.ub-card--link:hover {
+  box-shadow: var(--shadow-lg);
+  translate: 0 -2px;
+}
+
+.ub-card__link {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  border-radius: inherit;
+}
+
+.ub-card--link :is(a, button, summary):not(.ub-card__link) {
+  position: relative;
+  z-index: 2;
+}
+
+/* Schatten */
+.ub-shadow-klein {
+  box-shadow: var(--shadow-md);
+}
+
+.ub-shadow-gross {
+  box-shadow: var(--shadow-xl);
+}
+
+/* ---------------------------------------------------------------------------
+   Ausrichtung (Einstellungen → Gestaltung). Ein Element mit begrenzter Breite
+   (max. Breite, Button, Text) rückt selbst nach links/Mitte/rechts; Container
+   (Abschnitt, Spalten, Karte) geben die Ausrichtung an ihren Inhalt weiter.
+   --------------------------------------------------------------------------- */
+.ub-al-left {
+  text-align: left;
+}
+
+.ub-al-center {
+  margin-inline: auto;
+  text-align: center;
+}
+
+.ub-al-right {
+  margin-left: auto;
+  text-align: right;
+}
+
+.ub-al-justify {
+  text-align: justify;
+  hyphens: auto;
+}
+
+.ub-al-center > .ub-slot {
+  justify-content: center;
+}
+
+.ub-al-right > .ub-slot {
+  justify-content: flex-end;
+}
+
+.ub-al-center > .ub-slot > :is(.ub-text, .ub-heading, .ub-list, .ub-quote, .ub-image, .ub-divider) {
+  margin-inline: auto;
+}
+
+.ub-al-right > .ub-slot > :is(.ub-text, .ub-heading, .ub-list, .ub-quote, .ub-image, .ub-divider) {
+  margin-left: auto;
+}
+
+:is(.ub-al-center > .ub-slot > .ub-eyebrow, .ub-eyebrow.ub-al-center) {
+  justify-content: center;
+}
+
+:is(.ub-al-right > .ub-slot > .ub-eyebrow, .ub-eyebrow.ub-al-right) {
+  justify-content: flex-end;
+}
+
+:is(.ub-al-center .ub-iconbox--oben, .ub-iconbox--oben.ub-al-center, .ub-al-center .ub-quote, .ub-quote.ub-al-center) {
+  align-items: center;
+  justify-items: center;
+}
+
+:is(.ub-al-right .ub-iconbox--oben, .ub-iconbox--oben.ub-al-right, .ub-al-right .ub-quote, .ub-quote.ub-al-right) {
+  align-items: flex-end;
+  justify-items: end;
+}
+
+:is(.ub-al-center > .ub-slot > .ub-list--haken, .ub-list--haken.ub-al-center) li,
+.ub-iconbox--links.ub-al-center {
+  justify-content: center;
+}
+
+:is(.ub-al-right > .ub-slot > .ub-list--haken, .ub-list--haken.ub-al-right) li,
+.ub-iconbox--links.ub-al-right {
+  justify-content: flex-end;
+}
+
+/* ---------------------------------------------------------------------------
+   Sichtbarkeit: nur auf dem Handy bzw. nur am Computer (im Bearbeiten-Modus immer sichtbar)
+   --------------------------------------------------------------------------- */
+@media (max-width: 51.99rem) {
+  html:not(.is-editing) .ub-hide-mobil {
+    display: none !important;
+  }
+}
+
+@media (min-width: 52rem) {
+  html:not(.is-editing) .ub-hide-desktop {
+    display: none !important;
+  }
+}

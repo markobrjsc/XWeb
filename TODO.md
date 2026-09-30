@@ -1,6 +1,6 @@
 # TODO – Website Pflasterarbeiten Hildebrand
 
-Stand: 29.09.2026 · Hinweis: Jede Speicherung im Bearbeiten-Modus ist ein Commit auf `main` – vor Arbeiten am Code immer `git pull`.
+Stand: 30.09.2026 · Hinweis: Jede Speicherung im Bearbeiten-Modus ist ein Commit auf `main` – vor Arbeiten am Code immer `git pull`.
 
 ## Erledigt (29.09.2026)
 
@@ -33,6 +33,13 @@ Stand: 29.09.2026 · Hinweis: Jede Speicherung im Bearbeiten-Modus ist ein Commi
 - [x] **Zertifikat-Ansicht** mit zwei Karten: links Titel, Aussteller, Jahr, „PDF herunterladen“ und „Schließen“ (zentriert), rechts das Zertifikat mit X oben rechts; auf dem Handy untereinander
 - [x] **Geschäftswagen** → „Geschäftswagen (Außendienst / optional)“
 - [x] **Social-Vorschaubild** (`public/og-image.jpg`) im neuen Design: Onyx, Gelb, Startbild
+
+## Erledigt (30.09.2026)
+
+- [x] **Elemente im Bearbeiten-Modus** – „+ Element hier einfügen“ zwischen allen Abschnitten: 13 Vorlagen (Text mit Bild, Bild mit Text, Überschrift & Einleitung, Drei Vorteile, Karten mit Bild, Kennzahlen, Aufruf mit Buttons, Dunkles Aufruf-Band, Bildergalerie, Häufige Fragen, Kundenstimme, Ansprechpartner, Kontakt-Kasten), 13 Basis-Elemente und 3 Container (Abschnitt, Spalten, Karte) – beliebig verschachtelbar, Texte/Bilder direkt änderbar, Werkzeugleiste mit Verschieben (auch in andere Elemente), Duplizieren, Einstellungen, Löschen; alles passt sich an Handy, Tablet und Computer an. Gespeichert in `src/content/blocks.json` (siehe README → „Elemente im Bearbeiten-Modus“)
+
+- [x] **Gestaltung je Element** – Ausrichtung (links/Mitte/rechts/Blocksatz), Schrift-/Hintergrund-/Akzentfarbe mit Hausfarben-Schnellwahl, Schriftgröße/-stärke/kursiv/Großbuchstaben, Außen- und Innenabstände je Seite, Rahmen, Ecken, Schatten, max. Breite, Sichtbarkeit Handy/Computer; Trennlinie (hr) mit Farbe, Stärke, Stil und Breite; Abschnitt mit Hintergrundbild, Spaltenabstand, Button-Größe/volle Breite/Textlink, Bild-Link und Bildausschnitt, verlinkte Karten
+- [x] **Stellenangebote** – Titel zentriert, „Was wir Ihnen bieten“ als 5 × 2 flache Karten; **Leistungen** – ausgewählter Fachbereich und Projekt-Label mit gelbem Rahmen statt gelber Fläche; **Kontakt/Bewerbung** – Titel zentriert, Formulare kompakter
 
 ## Offen / mit Kunde klären
 

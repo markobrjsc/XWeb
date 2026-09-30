@@ -79,6 +79,7 @@ const highlights = [
   <Section id="stellen" labelledby="stellen-titel">
     <SectionHeader
       id="stellen-titel"
+      align="center"
       eyebrow="Offene Stellen"
       title={jobs.length === 0
         ? 'Aktuell sind alle Stellen <span class="accent">besetzt.</span>'
@@ -101,6 +102,7 @@ const highlights = [
   <Section tone="subtle" labelledby="vorteile-titel">
     <SectionHeader
       id="vorteile-titel"
+      align="center"
       eyebrow="Ihre Vorteile"
       title={'Was wir Ihnen <span class="accent">bieten.</span>'}
       lead="Gute Arbeit braucht gute Bedingungen. Darauf können Sie sich bei uns verlassen."
@@ -109,7 +111,7 @@ const highlights = [
       {
         benefits.map((benefit) => (
           <li class="benefits__item">
-            <FeatureCard icon={benefit.icon} title={benefit.title} text={benefit.text} layout="inline" />
+            <FeatureCard icon={benefit.icon} title={benefit.title} text={benefit.text} layout="inline" padding="sm" />
           </li>
         ))
       }
@@ -226,15 +228,16 @@ const highlights = [
     padding: 0;
   }
 
+  /* Vorteile: zwei flache Karten je Zeile */
+  .benefits {
+    gap: var(--space-4);
+    max-width: 64rem;
+    margin-inline: auto;
+  }
+
   @media (min-width: 40rem) {
     .benefits {
       grid-template-columns: repeat(2, minmax(0, 1fr));
-    }
-  }
-
-  @media (min-width: 64rem) {
-    .benefits {
-      grid-template-columns: repeat(3, minmax(0, 1fr));
     }
   }
 

@@ -8,6 +8,8 @@
  *  POST /api/edit/hero/             { page, image }  – Kopfbild einer Seite                            → src/content/heroes.json
  *  POST /api/edit/farben/           { colors: { "--yellow-500": "#f3a505", … } }                    → src/styles/custom-colors.css
  *  POST /api/edit/abstaende/        { rules: { "<Selektor>": { "margin-top": "24px", … } | null } } → src/content/spacing.json
+ *  GET  /api/edit/bausteine/?page=   aktueller Stand der Elemente einer Seite (direkt aus GitHub, auch vor dem Build)
+ *  POST /api/edit/bausteine/        { page, zones: { "2": [Block, …] } } – Elemente einer Seite             → src/content/blocks.json
  *  PUT  /api/edit/bild/?folder=&name=  Bild als Base64-Text (vom Browser verkleinert)             → src/assets/images/<folder>/<name>
  *
  * Einrichtung: GitHub-Token (Fine-grained, nur dieses Repository, „Contents: Read and write“)
@@ -15,6 +17,7 @@
  * Abschalten (z. B. für den Livegang): in wrangler.jsonc "EDIT_MODE": "0" setzen.
  * Achtung: Ohne Zugangsschutz kann jeder, der die Adresse kennt, Inhalte ändern.
  */
+import { type BlocksFile, sanitizePage } from '../src/lib/blocks/schema';
 import { normalizeText } from '../src/lib/text';
 
 type EditsFile = { global: Record<string, string>; pages: Record<string, Record<string, string>> };
@@ -37,6 +40,8 @@ const GALLERIES_PATH = 'src/content/galleries.json';
 const HEROES_PATH = 'src/content/heroes.json';
 const COLORS_PATH = 'src/styles/custom-colors.css';
 const SPACING_PATH = 'src/content/spacing.json';
+const BLOCKS_PATH = 'src/content/blocks.json';
+const PAGE_PATTERN = /^\/[a-z0-9/_-]*$/i;
 
 /** Abstände: erlaubte Eigenschaften, Selektoren und Werte (gleiche Regeln wie scripts/build-spacing.mjs) */
 const SPACING_PROPS = new Set([
@@ -288,6 +293,37 @@ async function saveSpacing(request: Request, env: EditEnv) {
   return json({ ok: true, saved: changes.length });
 }
 
+/* ------------------------------------------------------------------------ */
+/* Elemente                                                                  */
+/* ------------------------------------------------------------------------ */
+async function loadBlocks(env: EditEnv, url: URL) {
+  const page = url.searchParams.get('page') ?? '';
+  if (!PAGE_PATTERN.test(page)) return fail('Ungültige Seite.');
+  const { data } = await readJsonFile<BlocksFile>(env, BLOCKS_PATH, {});
+  return json({ ok: true, zones: sanitizePage(data[page]) });
+}
+
+async function saveBlocks(request: Request, env: EditEnv) {
+  const body = (await request.json()) as { page?: unknown; zones?: unknown };
+  const page = String(body.page ?? '');
+  if (!PAGE_PATTERN.test(page)) return fail('Ungültige Seite.');
+  if (!body.zones || typeof body.zones !== 'object') return fail('Elemente fehlen.');
+  const zones = sanitizePage(body.zones);
+  const count = Object.values(zones).reduce((sum, blocks) => sum + blocks.length, 0);
+
+  await updateJsonFile<BlocksFile>(
+    env,
+    BLOCKS_PATH,
+    {},
+    (file) => {
+      if (count) file[page] = zones;
+      else delete file[page];
+    },
+    count ? `Elemente bearbeitet: ${page}` : `Elemente entfernt: ${page}`,
+  );
+  return json({ ok: true, zones });
+}
+
 /** Bild als Datei committen – der Base64-Text wird unverändert durchgereicht (kostet kaum Rechenzeit) */
 async function uploadImage(request: Request, env: EditEnv, url: URL) {
   const folder = url.searchParams.get('folder') ?? '';
@@ -343,6 +379,8 @@ export async function handleEdit(request: Request, env: EditEnv, url: URL, pathn
     if (pathname === '/api/edit/hero' && request.method === 'POST') return await saveHero(request, env);
     if (pathname === '/api/edit/farben' && request.method === 'POST') return await saveColors(request, env);
     if (pathname === '/api/edit/abstaende' && request.method === 'POST') return await saveSpacing(request, env);
+    if (pathname === '/api/edit/bausteine' && request.method === 'GET') return await loadBlocks(env, url);
+    if (pathname === '/api/edit/bausteine' && request.method === 'POST') return await saveBlocks(request, env);
     if (pathname === '/api/edit/bild' && request.method === 'PUT') return await uploadImage(request, env, url);
   } catch (error) {
     console.error(error);

@@ -54,8 +54,8 @@ import { ACCEPT_IMAGES, contactAreas, contactChannels, contactTimeframes, contac
           successText="Ihre Nachricht ist bei uns angekommen. Wir melden uns so schnell wie möglich – in der Regel innerhalb von ein bis zwei Werktagen."
         >
           <Fieldset legend="Worum geht es?" step={1}>
-            <Choice name="anliegen" label="Ihr Anliegen" options={contactTopics} required value={contactTopics[0]} />
-            <Choice name="bereiche" label="Fachbereich" options={contactAreas} multiple />
+            <Choice name="anliegen" label="Ihr Anliegen" options={contactTopics} required value={contactTopics[0]} span="half" />
+            <Choice name="bereiche" label="Fachbereich" options={contactAreas} multiple span="half" />
           </Fieldset>
 
           <Fieldset legend="Ihr Projekt" step={2}>
@@ -64,6 +64,7 @@ import { ACCEPT_IMAGES, contactAreas, contactChannels, contactTimeframes, contac
               label="Beschreibung"
               as="textarea"
               required
+              rows={3}
               maxlength={5000}
               placeholder="z. B. Neue Hofeinfahrt mit Betonpflaster, ca. 80 m², inklusive Entwässerung …"
             />
@@ -81,12 +82,12 @@ import { ACCEPT_IMAGES, contactAreas, contactChannels, contactTimeframes, contac
           </Fieldset>
 
           <Fieldset legend="Ihre Kontaktdaten" step={3}>
-            <Field name="name" label="Name" required autocomplete="name" span="half" maxlength={120} />
-            <Field name="firma" label="Firma / Gemeinde" autocomplete="organization" span="half" maxlength={160} />
-            <Field name="email" label="E-Mail" type="email" required autocomplete="email" span="half" maxlength={200} />
-            <Field name="telefon" label="Telefon" type="tel" autocomplete="tel" span="half" maxlength={40} />
-            <Field name="adresse" label="Straße und Hausnummer" autocomplete="street-address" span="half" maxlength={160} />
-            <Field name="ort" label="PLZ und Ort" autocomplete="address-level2" span="half" maxlength={120} />
+            <Field name="name" label="Name" required autocomplete="name" span="third" maxlength={120} />
+            <Field name="firma" label="Firma / Gemeinde" autocomplete="organization" span="third" maxlength={160} />
+            <Field name="email" label="E-Mail" type="email" required autocomplete="email" span="third" maxlength={200} />
+            <Field name="telefon" label="Telefon" type="tel" autocomplete="tel" span="third" maxlength={40} />
+            <Field name="adresse" label="Straße und Hausnummer" autocomplete="street-address" span="third" maxlength={160} />
+            <Field name="ort" label="PLZ und Ort" autocomplete="address-level2" span="third" maxlength={120} />
             <Choice name="kontaktweg" label="Wie dürfen wir Sie erreichen?" options={contactChannels} value="E-Mail" />
           </Fieldset>
         </Form>
@@ -190,7 +191,9 @@ import { ACCEPT_IMAGES, contactAreas, contactChannels, contactTimeframes, contac
 
   .contact__form-head {
     display: grid;
+    justify-items: center;
     gap: var(--space-2);
+    text-align: center;
   }
 
   .contact__title {
@@ -198,7 +201,7 @@ import { ACCEPT_IMAGES, contactAreas, contactChannels, contactTimeframes, contac
   }
 
   .contact__lead {
-    max-width: 44rem;
+    max-width: 40rem;
     color: var(--color-text-muted);
     line-height: var(--leading-relaxed);
   }

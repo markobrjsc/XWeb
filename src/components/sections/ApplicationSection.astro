@@ -122,31 +122,31 @@ const interestOptions = [
                 <Field name="stelle" label="Sie bewerben sich als" value={job.data.title} readonly />
               ) : (
                 <>
-                  <Field name="stelle" label="Bereich" as="select" options={interestOptions} required />
-                  <Choice name="art" label="Gewünschte Anstellung" options={employmentTypes} />
+                  <Field name="stelle" label="Bereich" as="select" options={interestOptions} required span="half" />
+                  <Choice name="art" label="Gewünschte Anstellung" options={employmentTypes} span="half" />
                 </>
               )
             }
           </Fieldset>
 
           <Fieldset legend="Persönliche Daten" step={2}>
-            <Field name="vorname" label="Vorname" required autocomplete="given-name" span="half" maxlength={80} />
-            <Field name="nachname" label="Nachname" required autocomplete="family-name" span="half" maxlength={80} />
-            <Field name="email" label="E-Mail" type="email" required autocomplete="email" span="half" maxlength={200} />
-            <Field name="telefon" label="Telefon" type="tel" required autocomplete="tel" span="half" maxlength={40} />
-            <Field name="strasse" label="Straße und Hausnummer" autocomplete="street-address" maxlength={160} />
+            <Field name="vorname" label="Vorname" required autocomplete="given-name" span="third" maxlength={80} />
+            <Field name="nachname" label="Nachname" required autocomplete="family-name" span="third" maxlength={80} />
+            <Field name="email" label="E-Mail" type="email" required autocomplete="email" span="third" maxlength={200} />
+            <Field name="telefon" label="Telefon" type="tel" required autocomplete="tel" span="third" maxlength={40} />
+            <Field name="strasse" label="Straße und Hausnummer" autocomplete="street-address" span="two-thirds" maxlength={160} />
             <Field name="plz" label="PLZ" required autocomplete="postal-code" inputmode="numeric" span="third" maxlength={10} />
             <Field name="wohnort" label="Wohnort" required autocomplete="address-level2" span="two-thirds" maxlength={120} />
           </Fieldset>
 
           <Fieldset legend="Zu Ihnen" step={3}>
             <Field name="eintritt" label="Frühester Eintritt" placeholder="z. B. ab sofort oder 01.03." span="half" maxlength={100} />
-            <Choice name="fuehrerschein" label="Führerschein" options={licenseClasses} multiple />
+            <Choice name="fuehrerschein" label="Führerschein" options={licenseClasses} multiple span="half" />
             <Field
               name="nachricht"
               label="Kurz zu Ihnen"
               as="textarea"
-              rows={4}
+              rows={3}
               maxlength={5000}
               placeholder="Berufserfahrung, Qualifikationen, Fragen an uns …"
             />
@@ -319,7 +319,9 @@ const interestOptions = [
 
   .apply__form-head {
     display: grid;
+    justify-items: center;
     gap: var(--space-2);
+    text-align: center;
   }
 
   .apply__title {
@@ -327,7 +329,7 @@ const interestOptions = [
   }
 
   .apply__lead {
-    max-width: 44rem;
+    max-width: 40rem;
     color: var(--color-text-muted);
     line-height: var(--leading-relaxed);
   }

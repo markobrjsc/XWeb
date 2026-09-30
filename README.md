@@ -75,6 +75,26 @@ Die **Originalfotos** (ca. 1,6 GB) liegen in `fotos-original/`. Dieser Ordner wi
   `src/assets/zertifikate/zertifikate.json` eintragen. Vorschaubilder erzeugt `scripts/build-zertifikate.mjs`
   automatisch vor `npm run dev` und `npm run build`.
 
+### Elemente im Bearbeiten-Modus
+
+Im Bearbeiten-Modus (Stift oben rechts) steht zwischen allen Abschnitten jeder Seite **„+ Element hier einfügen“**.
+Zur Auswahl stehen **Vorlagen** (Text mit Bild, Drei Vorteile, Karten, Kennzahlen, Aufruf, Galerie, FAQ, Kundenstimme,
+Ansprechpartner, Kontakt-Kasten …), **Basis-Elemente** (Überschrift, Text, Bild, Button, Liste, Icon mit Text, Zitat …)
+und **Container** (Abschnitt, Spalten, Karte), die weitere Elemente aufnehmen – auch ineinander verschachtelt.
+Texte direkt anklicken, Bilder/Symbole anklicken zum Tauschen; ein Klick aufs Element zeigt die Werkzeugleiste
+(übergeordnetes wählen, hoch/runter, einfügen, duplizieren, verschieben, Einstellungen, löschen).
+In den **Einstellungen** hat jedes Element neben seinen eigenen Optionen eine **Gestaltung**: Ausrichtung,
+Farben (Schrift, Hintergrund, Akzent), Schrift (Größe, Stärke, kursiv, Großbuchstaben), Außen-/Innenabstände je Seite,
+Rahmen, Ecken, Schatten, maximale Breite und „nur auf Handy/Computer anzeigen“. Große Schriften und Abstände
+werden auf kleinen Bildschirmen automatisch verkleinert. Daraus entsteht beim Build CSS je Element
+(`src/lib/blocks/style.ts`), das mit Hash in die Content-Security-Policy eingetragen wird.
+
+- Gespeichert in `src/content/blocks.json` (je Seite und Position), eingesetzt beim Build von `src/middleware.ts`
+- Elementtypen und Felder: `src/lib/blocks/schema.ts` · Vorlagen: `src/lib/blocks/presets.ts` ·
+  HTML: `src/lib/blocks/render.ts` · Aussehen: `src/styles/blocks.css` · Editor: `src/scripts/block-editor.ts`
+- Position „2“ bedeutet: nach dem 2. Abschnitt der Seite. Werden im Code Abschnitte einer Seite ergänzt oder
+  entfernt, verschieben sich die Elemente dahinter entsprechend.
+
 ---
 
 ## Gestaltung & Komponenten
