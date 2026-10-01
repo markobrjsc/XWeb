@@ -1,7 +1,9 @@
 ---
 /**
  * Oberfläche des Element-Editors im Bearbeiten-Modus (Logik: src/scripts/block-editor.ts).
- *  · Auswahl-Dialog: Vorlagen, Basis-Elemente und Container zum Einfügen
+ *  · Auswahl: Vorlagen, Basis-Elemente und Container mit echter Vorschau – als Dialog („+“) oder als
+ *    Seitenleiste („Elemente“), aus der man Elemente auf die Seite zieht
+ *  · Einfüge-Markierung (gelbe Linie) und Zieh-Etikett
  *  · Werkzeugleiste am ausgewählten Element: hoch/runter, einfügen, duplizieren, verschieben, Einstellungen, löschen
  *  · Einstellungen: Felder je Elementtyp (src/lib/blocks/schema.ts)
  *  · Bildauswahl: alle Fotos der Website oder neu hochladen
@@ -43,12 +45,17 @@ const groups = [
           PRESETS.map((preset) => (
             <li>
               <button type="button" class="ub-tile ub-tile--preset" data-ub-choice={`preset:${preset.id}`}>
-                <span class="ub-tile__icon">
-                  <Icon name={preset.icon} size="1.3rem" />
+                <span class="ub-tile__preview" data-ub-preview aria-hidden="true">
+                  <span class="ub-tile__stage" data-ub-stage />
                 </span>
-                <span class="ub-tile__text">
-                  <strong>{preset.label}</strong>
-                  <small>{preset.description}</small>
+                <span class="ub-tile__meta">
+                  <span class="ub-tile__icon">
+                    <Icon name={preset.icon} size="1.1rem" />
+                  </span>
+                  <span class="ub-tile__text">
+                    <strong>{preset.label}</strong>
+                    <small>{preset.description}</small>
+                  </span>
                 </span>
               </button>
             </li>
@@ -67,12 +74,17 @@ const groups = [
               .map(([type, def]) => (
                 <li>
                   <button type="button" class="ub-tile" data-ub-choice={`block:${type}`}>
-                    <span class="ub-tile__icon">
-                      <Icon name={def.icon} size="1.3rem" />
+                    <span class="ub-tile__preview" data-ub-preview aria-hidden="true">
+                      <span class="ub-tile__stage" data-ub-stage />
                     </span>
-                    <span class="ub-tile__text">
-                      <strong>{def.label}</strong>
-                      <small>{def.description}</small>
+                    <span class="ub-tile__meta">
+                      <span class="ub-tile__icon">
+                        <Icon name={def.icon} size="1.1rem" />
+                      </span>
+                      <span class="ub-tile__text">
+                        <strong>{def.label}</strong>
+                        <small>{def.description}</small>
+                      </span>
                     </span>
                   </button>
                 </li>
@@ -94,7 +106,7 @@ const groups = [
   <button type="button" data-ub-action="down" title="Nach unten" aria-label="Nach unten"><Icon name="arrow-down" size="1rem" /></button>
   <button type="button" data-ub-action="add" title="Danach einfügen" aria-label="Danach einfügen"><Icon name="plus" size="1rem" /></button>
   <button type="button" data-ub-action="duplicate" title="Duplizieren" aria-label="Duplizieren"><Icon name="copy" size="1rem" /></button>
-  <button type="button" data-ub-action="move" title="Verschieben (auch in andere Elemente)" aria-label="Verschieben">
+  <button type="button" class="ub-toolbar__grab" data-ub-action="move" title="Verschieben: ziehen oder klicken und Stelle wählen" aria-label="Verschieben">
     <Icon name="move" size="1rem" />
   </button>
   <button type="button" data-ub-action="settings" title="Einstellungen" aria-label="Einstellungen">
@@ -108,9 +120,16 @@ const groups = [
 <!-- Hinweis beim Verschieben -->
 <div class="ub-movebar" data-ub-movebar hidden>
   <Icon name="move" size="1rem" />
-  <span>Ziel wählen: auf ein gelbes „Hierher“ klicken.</span>
+  <span data-ub-movebar-text>Stelle auf der Seite anklicken.</span>
   <button type="button" data-ub-move-cancel>Abbrechen</button>
 </div>
+
+<!-- Einfüge-Stelle beim Ziehen/Platzieren -->
+<div class="ub-drop" data-ub-drop hidden>
+  <span class="ub-drop__tag" data-ub-drop-label>Hier einfügen</span>
+  <button type="button" class="ub-drop__ok" data-ub-drop-ok hidden>Hier einfügen</button>
+</div>
+<div class="ub-ghost" data-ub-ghost hidden aria-hidden="true"></div>
 
 <!-- Einstellungen des ausgewählten Elements -->
 <aside class="spacing-panel ub-panel" data-ub-panel hidden aria-labelledby="ub-panel-title">
@@ -194,11 +213,11 @@ const groups = [
 
   .ub-tile {
     display: flex;
-    align-items: flex-start;
-    gap: 0.8rem;
+    flex-direction: column;
+    gap: 0.55rem;
     width: 100%;
     height: 100%;
-    padding: 0.8rem;
+    padding: 0.5rem 0.5rem 0.7rem;
     font: inherit;
     text-align: left;
     color: #19191a;
@@ -206,25 +225,67 @@ const groups = [
     border-radius: 0.9rem;
     background: #ffffff;
     cursor: pointer;
+    user-select: none;
+    -webkit-user-select: none;
     transition:
       border-color 150ms ease,
-      background-color 150ms ease;
+      background-color 150ms ease,
+      box-shadow 150ms ease;
   }
 
   .ub-tile:hover,
   .ub-tile:focus-visible {
     border-color: var(--color-accent, #f3a505);
     background: #fef8e7;
+    box-shadow: 0 8px 22px -14px rgb(0 0 0 / 0.45);
+  }
+
+  /* Echte Vorschau: in Originalbreite gezeichnet und verkleinert (Maße setzt block-editor.ts) */
+  .ub-tile__preview {
+    position: relative;
+    display: block;
+    overflow: hidden;
+    height: 7rem;
+    border-radius: 0.6rem;
+    background: var(--color-bg, #ffffff);
+    box-shadow: inset 0 0 0 1px #e8e8e5;
+    pointer-events: none;
+  }
+
+  .ub-tile__stage {
+    position: absolute;
+    top: var(--ub-top, 0);
+    left: 0;
+    display: block;
+    font-size: var(--text-base, 1rem);
+    line-height: var(--leading-normal, 1.6);
+    text-align: left;
+    white-space: normal;
+    color: var(--color-text, #373735);
+    transform: scale(var(--ub-scale, 0.25));
+    transform-origin: 0 0;
+  }
+
+  /* Einzelne Elemente mit etwas Rand um den Inhalt */
+  .ub-tile:not(.ub-tile--preset) .ub-tile__stage {
+    padding: 2rem;
+  }
+
+  .ub-tile__meta {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.6rem;
+    padding-inline: 0.2rem;
   }
 
   .ub-tile__icon {
     display: grid;
     place-items: center;
     flex-shrink: 0;
-    width: 2.5rem;
-    height: 2.5rem;
+    width: 2rem;
+    height: 2rem;
     color: #0b0b0c;
-    border-radius: 0.7rem;
+    border-radius: 0.6rem;
     background: #efefed;
   }
 
@@ -239,13 +300,167 @@ const groups = [
   }
 
   .ub-tile__text strong {
-    font-size: 0.9rem;
+    font-size: 0.88rem;
   }
 
   .ub-tile__text small {
-    font-size: 0.75rem;
+    font-size: 0.74rem;
     line-height: 1.35;
     color: #62625e;
+  }
+
+  /* Als Seitenleiste: nicht modal, die Seite bleibt bedienbar (Elemente auf die Seite ziehen) */
+  .ub-library.ub-library--drawer {
+    inset: calc(var(--header-height) + 0.75rem) 0.75rem 5.25rem auto;
+    z-index: 1002;
+    width: min(25rem, calc(100vw - 1.5rem));
+    height: auto;
+    max-height: none;
+    margin: 0;
+    box-shadow:
+      0 0 0 1px rgb(0 0 0 / 0.06),
+      0 24px 60px -18px rgb(0 0 0 / 0.55);
+  }
+
+  .ub-library--drawer .gallery-dialog__inner {
+    gap: 0.75rem;
+    padding: 1rem;
+  }
+
+  .ub-library--drawer .gallery-dialog__title {
+    font-size: 1.05rem;
+  }
+
+  .ub-library--drawer .ub-library__grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .ub-library--drawer [data-ub-tabpanel]:not([data-ub-tabpanel='vorlagen']) .ub-library__grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .ub-library--drawer .ub-tile {
+    cursor: grab;
+  }
+
+  /* Leiste unten ist hier zweizeilig */
+  @media (max-width: 64rem) {
+    .ub-library.ub-library--drawer {
+      bottom: 7.5rem;
+    }
+  }
+
+  @media (max-width: 47.99rem) {
+    .ub-library.ub-library--drawer {
+      inset: auto 0 0 0;
+      width: 100%;
+      height: min(62dvh, 34rem);
+      border-radius: 1.2rem 1.2rem 0 0;
+    }
+  }
+
+  /* Einfüge-Stelle: gelbe Linie – bei „+“-Feldern ein Rahmen */
+  .ub-drop {
+    position: fixed;
+    top: 0;
+    left: 0;
+    z-index: 1006;
+    border-radius: 999px;
+    background: var(--color-accent, #f3a505);
+    box-shadow:
+      0 0 0 2px #ffffff,
+      0 6px 18px -6px rgb(0 0 0 / 0.55);
+    pointer-events: none;
+  }
+
+  .ub-drop[hidden] {
+    display: none;
+  }
+
+  .ub-drop[data-axis='box'] {
+    border-radius: 0.8rem;
+    background: rgb(243 165 5 / 0.18);
+    box-shadow: inset 0 0 0 2px var(--color-accent, #f3a505);
+  }
+
+  .ub-drop__tag,
+  .ub-drop__ok {
+    position: absolute;
+    bottom: calc(100% + 6px);
+    left: 0;
+    padding: 0.3rem 0.75rem;
+    font: 700 0.75rem/1.2 var(--font-sans);
+    white-space: nowrap;
+    border-radius: 999px;
+  }
+
+  .ub-drop__tag {
+    color: var(--color-accent, #f3a505);
+    background: #0b0b0c;
+  }
+
+  .ub-drop__ok {
+    left: 50%;
+    translate: -50% 0;
+    padding: 0.55rem 1rem;
+    font-size: 0.85rem;
+    color: #0b0b0c;
+    border: 0;
+    background: var(--color-accent, #f3a505);
+    box-shadow: 0 8px 20px -8px rgb(0 0 0 / 0.6);
+    cursor: pointer;
+    pointer-events: auto;
+  }
+
+  .ub-drop[data-flip] :is(.ub-drop__tag, .ub-drop__ok) {
+    top: calc(100% + 6px);
+    bottom: auto;
+  }
+
+  .ub-drop[data-axis='x'] :is(.ub-drop__tag, .ub-drop__ok) {
+    top: 0;
+    bottom: auto;
+    left: 10px;
+  }
+
+  .ub-drop[data-axis='x'] .ub-drop__ok {
+    translate: none;
+  }
+
+  .ub-drop [hidden] {
+    display: none;
+  }
+
+  /* Etikett am Mauszeiger beim Ziehen */
+  .ub-ghost {
+    position: fixed;
+    top: 0;
+    left: 0;
+    z-index: 1007;
+    padding: 0.45rem 0.9rem;
+    font: 700 0.8rem/1.2 var(--font-sans);
+    white-space: nowrap;
+    color: #0b0b0c;
+    border-radius: 999px;
+    background: var(--color-accent, #f3a505);
+    box-shadow: 0 10px 24px -8px rgb(0 0 0 / 0.5);
+    pointer-events: none;
+  }
+
+  .ub-ghost[hidden] {
+    display: none;
+  }
+
+  :global(.ub-dragging),
+  :global(.ub-dragging *) {
+    cursor: grabbing !important;
+    user-select: none !important;
+    -webkit-user-select: none !important;
+  }
+
+  :global(.ub-moving main),
+  :global(.ub-moving main *) {
+    cursor: crosshair !important;
   }
 
   /* Werkzeugleiste */
@@ -295,6 +510,11 @@ const groups = [
     background: rgb(255 255 255 / 0.14);
   }
 
+  .ub-toolbar .ub-toolbar__grab {
+    cursor: grab;
+    touch-action: none;
+  }
+
   .ub-toolbar button:disabled {
     opacity: 0.35;
     cursor: default;
@@ -327,7 +547,26 @@ const groups = [
     display: none;
   }
 
+  .ub-movebar [data-ub-movebar-text] {
+    min-width: 0;
+    line-height: 1.3;
+  }
+
+  @media (max-width: 47.99rem) {
+    .ub-movebar {
+      width: calc(100vw - 1.5rem);
+      padding: 0.5rem 0.5rem 0.5rem 0.9rem;
+      font-size: 0.8rem;
+      border-radius: 1rem;
+    }
+
+    .ub-movebar [data-ub-movebar-text] {
+      flex: 1;
+    }
+  }
+
   .ub-movebar button {
+    flex: none;
     padding: 0.35rem 0.8rem;
     font: inherit;
     font-weight: 700;

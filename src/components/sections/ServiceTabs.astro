@@ -64,6 +64,8 @@ import { pillars } from '@/data/services';
     // Platzhalter direkt vor der Leiste: liegt er oberhalb der Klebe-Position, klebt die Leiste
     const sentinel = document.createElement('div');
     sentinel.setAttribute('aria-hidden', 'true');
+    // Laufzeit-Element: vom Element-Editor bei Einfügestellen nicht mitzählen
+    sentinel.dataset.ubIgnore = '';
     tabbar.before(sentinel);
 
     tabbar.hidden = false;

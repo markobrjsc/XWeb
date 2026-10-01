@@ -1,7 +1,7 @@
 /**
  * Elemente beim Build in die Seiten einsetzen (aufgerufen von src/middleware.ts).
  * Liest src/content/blocks.json, optimiert die verwendeten Fotos (WebP in mehreren Größen) und setzt jede Zone
- * als <ub-zone> zwischen die Abschnitte in <main>. Die Zone wird als eigenes Tag eingefügt, damit
+ * als <ub-zone> zwischen die Abschnitte in <main> – oder an ein beliebiges Element darin („@Pfad|Position“). Die Zone wird als eigenes Tag eingefügt, damit
  * Selektoren wie „div:nth-of-type(2)“ (Abstände aus dem Bearbeiten-Modus) unverändert weiter passen.
  */
 import { getImage } from 'astro:assets';
@@ -9,7 +9,7 @@ import blocksFile from '@/content/blocks.json';
 import { iconSvg } from '@/lib/icons';
 import { findImage } from '@/lib/images';
 import { renderZone, type RenderContext } from './render';
-import { type PageBlocks, clampZones, collectImages, sanitizePage } from './schema';
+import { type PageBlocks, clampZones, collectImages, parseAnchor, sanitizePage } from './schema';
 import { blocksCss } from './style';
 
 const WIDTHS = [480, 800, 1200, 1600, 2000];
@@ -38,16 +38,20 @@ const VOID = new Set(['area', 'base', 'br', 'col', 'embed', 'hr', 'img', 'input'
 const RAW = new Set(['script', 'style', 'textarea', 'title']);
 const TAG = /<(\/?)([a-zA-Z][^\s/>]*)((?:\s+[^\s"'>/=]+(?:\s*=\s*(?:"[^"]*"|'[^']*'|[^\s"'>]+))?)*)\s*(\/?)>/y;
 
+/** Element im HTML-Text: Beginn, Ende des Start-Tags, Beginn des End-Tags, Ende – dazu die Kind-Elemente */
+export type HtmlNode = { start: number; openEnd: number; closeStart: number; end: number; children: HtmlNode[] };
+
 /**
- * Position nach jedem Kind-Element von <main> im HTML-Text.
- * ends[0] = direkt nach <main …>, ends[n] = nach dem n-ten Kind-Element.
+ * Elementbaum von <main> aus dem HTML-Text (ohne Textknoten und Kommentare).
+ * Gleiche Zählweise wie im Editor (src/scripts/block-editor.ts): Kind-Elemente ab 1.
  */
-export function mainChildEnds(html: string): number[] | null {
+export function mainTree(html: string): HtmlNode | null {
   const open = /<main\b[^>]*>/i.exec(html);
   if (!open) return null;
-  const ends = [open.index + open[0].length];
-  let depth = 0;
-  let i = ends[0];
+  const root: HtmlNode = { start: open.index, openEnd: open.index + open[0].length, closeStart: -1, end: -1, children: [] };
+  const stack: HtmlNode[] = [root];
+  let i = root.openEnd;
+  const lower = html.toLowerCase();
   while (i < html.length) {
     const lt = html.indexOf('<', i);
     if (lt === -1) return null;
@@ -66,26 +70,50 @@ export function mainChildEnds(html: string): number[] | null {
     const [, closing, rawName, , selfClosing] = match;
     const name = rawName.toLowerCase();
     i = TAG.lastIndex;
+    const parent = stack[stack.length - 1];
     if (closing) {
-      if (depth === 0 && name === 'main') return ends;
-      depth -= 1;
-      if (depth === 0) ends.push(i);
+      const node = stack.pop()!;
+      node.closeStart = lt;
+      node.end = i;
+      if (node === root) return root;
       continue;
     }
+    const node: HtmlNode = { start: lt, openEnd: i, closeStart: i, end: i, children: [] };
+    parent.children.push(node);
     if (RAW.has(name)) {
-      const close = html.toLowerCase().indexOf(`</${name}`, i);
+      const close = lower.indexOf(`</${name}`, i);
       if (close === -1) return null;
-      i = html.indexOf('>', close) + 1;
-      if (depth === 0) ends.push(i);
+      node.closeStart = close;
+      i = node.end = html.indexOf('>', close) + 1;
       continue;
     }
-    if (VOID.has(name) || selfClosing) {
-      if (depth === 0) ends.push(i);
-      continue;
-    }
-    depth += 1;
+    if (VOID.has(name) || selfClosing) continue;
+    stack.push(node);
   }
   return null;
+}
+
+/** Position einer Zone im HTML-Text; unbekanntes Element → Ende von <main> */
+function zoneOffset(root: HtmlNode, key: string): { at: number; order: number } {
+  const anchor = parseAnchor(key);
+  if (!anchor) {
+    const n = Number(key);
+    return { at: n === 0 ? root.openEnd : (root.children[n - 1]?.end ?? root.closeStart), order: 1 };
+  }
+  let node: HtmlNode | undefined = root;
+  for (const index of anchor.path) node = node?.children[index - 1];
+  if (!node) return { at: root.closeStart, order: 2 };
+  const isVoid = node.openEnd === node.end;
+  switch (anchor.position) {
+    case 'before':
+      return { at: node.start, order: 0 };
+    case 'start':
+      return { at: isVoid ? node.end : node.openEnd, order: 0 };
+    case 'end':
+      return { at: isVoid ? node.end : node.closeStart, order: 1 };
+    default:
+      return { at: node.end, order: 1 };
+  }
 }
 
 /** Zonen einer Seite in fertiges HTML einsetzen */
@@ -93,8 +121,8 @@ export async function applyBlocks(html: string, path: string): Promise<string> {
   const page = blocksForPage(path);
   const keys = Object.keys(page);
   if (!keys.length) return html;
-  const ends = mainChildEnds(html);
-  if (!ends) return html;
+  const tree = mainTree(html);
+  if (!tree) return html;
 
   const images = await resolveImages(page);
   const icons = new Map<string, string>();
@@ -107,13 +135,17 @@ export async function applyBlocks(html: string, path: string): Promise<string> {
     reveal: true,
   };
 
-  // Von hinten nach vorn einsetzen, damit die gemerkten Positionen gültig bleiben.
+  // Alle Positionen zuerst im unveränderten HTML bestimmen, dann von hinten nach vorn einsetzen.
   // Zonen hinter dem letzten Abschnitt (z. B. weil die Seite im Code gekürzt wurde) landen am Ende.
-  const zones = clampZones(page, ends.length - 1);
+  // Gleiche Position: „davor“ des nächsten Elements zuerst einsetzen, damit „dahinter“ des vorigen davor steht.
+  const zones = clampZones(page, tree.children.length);
+  const placed = Object.keys(zones)
+    .map((key) => ({ key, ...zoneOffset(tree, key) }))
+    .sort((a, b) => b.at - a.at || a.order - b.order);
   let out = html;
-  for (const key of Object.keys(zones).sort((a, b) => Number(b) - Number(a))) {
+  for (const { key, at } of placed) {
     const zone = `<ub-zone data-ub-zone="${key}">${renderZone(zones[key], ctx, key)}</ub-zone>`;
-    out = out.slice(0, ends[Number(key)]) + zone + out.slice(ends[Number(key)]);
+    out = out.slice(0, at) + zone + out.slice(at);
   }
   return injectStyles(out, Object.values(zones).map((blocks) => blocksCss(blocks, ctx.image)).join(''));
 }

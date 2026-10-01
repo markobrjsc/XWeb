@@ -40,11 +40,13 @@ export function renderZone(blocks: Block[], ctx: RenderContext, zone: string): s
     if (group.length) html += `<div class="ub-contain">${group.join('')}</div>`;
     group = [];
   };
-  // Abschnitte gehen über die ganze Breite, alles andere steht im normalen Seitenraster
+  // Abschnitte gehen über die ganze Breite, alles andere steht im normalen Seitenraster –
+  // außer bei Zonen an einem Element innerhalb eines Abschnitts („@…“): dort gilt schon dessen Raster
+  const nested = zone.startsWith('@');
   for (const block of blocks) {
-    if (block.type === 'section') {
+    if (block.type === 'section' || nested) {
       flush();
-      html += renderBlock(block, ctx, { cols: 1, reveal: false });
+      html += renderBlock(block, ctx, { cols: 1, reveal: nested && Boolean(ctx.reveal) && block.type !== 'section' });
     } else {
       group.push(renderBlock(block, ctx, { cols: 1, reveal: Boolean(ctx.reveal) }));
     }

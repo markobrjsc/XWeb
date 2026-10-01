@@ -77,12 +77,19 @@ Die **Originalfotos** (ca. 1,6 GB) liegen in `fotos-original/`. Dieser Ordner wi
 
 ### Elemente im Bearbeiten-Modus
 
-Im Bearbeiten-Modus (Stift oben rechts) steht zwischen allen Abschnitten jeder Seite **„+ Element hier einfügen“**.
+Im Bearbeiten-Modus (Stift oben rechts) gibt es zwei Wege zum Einfügen:
+
+- **„Elemente“** in der Leiste unten öffnet eine Seitenleiste – Element **per Drag & Drop an fast jede Stelle** der Seite
+  ziehen (vor/hinter Abschnitte, Überschriften, Absätze, Karten, Spalten …; eine gelbe Linie zeigt die Stelle).
+  Oder antippen und danach die Stelle anklicken – auf dem Handy Stelle antippen und „Hier einfügen“ bestätigen.
+- **„+ Element hier einfügen“** zwischen den Abschnitten und in Containern öffnet die Auswahl als Dialog.
+
+Jede Kachel zeigt eine **echte Vorschau** des Elements (mit demselben Renderer gezeichnet und verkleinert).
 Zur Auswahl stehen **Vorlagen** (Text mit Bild, Drei Vorteile, Karten, Kennzahlen, Aufruf, Galerie, FAQ, Kundenstimme,
 Ansprechpartner, Kontakt-Kasten …), **Basis-Elemente** (Überschrift, Text, Bild, Button, Liste, Icon mit Text, Zitat …)
 und **Container** (Abschnitt, Spalten, Karte), die weitere Elemente aufnehmen – auch ineinander verschachtelt.
 Texte direkt anklicken, Bilder/Symbole anklicken zum Tauschen; ein Klick aufs Element zeigt die Werkzeugleiste
-(übergeordnetes wählen, hoch/runter, einfügen, duplizieren, verschieben, Einstellungen, löschen).
+(übergeordnetes wählen, hoch/runter, einfügen, duplizieren, verschieben – Knopf ziehen oder klicken –, Einstellungen, löschen).
 In den **Einstellungen** hat jedes Element neben seinen eigenen Optionen eine **Gestaltung**: Ausrichtung,
 Farben (Schrift, Hintergrund, Akzent), Schrift (Größe, Stärke, kursiv, Großbuchstaben), Außen-/Innenabstände je Seite,
 Rahmen, Ecken, Schatten, maximale Breite und „nur auf Handy/Computer anzeigen“. Große Schriften und Abstände
@@ -92,8 +99,10 @@ werden auf kleinen Bildschirmen automatisch verkleinert. Daraus entsteht beim Bu
 - Gespeichert in `src/content/blocks.json` (je Seite und Position), eingesetzt beim Build von `src/middleware.ts`
 - Elementtypen und Felder: `src/lib/blocks/schema.ts` · Vorlagen: `src/lib/blocks/presets.ts` ·
   HTML: `src/lib/blocks/render.ts` · Aussehen: `src/styles/blocks.css` · Editor: `src/scripts/block-editor.ts`
-- Position „2“ bedeutet: nach dem 2. Abschnitt der Seite. Werden im Code Abschnitte einer Seite ergänzt oder
-  entfernt, verschieben sich die Elemente dahinter entsprechend.
+- Position „2“ bedeutet: nach dem 2. Abschnitt der Seite; „@3.2.1|after“: hinter dem Element an Position 3 → 2 → 1
+  ab `<main>` (auch before/start/end). Werden im Code Abschnitte oder Elemente einer Seite ergänzt oder entfernt,
+  verschieben sich die Elemente dahinter entsprechend. Elemente, die Skripte erst im Browser einfügen, tragen
+  `data-ub-ignore`, damit Editor und Build gleich zählen.
 
 ---
 

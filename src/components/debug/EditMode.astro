@@ -38,7 +38,8 @@ const heroChoices = await Promise.all(
 
   <div class="edit-bar" data-edit-bar hidden>
     <span class="edit-bar__dot" aria-hidden="true"></span>
-    <p class="edit-bar__text" data-edit-status aria-live="polite">Bearbeiten-Modus: Text anklicken und ändern · „+“ fügt Elemente ein.</p>
+    <p class="edit-bar__text" data-edit-status aria-live="polite">Bearbeiten-Modus: Text anklicken und ändern · „Elemente“ fügt Neues ein.</p>
+    <button class="edit-bar__btn" type="button" data-ub-drawer-toggle aria-pressed="false">Elemente</button>
     <button class="edit-bar__btn" type="button" data-spacing-toggle aria-pressed="false">Abstände</button>
     <button class="edit-bar__btn" type="button" data-colors-open>Farben</button>
     <button class="edit-bar__btn" type="button" data-edit-discard>Verwerfen</button>
@@ -214,7 +215,7 @@ const heroChoices = await Promise.all(
     // wird unten vom Abstands-Modus gesetzt
     let spacingToggleOff = () => {};
     let editing = false;
-    const IDLE = 'Bearbeiten-Modus: Text anklicken und ändern · „+“ fügt Elemente ein.';
+    const IDLE = 'Bearbeiten-Modus: Text anklicken und ändern · „Elemente“ fügt Neues ein.';
 
     // Elemente einfügen und bearbeiten (src/scripts/block-editor.ts)
     const blocks = createBlockEditor(ui, {
@@ -980,8 +981,8 @@ const heroChoices = await Promise.all(
     display: none;
   }
 
-  /* Schmale Bildschirme: Hinweistext über den Knöpfen */
-  @media (max-width: 48rem) {
+  /* Schmalere Bildschirme: Hinweistext über den Knöpfen */
+  @media (max-width: 64rem) {
     .edit-bar {
       flex-wrap: wrap;
       justify-content: center;

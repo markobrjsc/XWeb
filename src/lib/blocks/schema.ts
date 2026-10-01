@@ -6,7 +6,9 @@
  * Gespeichert in src/content/blocks.json, je Seite und Einfügestelle („Zone“):
  *   { "/leistungen/": { "2": [ Block, Block ] } }
  * Zone n = nach dem n-ten Abschnitt der Seite (Kinder von <main>, gezählt ab 1).
- * Achtung: Werden im Code Abschnitte einer Seite ergänzt oder entfernt, verschieben sich die Zonen dahinter.
+ * Zone „@3.2.1|after“ = an einem beliebigen Element: Pfad der Element-Positionen ab <main> (hier: 3. Abschnitt →
+ *   2. Kind → 1. Kind), dazu before | after (davor/dahinter) oder start | end (am Anfang/Ende darin).
+ * Achtung: Werden im Code Abschnitte oder Elemente einer Seite ergänzt oder entfernt, verschieben sich die Zonen dahinter.
  *
  * Ein Block: { id, type, props, slots? } – Container (Abschnitt, Spalten, Karte) haben `slots`,
  * darin wieder beliebige Blöcke (auch weitere Container).
@@ -50,7 +52,7 @@ export type BlockStyle = {
   hide?: 'mobil' | 'desktop';
 };
 
-/** Zonen einer Seite: Schlüssel = Position (Anzahl der Seitenabschnitte davor) */
+/** Zonen einer Seite: Schlüssel = Position (Anzahl der Seitenabschnitte davor) oder „@Pfad|Position“ */
 export type PageBlocks = Record<string, Block[]>;
 export type BlocksFile = Record<string, PageBlocks>;
 
@@ -668,15 +670,27 @@ export function sanitizeBlocks(input: unknown, depth = 0, counter = { n: 0 }): B
   return result;
 }
 
+/** Zonen-Schlüssel: „3“ (nach dem 3. Abschnitt) oder „@3.2.1|after“ (an einem beliebigen Element) */
+export const ZONE_KEY = /^(\d{1,2}|@\d{1,3}(\.\d{1,3}){0,15}\|(before|after|start|end))$/;
+
+export type ZoneAnchor = { path: number[]; position: 'before' | 'after' | 'start' | 'end' };
+
+/** „@3.2.1|after“ → { path: [3, 2, 1], position: 'after' } – bei „3“ null */
+export function parseAnchor(key: string): ZoneAnchor | null {
+  if (!key.startsWith('@')) return null;
+  const [path, position] = key.slice(1).split('|');
+  return { path: path.split('.').map(Number), position: position as ZoneAnchor['position'] };
+}
+
 /** Alle Zonen einer Seite prüfen – leere Zonen fallen weg */
 export function sanitizePage(input: unknown): PageBlocks {
   const page: PageBlocks = {};
   if (!input || typeof input !== 'object') return page;
   const counter = { n: 0 };
   for (const [key, blocks] of Object.entries(input as Record<string, unknown>)) {
-    if (!/^\d{1,2}$/.test(key)) continue;
+    if (!ZONE_KEY.test(key)) continue;
     const clean = sanitizeBlocks(blocks, 0, counter);
-    if (clean.length) page[String(Number(key))] = clean;
+    if (clean.length) page[key.startsWith('@') ? key : String(Number(key))] = clean;
   }
   return page;
 }
@@ -684,7 +698,11 @@ export function sanitizePage(input: unknown): PageBlocks {
 /** Zonen hinter dem letzten Abschnitt (Seite im Code gekürzt) ans Ende legen – gleiche Regel beim Build und im Editor */
 export function clampZones(page: PageBlocks, last: number): PageBlocks {
   const result: PageBlocks = {};
-  for (const key of Object.keys(page).sort((a, b) => Number(a) - Number(b))) {
+  // Zonen an beliebigen Elementen bleiben unverändert (fehlt das Element, landen sie beim Build am Ende)
+  for (const key of Object.keys(page).filter((k) => k.startsWith('@'))) result[key] = page[key];
+  for (const key of Object.keys(page)
+    .filter((k) => !k.startsWith('@'))
+    .sort((a, b) => Number(a) - Number(b))) {
     const at = String(Math.min(Number(key), last));
     result[at] = [...(result[at] ?? []), ...page[key]];
   }
