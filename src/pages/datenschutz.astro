@@ -34,8 +34,8 @@ const breadcrumbs = [
       <p>Verantwortlich für die Datenverarbeitung auf dieser Website im Sinne der Datenschutz-Grundverordnung (DSGVO) ist:</p>
       <address>
         {site.legalName}<br />
-        {site.address.street}<br />
-        {`${site.address.postalCode} ${site.address.city}`}<br />
+        <a href={site.mapsUrl} data-maps target="_blank" rel="noopener noreferrer">{site.address.street}<br />
+        {`${site.address.postalCode} ${site.address.city}`}</a><br />
         Telefon: <a href={site.contact.phoneHref}>{site.contact.phone}</a><br />
         E-Mail: <a href={`mailto:${site.contact.email}`}>{site.contact.email}</a>
       </address>

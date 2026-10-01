@@ -62,9 +62,11 @@ const [emailLocal, emailDomain] = contact.email.split('@');
               <span class="contact-list__body">
                 <span class="contact-list__label">Adresse</span>
                 <address class="contact-list__value">
-                  {address.street}
-                  <br />
-                  {address.postalCode} {address.city}
+                  <a href={site.mapsUrl} data-maps target="_blank" rel="noopener noreferrer">
+                    {address.street}
+                    <br />
+                    {address.postalCode} {address.city}
+                  </a>
                 </address>
               </span>
             </li>
@@ -164,6 +166,12 @@ const [emailLocal, emailDomain] = contact.email.split('@');
     text-decoration: none;
   }
 
+  .contact-list__value a {
+    color: inherit;
+    text-decoration: none;
+  }
+
+  .contact-list__value a:hover,
   a.contact-list__value:hover {
     color: var(--color-link);
     text-decoration: underline;

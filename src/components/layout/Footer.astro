@@ -15,8 +15,6 @@ import SocialLinks from '@/components/ui/SocialLinks.astro';
 const year = new Date().getFullYear();
 const { address } = site;
 const fullAddress = `${address.street}, ${address.postalCode} ${address.city}`;
-// Apple-Geräte öffnen die Adresse in Apple Karten (Umschaltung im Skript unten), alle anderen in Google Maps
-const appleMapsUrl = `https://maps.apple.com/?q=${encodeURIComponent(fullAddress)}`;
 const companyLinks = mainNav.filter((item) => item.href !== '/' && !item.href.includes('#'));
 ---
 
@@ -74,7 +72,7 @@ const companyLinks = mainNav.filter((item) => item.href !== '/' && !item.href.in
           </li>
           <li>
             <Icon name="map-pin" size="1em" />
-            <a href={site.mapsUrl} data-apple-maps={appleMapsUrl} target="_blank" rel="noopener noreferrer">
+            <a href={site.mapsUrl} data-maps target="_blank" rel="noopener noreferrer">
               {address.street}, {address.postalCode} {address.city.replace(' am Bodensee', '')}-{address.district}
               <span class="visually-hidden"> (Karte öffnet in neuem Tab)</span>
             </a>
@@ -102,15 +100,6 @@ const companyLinks = mainNav.filter((item) => item.href !== '/' && !item.href.in
     </div>
   </Container>
 </footer>
-
-<script>
-  // Auf iPhone, iPad und Mac die Adresse in Apple Karten öffnen
-  if (/iPhone|iPad|iPod|Macintosh/.test(navigator.userAgent)) {
-    document.querySelectorAll<HTMLAnchorElement>('a[data-apple-maps]').forEach((link) => {
-      link.href = link.dataset.appleMaps ?? link.href;
-    });
-  }
-</script>
 
 <style>
   .site-footer {

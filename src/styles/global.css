@@ -499,6 +499,11 @@ b {
 }
 
 @media (max-width: 40rem) {
+  /* Smartphone: alles rund 20 % kleiner – alle rem-Werte (Schrift, Abstände, Buttons) skalieren mit */
+  html {
+    font-size: 87.5%;
+  }
+
   :root {
     --text-base: 1rem;
     --text-sm: 0.875rem;

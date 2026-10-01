@@ -10,7 +10,6 @@
 import { contactNavItem, legalNav, mainNav, navOrder } from '@/config/navigation';
 import { site } from '@/config/site';
 import Button from '@/components/ui/Button.astro';
-import ContactList from '@/components/ui/ContactList.astro';
 import Icon from '@/components/ui/Icon.astro';
 import Logo from '@/components/ui/Logo.astro';
 
@@ -93,11 +92,17 @@ const hasActiveNav = mainNav.some((item) => isCurrent(item.href));
         </ul>
       </nav>
       <div class="mobile-menu__footer">
-        <ContactList items={['phone', 'email', 'hours']} size="sm" />
-        <a class="mobile-menu__social" href={site.social.instagram} target="_blank" rel="noopener noreferrer">
-          <Icon name="instagram" size="1.1rem" /> Instagram
-        </a>
-        <Button href={contactNavItem.href} variant="light" block icon="arrow-right">Projekt anfragen</Button>
+        <div class="mobile-menu__quick">
+          <a class="mobile-menu__quick-link" href={site.contact.phoneHref}>
+            <Icon name="phone" size="1.05rem" />
+            <span class="visually-hidden">Anrufen: {site.contact.phone}</span>
+          </a>
+          <a class="mobile-menu__quick-link" href={`mailto:${site.contact.email}`}>
+            <Icon name="mail" size="1.05rem" />
+            <span class="visually-hidden">E-Mail an {site.contact.email}</span>
+          </a>
+        </div>
+        <Button href={contactNavItem.href} variant="light" size="sm" block icon="arrow-right">Projekt anfragen</Button>
         <nav class="mobile-menu__legal" aria-label="Rechtliches">
           <ul role="list">
             {legalNav.map((item) => <li><a href={item.href}>{item.label}</a></li>)}
@@ -590,19 +595,25 @@ const hasActiveNav = mainNav.some((item) => isCurrent(item.href));
     color: var(--blue-200);
   }
 
-  .mobile-menu__social {
-    display: inline-flex;
-    align-items: center;
-    gap: var(--space-2);
-    justify-self: start;
-    font-size: var(--text-sm);
-    font-weight: var(--weight-semibold);
-    color: #ffffff;
-    text-decoration: none;
+  .mobile-menu__quick {
+    display: flex;
+    justify-content: center;
+    gap: var(--space-3);
   }
 
-  .mobile-menu__social :global(.icon) {
+  .mobile-menu__quick-link {
+    display: inline-grid;
+    place-items: center;
+    width: 2.5rem;
+    height: 2.5rem;
     color: var(--color-accent);
+    border: 1px solid rgb(255 255 255 / 0.25);
+    border-radius: 50%;
+    transition: background-color var(--duration-base) ease;
+  }
+
+  .mobile-menu__quick-link:hover {
+    background: rgb(255 255 255 / 0.1);
   }
 
   .mobile-menu__footer {
@@ -650,7 +661,7 @@ const hasActiveNav = mainNav.some((item) => isCurrent(item.href));
     .mobile-menu__inner {
       min-height: 0;
       gap: var(--space-3);
-      overflow: hidden;
+      overflow-y: auto;
       padding: var(--space-4) var(--gutter) max(var(--space-4), env(safe-area-inset-bottom));
     }
 
@@ -681,51 +692,13 @@ const hasActiveNav = mainNav.some((item) => isCurrent(item.href));
     }
 
     .mobile-menu__footer {
-      grid-template-columns: minmax(0, 1fr) auto;
       gap: var(--space-2);
       padding: var(--space-3);
       border-radius: var(--radius-md);
     }
 
-    .mobile-menu__footer :global(.contact-list) {
-      grid-column: 1 / -1;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: var(--space-2);
-    }
-
-    .mobile-menu__footer :global(.contact-list__item) {
-      align-items: center;
-      gap: var(--space-2);
-      min-width: 0;
-    }
-
-    .mobile-menu__footer :global(.contact-list__icon) {
-      width: 1.75rem;
-      height: 1.75rem;
-      font-size: 0.8rem;
-    }
-
-    .mobile-menu__footer :global(.contact-list__label) {
-      font-size: 0.625rem;
-    }
-
-    .mobile-menu__footer :global(.contact-list__value) {
-      font-size: var(--text-xs);
-      line-height: 1.25;
-    }
-
-    .mobile-menu__footer :global(.contact-list__value--wrap) {
-      overflow-wrap: anywhere;
-    }
-
-    .mobile-menu__social {
-      align-self: center;
-      font-size: var(--text-xs);
-    }
-
     .mobile-menu__footer > :global(.btn) {
-      min-height: 2.5rem;
-      padding-inline: 0.75rem;
+      min-height: 2.25rem;
       font-size: var(--text-xs);
     }
 
@@ -758,7 +731,8 @@ const hasActiveNav = mainNav.some((item) => isCurrent(item.href));
     }
 
     .mobile-menu__desc {
-      display: none;
+      font-size: var(--text-2xs);
+      line-height: 1.2;
     }
 
     .mobile-menu__footer {
@@ -766,13 +740,9 @@ const hasActiveNav = mainNav.some((item) => isCurrent(item.href));
       padding: var(--space-2);
     }
 
-    .mobile-menu__footer :global(.contact-list) {
-      gap: var(--space-1) var(--space-2);
-    }
-
-    .mobile-menu__footer :global(.contact-list__icon) {
-      width: 1.5rem;
-      height: 1.5rem;
+    .mobile-menu__quick-link {
+      width: 2.125rem;
+      height: 2.125rem;
     }
 
     .mobile-menu__legal ul {

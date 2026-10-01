@@ -14,6 +14,7 @@
  */
 
 import { smoothScrollTo } from './smooth-scroll';
+import { site } from '@/config/site';
 
 const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
 const desktopNav = window.matchMedia('(min-width: 68.75rem)');
@@ -356,7 +357,24 @@ function initHeroSnap() {
 }
 
 /* ------------------------------------------------------------------------ */
+/**
+ * Adress-Links (a[data-maps]) öffnen die Standard-Karten-App des Geräts:
+ * iPhone/iPad/Mac → Apple Karten, Android → geo:-Link (Standard-App), sonst Google Maps im Browser.
+ */
+function initMapsLinks() {
+  const ua = navigator.userAgent;
+  const isApple = /iPhone|iPad|iPod|Macintosh/.test(ua);
+  const isAndroid = /Android/.test(ua);
+  if (!isApple && !isAndroid) return;
+  const query = encodeURIComponent(site.mapsQuery);
+  document.querySelectorAll<HTMLAnchorElement>('a[data-maps]').forEach((link) => {
+    link.href = isApple ? `https://maps.apple.com/?q=${query}` : `geo:0,0?q=${query}`;
+    if (isAndroid) link.removeAttribute('target');
+  });
+}
+
 initHeader();
+initMapsLinks();
 initReveal();
 initCounters();
 initScrollEffects();

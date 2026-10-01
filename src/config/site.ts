@@ -83,6 +83,8 @@ export const site = {
   },
 
   /** Link zur Routenplanung (öffnet externen Kartendienst erst auf Klick – DSGVO-freundlich). */
+  /** Adresse als Suchbegriff für Kartendienste (Apple Karten, Android-Standard-App, Google Maps). */
+  mapsQuery: 'Litzelhardtweg 4, 78315 Radolfzell am Bodensee',
   mapsUrl:
     'https://www.google.com/maps/search/?api=1&query=Litzelhardtweg+4%2C+78315+Radolfzell+am+Bodensee',
 } as const;

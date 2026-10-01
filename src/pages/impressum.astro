@@ -26,9 +26,11 @@ const breadcrumbs = [
       <h2>Angaben gemäß § 5 DDG</h2>
       <address>
         <strong>{site.legalName}</strong><br />
-        {site.address.street}<br />
-        {`${site.address.postalCode} ${site.address.city}`}<br />
-        {site.address.countryName}
+        <a href={site.mapsUrl} data-maps target="_blank" rel="noopener noreferrer">
+          {site.address.street}<br />
+          {`${site.address.postalCode} ${site.address.city}`}<br />
+          {site.address.countryName}
+        </a>
       </address>
 
       <h3>Vertreten durch</h3>
