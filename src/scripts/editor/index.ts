@@ -143,6 +143,11 @@ function askPassword(onCancel: () => void) {
   });
 }
 
+/** Sitzungs-Cookie beim Worker löschen */
+async function logout() {
+  await fetch('/api/edit/logout/', { method: 'POST' }).catch(() => undefined);
+}
+
 export async function initEditor() {
   const ui = document.querySelector<HTMLElement>('[data-edit-ui]');
   const main = document.querySelector<HTMLElement>('main');
@@ -150,7 +155,10 @@ export async function initEditor() {
   try {
     const status = await (await fetch('/api/edit/status/')).json();
     if (!status?.enabled) return;
-    if (!status.loggedIn) await unlock();
+    // Neu laden meldet ab – danach wieder Tastenfolge und Passwort (Seitenwechsel über das Menü bleiben angemeldet)
+    const reloaded = (performance.getEntriesByType('navigation')[0] as PerformanceNavigationTiming | undefined)?.type === 'reload';
+    if (status.loggedIn && reloaded) await logout();
+    if (!status.loggedIn || reloaded) await unlock();
   } catch {
     return;
   }
@@ -1045,7 +1053,7 @@ export async function initEditor() {
   }
 
   function stop() {
-    if (unsaved() && !confirm('Es gibt ungespeicherte Änderungen. Trotzdem beenden (sie bleiben nur bis zum Neuladen sichtbar)?')) return;
+    if (unsaved() && !confirm('Es gibt ungespeicherte Änderungen. Trotzdem beenden (sie bleiben nur bis zum Neuladen sichtbar)?')) return false;
     editing = false;
     blocks.stop();
     if (interact) interactButton.click();
@@ -1057,10 +1065,18 @@ export async function initEditor() {
     selected = null;
     selectedBlock = null;
     [hoverBox, selectBox, spacingOverlay].forEach((box) => (box.hidden = true));
+    return true;
   }
 
   toggle.addEventListener('click', () => void start());
-  $('[data-ed-close]').addEventListener('click', stop);
+  // X: beenden und abmelden – erneut öffnen nur wieder mit Tastenfolge und Passwort
+  $('[data-ed-close]').addEventListener('click', async () => {
+    if (!stop()) return;
+    ui.hidden = true;
+    await logout();
+    await unlock();
+    ui.hidden = false;
+  });
 }
 
 /** Farbe aus getComputedStyle → #rrggbb */
