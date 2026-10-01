@@ -56,3 +56,7 @@ body[data-page="/stellenangebote/"] section#stellen {
   padding-bottom: 70px !important;
   padding-top: 70px !important;
 }
+
+body[data-page="/leistungen/"] article#gartenbau {
+  text-align: center !important;
+}
