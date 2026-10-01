@@ -434,8 +434,28 @@ export async function initEditor() {
       if (content.length) panel.append(subsection('Inhalt', ...content));
       panel.append(...designSections(el, kindAt(el)));
     }
-    wrap.append(panel);
+    wrap.append(panel, navigateCard(el));
     return wrap;
+  }
+
+  /** Eigene Karte ganz unten: zum übergeordneten oder ersten untergeordneten Element springen */
+  function navigateCard(el: Element) {
+    const parent = parentOf(el);
+    const child = childItems(el)[0];
+    return h(
+      'div',
+      { class: 'ed-panel ed-panel--plain ed-nav' },
+      button('Übergeordnetes Element wählen', () => parent && select(parent), {
+        icon: 'corner-left-up',
+        cls: 'ed-btn--block',
+        disabled: !parent,
+      }),
+      button('Untergeordnetes Element wählen', () => child && select(child), {
+        icon: 'corner-right-down',
+        cls: 'ed-btn--block',
+        disabled: !child,
+      }),
+    );
   }
 
   /** Texte eines Textelements – ein Feld je Teil (z. B. Text und gelbe Markierung) */
@@ -860,7 +880,6 @@ export async function initEditor() {
     if (!el) return;
     const id = blockId(el);
     const info = id ? blocks.info(id) : null;
-    quick('parent').hidden = !parentOf(el);
     for (const name of ['up', 'down', 'move', 'duplicate', 'delete']) quick(name).hidden = !info;
     quick('up').disabled = !info?.canUp;
     quick('down').disabled = !info?.canDown;
@@ -874,11 +893,6 @@ export async function initEditor() {
     selectBox.dataset.axis = axisOf(el);
   };
 
-  quick('parent').addEventListener('click', () => {
-    const el = current();
-    const parent = el && parentOf(el);
-    if (parent) select(parent);
-  });
   quick('up').addEventListener('click', () => selectedBlock && blocks.moveBy(selectedBlock, -1));
   quick('down').addEventListener('click', () => selectedBlock && blocks.moveBy(selectedBlock, 1));
   // Verschieben: Knopf ziehen (Maus) oder anklicken und danach die Stelle wählen

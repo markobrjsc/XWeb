@@ -32,7 +32,7 @@ const ICONS = [
   ...new Set([
     'box', 'mouse-pointer-click', 'square-plus', 'layers', 'blocks', 'type', 'square', 'hand', 'image', 'images',
     'rotate-ccw', 'align-left', 'align-center', 'align-right', 'align-justify', 'crosshair', 'x', 'chevron-right',
-    'sliders-horizontal', 'smartphone', 'monitor', 'eye-off',
+    'sliders-horizontal', 'smartphone', 'monitor', 'eye-off', 'corner-left-up', 'corner-right-down',
     ...Object.values(KINDS).map((kind) => kind.icon),
   ]),
 ];
@@ -101,7 +101,6 @@ const ICONS = [
   <div class="ed-box ed-box--select" data-ed-select hidden>
     <div class="ed-box__bar">
       <span class="ed-box__tag"></span>
-      <button type="button" data-ed-quick="parent" title="Übergeordnetes Element wählen"><Icon name="corner-left-up" size="0.95rem" /></button>
       <button type="button" data-ed-quick="up" title="Nach oben bzw. nach vorne"><Icon name="arrow-up" size="0.95rem" /></button>
       <button type="button" data-ed-quick="down" title="Nach unten bzw. nach hinten"><Icon name="arrow-down" size="0.95rem" /></button>
       <button type="button" class="ed-grab" data-ed-quick="move" title="Verschieben – ziehen oder anklicken und Stelle wählen"><Icon name="move" size="0.95rem" /></button>
@@ -883,6 +882,12 @@ const ICONS = [
     display: grid;
     gap: 0.75rem;
     padding: 0.8rem;
+  }
+
+  /* Karte „Übergeordnetes / Untergeordnetes Element wählen“ unter den Einstellungen */
+  .ed-nav {
+    gap: 0.5rem;
+    margin-top: 0.75rem;
   }
 
   .ed-sub + .ed-sub,
