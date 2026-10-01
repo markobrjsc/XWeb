@@ -43,5 +43,8 @@
   "body[data-page=\"/stellenangebote/\"] section#stellen": {
     "padding-bottom": "70px",
     "padding-top": "70px"
+  },
+  "body[data-page=\"/leistungen/\"] article#gartenbau": {
+    "text-align": "center"
   }
 }
