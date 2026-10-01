@@ -10,7 +10,8 @@ interface Props {
   title: string;
   text?: string;
   variant?: 'elevated' | 'outline' | 'subtle' | 'dark' | 'glass';
-  layout?: 'stacked' | 'inline';
+  /** stacked: Symbol über Titel · inline: Symbol links neben Titel und Text · head: Symbol und Titel in einer Zeile, Text darunter */
+  layout?: 'stacked' | 'inline' | 'head';
   badgeTone?: 'primary' | 'soft' | 'light' | 'outline';
   headingLevel?: 'h3' | 'h4';
   interactive?: boolean;
@@ -66,10 +67,28 @@ const {
     gap: var(--space-2);
   }
 
+  /* Symbol und Titel nebeneinander, Text über die volle Breite darunter */
+  .feature--head .feature__inner {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    align-content: start;
+    align-items: center;
+    gap: var(--space-3);
+  }
+
+  .feature--head .feature__content {
+    display: contents;
+  }
+
+  .feature--head .feature__text {
+    grid-column: 1 / -1;
+  }
+
   .feature__title {
     font-size: var(--text-lg);
     font-weight: var(--weight-bold);
     line-height: 1.3;
+    hyphens: auto;
   }
 
   .feature__text {

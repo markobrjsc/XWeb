@@ -37,7 +37,7 @@ export const values: Feature[] = [
   },
   {
     icon: 'graduation-cap',
-    title: 'Ausbildungsbetrieb',
+    title: 'Ausbildungs\u00ADbetrieb',
     text: 'Wir bilden junge Menschen aus und geben unser Wissen weiter – für gute Arbeit heute und morgen.',
   },
 ];
