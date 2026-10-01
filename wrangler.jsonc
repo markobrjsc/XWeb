@@ -35,8 +35,14 @@
     // npx wrangler secret put GITHUB_TOKEN · Abschalten (z. B. zum Livegang): "EDIT_MODE": "0"
     "GITHUB_REPO": "markobrjsc/XWeb",
     "GITHUB_BRANCH": "main",
-    "EDIT_MODE": "1"
+    "EDIT_MODE": "0"
   },
+  // Live-Domain: Cloudflare legt DNS-Einträge und Zertifikate selbst an.
+  // Die Adresse ohne „www“ leitet eine Weiterleitungsregel im Dashboard auf www um.
+  "routes": [
+    { "pattern": "www.pflasterarbeiten-hildebrand.de", "custom_domain": true },
+    { "pattern": "pflasterarbeiten-hildebrand.de", "custom_domain": true }
+  ],
   "observability": {
     "enabled": true
   }
