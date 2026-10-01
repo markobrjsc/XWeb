@@ -1,4 +1,4 @@
-/* Automatisch erzeugt aus src/content/spacing.json (Bearbeiten-Modus → Abstände) – nicht von Hand ändern. */
+/* Automatisch erzeugt aus src/content/spacing.json (Bearbeiten-Modus → Gestaltung) – nicht von Hand ändern. */
 body[data-page="/leistungen/"] main#main > section.page-hero.page-hero--compact.page-hero--photo:nth-of-type(1) > div.container.container--default.page-hero__container:nth-of-type(2) > div.page-hero__content > nav.breadcrumbs.page-hero__crumbs > ol.breadcrumbs__list > li.breadcrumbs__item:nth-of-type(2) > span {
   margin-top: 10px !important;
 }

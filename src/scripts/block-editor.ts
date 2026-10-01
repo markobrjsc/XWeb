@@ -45,37 +45,42 @@ type Drop = { target: string; index?: number; el: Element; axis: 'x' | 'y' | 'bo
 type Placing = { choice: string; label: string } | { id: string; label: string };
 
 /** In diese Elemente wird nichts eingefügt – der Browser würde das HTML sonst umbauen (Text, Links, Tabellen …) */
-const CLOSED = 'p, h1, h2, h3, h4, h5, h6, a, button, label, summary, table, select, picture, svg, dl, figcaption, blockquote, address, pre, [data-editable]';
+export const CLOSED = 'p, h1, h2, h3, h4, h5, h6, a, button, label, summary, table, select, picture, svg, dl, figcaption, blockquote, address, pre';
+/** Elemente ohne Inhalt – nur davor/dahinter einfügbar */
+const VOID = 'img, input, br, hr, video, iframe, textarea, source, canvas';
 /** Zur Laufzeit eingefügt – zählt für die Stellen nicht mit (gleiche Zählweise wie beim Build) */
-const RUNTIME = '[data-ub-ignore], [data-gallery-edit], [data-hero-edit-btn]';
+export const RUNTIME = '[data-ub-ignore], [data-gallery-edit], [data-hero-edit-btn]';
+
+/** Einfügestelle: Liste („zone:3“, „zone:@3.2|after“ oder „<blockId>:<slot>“) und Position darin */
+export type InsertTarget = { target: string; index?: number; label: string };
+export type InsertPosition = 'before' | 'after' | 'start' | 'end';
 
 export interface BlockEditorHooks {
-  /** Änderungen an Elementen – Speicherleiste aktualisieren */
+  /** Änderungen an Elementen – Seitenleiste aktualisieren */
   onChange(): void;
   /** Bild vor dem Hochladen verkleinern → Base64 (JPEG) */
   shrink(file: File): Promise<string>;
-  /** Statusmeldung in der Speicherleiste */
+  /** Statusmeldung in der Seitenleiste */
   status(message: string): void;
+  /** Element nach Einfügen/Verschieben auswählen */
+  select(id: string): void;
+  /** „+“ auf der Seite angeklickt → Einfügen-Bereich der Seitenleiste mit diesem Ziel öffnen */
+  openInsert(target: InsertTarget): void;
+  /** Gewählte Einfügestelle aus der Seitenleiste abholen (und zurücksetzen) – null: Stelle auf der Seite wählen */
+  takeTarget(): InsertTarget | null;
+  /** Platzieren gestartet/beendet (Hinweis in der Seitenleiste) */
+  placing(label: string | null, moving: boolean): void;
 }
 
 const SITE_LINKS = ['/', '/leistungen/', '/stellenangebote/', '/betrieb/', '/kontakt/', '/stellenangebote/initiativ/', '/impressum/', '/datenschutz/'];
 
 export function createBlockEditor(ui: HTMLElement, hooks: BlockEditorHooks) {
   const main = document.querySelector<HTMLElement>('main');
-  const library = ui.querySelector<HTMLDialogElement>('[data-ub-library]')!;
-  const libraryWhere = library.querySelector<HTMLElement>('[data-ub-library-where]')!;
-  const toolbar = ui.querySelector<HTMLElement>('[data-ub-toolbar]')!;
-  const toolbarLabel = toolbar.querySelector<HTMLElement>('[data-ub-toolbar-label]')!;
-  const movebar = ui.querySelector<HTMLElement>('[data-ub-movebar]')!;
-  const movebarText = movebar.querySelector<HTMLElement>('[data-ub-movebar-text]')!;
+  const library = ui.querySelector<HTMLElement>('[data-ub-library]')!;
   const dropMarker = ui.querySelector<HTMLElement>('[data-ub-drop]')!;
   const dropLabel = dropMarker.querySelector<HTMLElement>('[data-ub-drop-label]')!;
   const dropOk = dropMarker.querySelector<HTMLButtonElement>('[data-ub-drop-ok]')!;
   const ghost = ui.querySelector<HTMLElement>('[data-ub-ghost]')!;
-  const drawerToggle = ui.querySelector<HTMLButtonElement>('[data-ub-drawer-toggle]');
-  const panel = ui.querySelector<HTMLElement>('[data-ub-panel]')!;
-  const panelTitle = panel.querySelector<HTMLElement>('[data-ub-panel-title]')!;
-  const panelFields = panel.querySelector<HTMLElement>('[data-ub-panel-fields]')!;
   const picker = ui.querySelector<HTMLDialogElement>('[data-ub-picker]')!;
   const pickerGrid = picker.querySelector<HTMLOListElement>('[data-ub-picker-grid]')!;
   const pickerTitle = picker.querySelector<HTMLElement>('[data-ub-picker-title]')!;
@@ -92,15 +97,12 @@ export function createBlockEditor(ui: HTMLElement, hooks: BlockEditorHooks) {
   let active = false;
   let ready = false;
   let session = 0;
-  let selectedId: string | null = null;
   let placing: Placing | null = null;
   /** Handy: angetippte Stelle, wartet auf „Hier einfügen“ */
   let pendingDrop: Drop | null = null;
-  let insertTarget: { target: string; index?: number } | null = null;
-  /** Auswahl als Seitenleiste (nicht modal) – Elemente auf die Seite ziehen */
-  let drawerMode = false;
-  /** Für welches Element das Einstellungs-Feld gerade aufgebaut ist */
+  /** Für welches Element und in welchem Behälter die Einstellungen gerade aufgebaut sind */
   let panelFor: string | null = null;
+  let panelFields: HTMLElement | null = null;
 
   const ctx: RenderContext = {
     editing: true,
@@ -187,21 +189,10 @@ export function createBlockEditor(ui: HTMLElement, hooks: BlockEditorHooks) {
     });
     updateCss();
     if (!editing) return;
-    main.querySelectorAll<HTMLElement>('[data-ub-field]').forEach((field) => {
-      field.contentEditable = supportsPlain ? 'plaintext-only' : 'true';
-      field.spellcheck = true;
-    });
-    if (selectedId && !find(selectedId)) selectedId = null;
-    markSelection();
+    // Texte werden in der Seitenleiste geändert – auf der Seite nur anzeigen
     if (placing) markMoveTargets();
     if (pendingDrop) showDrop(pendingDrop, true);
   };
-
-  const supportsPlain = (() => {
-    const probe = document.createElement('div');
-    probe.contentEditable = 'plaintext-only';
-    return probe.contentEditable === 'plaintext-only';
-  })();
 
   /* ---------------- Baum-Hilfen ---------------- */
   function find(id: string): Location | null {
@@ -248,84 +239,46 @@ export function createBlockEditor(ui: HTMLElement, hooks: BlockEditorHooks) {
     hooks.onChange();
   };
 
-  /* ---------------- Auswahl & Werkzeugleiste ---------------- */
   const blockEl = (id: string) => main?.querySelector<HTMLElement>(`[data-ub="${id}"]`) ?? null;
 
-  const markSelection = () => {
-    main?.querySelectorAll('.ub-selected').forEach((el) => el.classList.remove('ub-selected'));
-    const el = selectedId ? blockEl(selectedId) : null;
-    if (!el || !selectedId) {
-      toolbar.hidden = true;
-      panel.hidden = true;
-      return;
-    }
-    el.classList.add('ub-selected');
-    const loc = find(selectedId)!;
-    const def = blockDef(loc.block.type);
-    toolbarLabel.textContent = def?.label ?? loc.block.type;
-    // Zwischen den Abschnitten geht es mit hoch/runter in die nächste Zone – an einzelnen Elementen nur innerhalb der Zone
-    const numeric = /^\d+$/.test(loc.zone);
-    const firstZone = loc.parent === null && loc.index === 0 && (!numeric || Number(loc.zone) <= 1);
-    const lastZone = loc.parent === null && loc.index === loc.list.length - 1 && (!numeric || Number(loc.zone) >= sections().length);
-    toolbar.querySelector<HTMLButtonElement>('[data-ub-action="parent"]')!.disabled = !loc.parent;
-    toolbar.querySelector<HTMLButtonElement>('[data-ub-action="up"]')!.disabled = loc.parent ? loc.index === 0 : firstZone;
-    toolbar.querySelector<HTMLButtonElement>('[data-ub-action="down"]')!.disabled = loc.parent ? loc.index === loc.list.length - 1 : lastZone;
-    toolbar.hidden = false;
-    placeToolbar();
-    if (!panel.hidden && panelFor !== loc.block.id) buildPanel(loc.block);
+  /* ---------------- Aktionen (aus der Seitenleiste) ---------------- */
+  /** Hoch/runter möglich? Zwischen den Abschnitten auch in die Nachbar-Zone */
+  const canMove = (loc: Location, step: -1 | 1) => {
+    const to = loc.index + step;
+    if (to >= 0 && to < loc.list.length) return true;
+    if (loc.parent || !/^\d+$/.test(loc.zone)) return false;
+    const next = Number(loc.zone) + step;
+    return next >= 1 && next <= sections().length;
   };
 
-  const placeToolbar = () => {
-    const el = selectedId ? blockEl(selectedId) : null;
-    if (!el || toolbar.hidden) return;
-    const r = el.getBoundingClientRect();
-    const height = toolbar.offsetHeight;
-    const width = toolbar.offsetWidth;
-    const headerBottom = document.querySelector('header')?.getBoundingClientRect().bottom ?? 0;
-    let top = r.top - height - 8;
-    if (top < headerBottom + 4) top = Math.min(Math.max(r.top + 8, headerBottom + 4), window.innerHeight - height - 8);
-    toolbar.style.top = `${Math.round(top)}px`;
-    toolbar.style.left = `${Math.round(Math.min(Math.max(8, r.left), window.innerWidth - width - 8))}px`;
-  };
-
-  const select = (id: string | null) => {
-    if (id !== selectedId) panelFor = null;
-    selectedId = id;
-    if (!id) panel.hidden = true;
-    markSelection();
-  };
-
-  /* ---------------- Aktionen ---------------- */
   const moveBy = (id: string, step: -1 | 1) => {
     const loc = find(id);
-    if (!loc) return;
+    if (!loc || !canMove(loc, step)) return;
     const to = loc.index + step;
     if (to >= 0 && to < loc.list.length) {
       loc.list.splice(loc.index, 1);
       loc.list.splice(to, 0, loc.block);
-    } else if (!loc.parent && /^\d+$/.test(loc.zone)) {
+    } else {
       // Oberste Ebene: in die Zone vor bzw. nach dem benachbarten Abschnitt wechseln
-      const next = Number(loc.zone) + step;
-      if (next < 1 || next > sections().length) return;
       loc.list.splice(loc.index, 1);
-      if (!loc.list.length) delete state[loc.zone];
-      const list = (state[String(next)] ??= []);
+      const list = (state[String(Number(loc.zone) + step)] ??= []);
       if (step < 0) list.push(loc.block);
       else list.unshift(loc.block);
-    } else return;
+    }
     changed();
+    hooks.select(id);
     blockEl(id)?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
   };
 
-  const remove = (id: string) => {
+  /** Löschen – liefert das übergeordnete Element (zum Weiter-Auswählen) */
+  const remove = (id: string): string | null => {
     const loc = find(id);
-    if (!loc) return;
+    if (!loc) return null;
     const hasChildren = loc.block.slots?.some((slot) => slot.length);
-    if (hasChildren && !confirm(`„${blockDef(loc.block.type)?.label}“ mit allen enthaltenen Elementen löschen?`)) return;
+    if (hasChildren && !confirm(`„${blockDef(loc.block.type)?.label}“ mit allen enthaltenen Elementen löschen?`)) return id;
     loc.list.splice(loc.index, 1);
-    if (!loc.parent && !loc.list.length) delete state[loc.zone];
-    selectedId = loc.parent?.id ?? null;
     changed();
+    return loc.parent?.id ?? null;
   };
 
   const duplicate = (id: string) => {
@@ -333,43 +286,9 @@ export function createBlockEditor(ui: HTMLElement, hooks: BlockEditorHooks) {
     if (!loc) return;
     const copy = cloneWithNewIds(loc.block);
     loc.list.splice(loc.index + 1, 0, copy);
-    selectedId = copy.id;
     changed();
+    hooks.select(copy.id);
   };
-
-  const openLibrary = (target: string, index?: number) => {
-    if (library.open) library.close();
-    library.classList.remove('ub-library--drawer');
-    drawerMode = false;
-    insertTarget = { target, index };
-    const [owner] = target.split(':');
-    const parent = owner === 'zone' ? null : find(owner)?.block;
-    libraryWhere.textContent = parent ? `Einfügen in: ${blockDef(parent.type)?.label}` : 'Einfügen an dieser Stelle';
-    // Auf oberster Ebene zuerst Vorlagen, in Containern zuerst Basis-Elemente
-    showTab(parent ? 'basis' : 'vorlagen');
-    library.showModal();
-  };
-
-  /** Auswahl als Seitenleiste: Elemente auf die Seite ziehen oder antippen und dann die Stelle wählen */
-  const openDrawer = () => {
-    if (!ready) return hooks.status('Elemente werden noch geladen …');
-    if (library.open) library.close();
-    drawerMode = true;
-    insertTarget = null;
-    library.classList.add('ub-library--drawer');
-    libraryWhere.textContent = 'Auf die Seite ziehen – oder antippen und dann die Stelle wählen';
-    showTab('vorlagen');
-    library.show();
-    drawerToggle?.setAttribute('aria-pressed', 'true');
-  };
-
-  library.addEventListener('close', () => {
-    // „close“ kommt verzögert – nur aufräumen, wenn die Auswahl nicht schon wieder offen ist
-    if (library.open) return;
-    drawerMode = false;
-    library.classList.remove('ub-library--drawer');
-    drawerToggle?.setAttribute('aria-pressed', 'false');
-  });
 
   const build = (choice: string) => {
     const [kind, name] = choice.split(':');
@@ -381,19 +300,62 @@ export function createBlockEditor(ui: HTMLElement, hooks: BlockEditorHooks) {
     const list = listFor(target);
     if (!block || !list) return;
     list.splice(index ?? list.length, 0, block);
-    selectedId = block.id;
     changed();
+    hooks.select(block.id);
     requestAnimationFrame(() => blockEl(block.id)?.scrollIntoView({ block: scroll, behavior: 'smooth' }));
     // Neues Bild-Element: gleich die Bildauswahl öffnen
     if (block.type === 'image' || block.type === 'gallery') openPickerFor(block);
   };
 
-  const insert = (choice: string) => {
-    if (!insertTarget) return;
-    const { target, index } = insertTarget;
-    insertTarget = null;
-    library.close();
-    insertAt(choice, target, index, 'center');
+  /** Beschriftung einer Einfügestelle für die Seitenleiste */
+  const describeTarget = (target: string) => {
+    const [owner, slot] = target.split(':');
+    if (owner !== 'zone') {
+      const parent = find(owner)?.block;
+      const def = parent ? blockDef(parent.type) : null;
+      const slots = parent?.slots?.length ?? 0;
+      return `in „${def?.label ?? 'Element'}“${slots > 1 ? ` (Bereich ${Number(slot) + 1})` : ''}`;
+    }
+    return 'an dieser Stelle der Seite';
+  };
+
+  /**
+   * Einfügestelle relativ zu einem Element der Seite (Seitenleiste: davor, dahinter, innen oben/unten).
+   * null = dort kann nichts eingefügt werden (z. B. in Texte, Links, Kopf- und Fußzeile).
+   */
+  const targetFor = (el: Element, position: InsertPosition): InsertTarget | null => {
+    if (!main || !main.contains(el) || el === main) return null;
+    const node = el.closest<HTMLElement>('[data-ub]');
+    if (node && node === el) {
+      const loc = find(node.dataset.ub!);
+      if (!loc) return null;
+      const label = blockDef(loc.block.type)?.label ?? 'Element';
+      if (position === 'before' || position === 'after') {
+        return { target: targetOf(loc), index: loc.index + (position === 'after' ? 1 : 0), label: `${position === 'before' ? 'vor' : 'nach'} „${label}“` };
+      }
+      const slots = loc.block.slots ?? [];
+      if (!slots.length) return null;
+      const slot = position === 'start' ? 0 : slots.length - 1;
+      return { target: `${loc.block.id}:${slot}`, index: position === 'start' ? 0 : undefined, label: `${position === 'start' ? 'oben' : 'unten'} in „${label}“` };
+    }
+    if (el.closest('ub-zone')) return null;
+    const path = pathOf(el);
+    if (!path) return null;
+    const parent = el.parentElement;
+    const inside = position === 'start' || position === 'end';
+    if (inside && (el.matches(CLOSED) || el.matches(VOID) || el.closest(CLOSED))) return null;
+    if (!inside && parent !== main && parent?.closest(CLOSED)) return null;
+    const words = { before: 'davor', after: 'dahinter', start: 'innen oben', end: 'innen unten' };
+    // Zwischen den Abschnitten: die Zonen „n“ (gleiche Stellen wie die „+“-Felder)
+    if (path.length === 1 && !inside) {
+      const n = path[0];
+      if (position === 'after') return { target: `zone:${n}`, index: 0, label: words.after };
+      return n > 1 ? { target: `zone:${n - 1}`, label: words.before } : { target: 'zone:@1|before', label: words.before };
+    }
+    const key = `@${path.join('.')}|${position}`;
+    if (!ZONE_KEY.test(key)) return null;
+    // Jeweils möglichst nah am gewählten Element: dahinter/innen oben an den Anfang, davor/innen unten ans Ende
+    return { target: `zone:${key}`, index: position === 'after' || position === 'start' ? 0 : undefined, label: words[position] };
   };
 
   /* ---------------- Einfügen & Verschieben an beliebiger Stelle ---------------- */
@@ -527,8 +489,8 @@ export function createBlockEditor(ui: HTMLElement, hooks: BlockEditorHooks) {
     if (list === loc.list && at > loc.index) at--;
     loc.list.splice(loc.index, 1);
     list.splice(at, 0, loc.block);
-    selectedId = id;
     changed();
+    hooks.select(id);
   };
 
   const place = (item: Placing, drop: Drop) => {
@@ -541,11 +503,7 @@ export function createBlockEditor(ui: HTMLElement, hooks: BlockEditorHooks) {
     pendingDrop = null;
     showDrop(null);
     document.documentElement.classList.toggle('ub-moving', Boolean(item));
-    movebar.hidden = !item;
-    if (item) {
-      movebarText.textContent =
-        `„${item.label}“ ${'id' in item ? 'verschieben' : 'einfügen'} – Stelle auf der Seite anklicken.`;
-    }
+    hooks.placing(item?.label ?? null, Boolean(item && 'id' in item));
     render();
   };
 
@@ -642,14 +600,14 @@ export function createBlockEditor(ui: HTMLElement, hooks: BlockEditorHooks) {
     (event) => {
       if (suppressClick) {
         event.preventDefault();
-        event.stopPropagation();
+        event.stopImmediatePropagation();
         return;
       }
       if (!active || !placing) return;
       const target = event.target as HTMLElement;
       if (target.closest('[data-ub-drop-ok]')) {
         event.preventDefault();
-        event.stopPropagation();
+        event.stopImmediatePropagation();
         const item = placing;
         const drop = pendingDrop;
         setPlacing(null);
@@ -658,7 +616,7 @@ export function createBlockEditor(ui: HTMLElement, hooks: BlockEditorHooks) {
       }
       if (!main?.contains(target)) return;
       event.preventDefault();
-      event.stopPropagation();
+      event.stopImmediatePropagation();
       const add = target.closest<HTMLElement>('[data-ub-add]');
       const drop = add ? dropForAdd(add) : dropAt(event.clientX, event.clientY);
       if (!drop) return;
@@ -689,16 +647,15 @@ export function createBlockEditor(ui: HTMLElement, hooks: BlockEditorHooks) {
     }
     if (rerender) changed();
     else hooks.onChange();
-    // Felder mit Vorschau (Bild, Galerie, Symbol) im Einstellungs-Feld neu aufbauen
+    // Felder mit Vorschau (Bild, Galerie, Symbol) in der Seitenleiste neu aufbauen
     const kind = def?.fields.find((f) => f.key === key)?.kind;
-    if (!panel.hidden && panelFor === block.id && (kind === 'image' || kind === 'images' || kind === 'icon')) buildPanel(block);
+    if (panelFor === block.id && (kind === 'image' || kind === 'images' || kind === 'icon')) buildPanel(block);
   };
 
   function buildPanel(block: Block) {
     const def = blockDef(block.type);
-    if (!def) return;
+    if (!def || !panelFields) return;
     panelFor = block.id;
-    panelTitle.textContent = `${def.label} – Einstellungen`;
     panelFields.replaceChildren(
       ...(def.fields.length ? [group('Inhalt', def.fields.map((field) => fieldControl(block, field)))] : []),
       ...styleGroups(block),
@@ -1112,14 +1069,6 @@ export function createBlockEditor(ui: HTMLElement, hooks: BlockEditorHooks) {
     return b;
   }
 
-  const openPanel = (id: string) => {
-    const loc = find(id);
-    if (!loc) return;
-    select(id);
-    panel.hidden = false;
-    buildPanel(loc.block);
-  };
-
   /* ---------------- Bildauswahl ---------------- */
   let pickerState: { multiple: boolean; selected: string[]; done: (names: string[]) => void } | null = null;
 
@@ -1172,8 +1121,7 @@ export function createBlockEditor(ui: HTMLElement, hooks: BlockEditorHooks) {
         selected: (Array.isArray(block.props.images) ? block.props.images : []).map(String),
         done: (names) => {
           setProp(block, 'images', names);
-          selectedId = block.id;
-          openPanel(block.id);
+          hooks.select(block.id);
         },
       });
     } else {
@@ -1222,7 +1170,7 @@ export function createBlockEditor(ui: HTMLElement, hooks: BlockEditorHooks) {
     }
   });
 
-  /* ---------------- Auswahl-Dialog ---------------- */
+  /* ---------------- Auswahl in der Seitenleiste ---------------- */
   const showTab = (id: string) => {
     library.querySelectorAll<HTMLElement>('[data-ub-tab]').forEach((tab) => tab.setAttribute('aria-selected', String(tab.dataset.ubTab === id)));
     library.querySelectorAll<HTMLElement>('[data-ub-tabpanel]').forEach((p) => (p.hidden = p.dataset.ubTabpanel !== id));
@@ -1230,15 +1178,15 @@ export function createBlockEditor(ui: HTMLElement, hooks: BlockEditorHooks) {
   library.querySelectorAll<HTMLElement>('[data-ub-tab]').forEach((tab) => tab.addEventListener('click', () => showTab(tab.dataset.ubTab!)));
   library.querySelectorAll<HTMLElement>('[data-ub-choice]').forEach((tile) => {
     const item: Placing = { choice: tile.dataset.ubChoice!, label: tile.querySelector('strong')?.textContent ?? 'Element' };
-    tile.addEventListener('pointerdown', (event) => drawerMode && beginDrag(event, item));
+    // Ziehen: direkt an die Stelle auf der Seite · Klick: an die gewählte Stelle oder danach die Stelle anklicken
+    tile.addEventListener('pointerdown', (event) => ready && beginDrag(event, item));
     tile.addEventListener('click', () => {
-      if (!drawerMode) return insert(item.choice);
-      // Auf dem Handy verdeckt die Auswahl die Seite – zum Platzieren schließen
-      if (matchMedia('(max-width: 47.99rem)').matches) library.close();
-      setPlacing(item);
+      if (!ready) return hooks.status('Elemente werden noch geladen …');
+      const target = hooks.takeTarget();
+      if (target) insertAt(item.choice, target.target, target.index, 'center');
+      else setPlacing(item);
     });
   });
-  drawerToggle?.addEventListener('click', () => (library.open && drawerMode ? library.close() : openDrawer()));
 
   /* ---------------- Vorschauen in der Auswahl ---------------- */
   const previewSheet = new CSSStyleSheet();
@@ -1320,131 +1268,41 @@ export function createBlockEditor(ui: HTMLElement, hooks: BlockEditorHooks) {
   };
 
   /* ---------------- Ereignisse auf der Seite ---------------- */
-  const onPage = (target: EventTarget | null) => {
-    const el = target as HTMLElement | null;
-    return el && main?.contains(el) && el.closest('ub-zone') ? el : null;
-  };
-
-  document.addEventListener('click', (event) => {
-    if (!active || !ready || document.documentElement.classList.contains('is-spacing')) return;
-    const target = event.target as HTMLElement;
-    if (target.closest('[data-ub-toolbar], [data-ub-panel], dialog')) return;
-    const el = onPage(target);
-    if (!el) {
-      if (!target.closest('[data-edit-ui]')) select(null);
-      return;
-    }
-    const add = el.closest<HTMLElement>('[data-ub-add]');
-    if (add) {
+  // „+“-Felder in Zonen und Containern → Einfügen-Bereich der Seitenleiste mit diesem Ziel
+  document.addEventListener(
+    'click',
+    (event) => {
+      if (!active || !ready || placing) return;
+      const add = (event.target as HTMLElement).closest<HTMLElement>('[data-ub-add]');
+      if (!add || !main?.contains(add)) return;
       event.preventDefault();
-      openLibrary(add.dataset.ubAdd!);
-      return;
-    }
-    const block = el.closest<HTMLElement>('[data-ub]');
-    if (!block) return;
-    select(block.dataset.ub!);
-    const pick = el.closest<HTMLElement>('[data-ub-pick]');
-    const loc = find(block.dataset.ub!);
-    if (!pick || !loc) return;
-    event.preventDefault();
-    if (pick.dataset.ubPick === 'icon') openPanel(loc.block.id);
-    else openPickerFor(loc.block);
-  });
+      event.stopImmediatePropagation();
+      hooks.openInsert({ target: add.dataset.ubAdd!, label: describeTarget(add.dataset.ubAdd!) });
+    },
+    true,
+  );
 
-  // Nur das innerste Element beim Überfahren markieren
-  let hovered: HTMLElement | null = null;
-  document.addEventListener('mouseover', (event) => {
-    if (!active || !ready) return;
-    const next = onPage(event.target)?.closest<HTMLElement>('[data-ub]') ?? null;
-    if (next === hovered) return;
-    hovered?.classList.remove('ub-hover');
-    hovered = next;
-    hovered?.classList.add('ub-hover');
-  });
-
-  // Texte direkt auf der Seite ändern
-  document.addEventListener('input', (event) => {
-    if (!active || !ready) return;
-    const field = onPage(event.target)?.closest<HTMLElement>('[data-ub-field]');
-    const id = field?.closest<HTMLElement>('[data-ub]')?.dataset.ub;
-    const loc = id ? find(id) : null;
-    if (!field || !loc) return;
-    const key = field.dataset.ubField!;
-    const multiline = field.hasAttribute('data-ub-multiline');
-    const text = multiline ? field.innerText.replace(/\n$/, '') : (field.textContent ?? '').replace(/\s+/g, ' ');
-    const [prop, index] = key.split('.');
-    if (index !== undefined) {
-      const items = [...((loc.block.props[prop] as string[]) ?? [])];
-      items[Number(index)] = text;
-      loc.block.props[prop] = items;
-    } else {
-      loc.block.props[prop] = text;
-    }
-    hooks.onChange();
-    placeToolbar();
-  });
-
-  toolbar.addEventListener('click', (event) => {
-    const action = (event.target as HTMLElement).closest<HTMLElement>('[data-ub-action]')?.dataset.ubAction;
-    if (!action || !selectedId) return;
-    const loc = find(selectedId);
-    if (!loc) return;
-    switch (action) {
-      case 'parent':
-        if (loc.parent) select(loc.parent.id);
-        break;
-      case 'up':
-        moveBy(loc.block.id, -1);
-        break;
-      case 'down':
-        moveBy(loc.block.id, 1);
-        break;
-      case 'add':
-        openLibrary(targetOf(loc), loc.index + 1);
-        break;
-      case 'duplicate':
-        duplicate(loc.block.id);
-        break;
-      case 'move':
-        setPlacing({ id: loc.block.id, label: blockDef(loc.block.type)?.label ?? 'Element' });
-        break;
-      case 'settings':
-        if (panel.hidden) openPanel(loc.block.id);
-        else panel.hidden = true;
-        break;
-      case 'delete':
-        remove(loc.block.id);
-        break;
-    }
-  });
-
-  // Verschieben-Knopf: ziehen = direkt verschieben, klicken = Stelle anklicken
-  toolbar.querySelector<HTMLElement>('[data-ub-action="move"]')!.addEventListener('pointerdown', (event) => {
-    const loc = selectedId ? find(selectedId) : null;
-    if (loc) beginDrag(event, { id: loc.block.id, label: blockDef(loc.block.type)?.label ?? 'Element' });
-  });
-
-  movebar.querySelector('[data-ub-move-cancel]')!.addEventListener('click', () => setPlacing(null));
-  panel.querySelector('[data-ub-panel-close]')!.addEventListener('click', () => (panel.hidden = true));
-
-  document.addEventListener('keydown', (event) => {
-    if (!active || event.key !== 'Escape') return;
-    if (drag) endDrag();
-    else if (placing) setPlacing(null);
-    else if (drawerMode && library.open) library.close();
-    else if (selectedId && !(event.target as HTMLElement).isContentEditable) select(null);
-  });
+  // Esc bricht Ziehen und Platzieren ab (sonst entscheidet die Seitenleiste)
+  document.addEventListener(
+    'keydown',
+    (event) => {
+      if (!active || event.key !== 'Escape' || (!drag && !placing)) return;
+      event.stopImmediatePropagation();
+      if (drag) endDrag();
+      else setPlacing(null);
+    },
+    true,
+  );
 
   let frame = 0;
   const reposition = () => {
     cancelAnimationFrame(frame);
-    frame = requestAnimationFrame(() => {
-      placeToolbar();
-      if (pendingDrop) showDrop(pendingDrop, true);
-    });
+    frame = requestAnimationFrame(() => pendingDrop && showDrop(pendingDrop, true));
   };
   window.addEventListener('scroll', reposition, { passive: true });
   window.addEventListener('resize', reposition);
+
+  const labelOf = (block: Block) => blockDef(block.type)?.label ?? 'Element';
 
   /* ---------------- Öffentliche Schnittstelle ---------------- */
   return {
@@ -1480,12 +1338,10 @@ export function createBlockEditor(ui: HTMLElement, hooks: BlockEditorHooks) {
     },
     stop() {
       if (drag) endDrag();
-      if (library.open) library.close();
       setPlacing(null);
       active = false;
       session++;
-      select(null);
-      hovered?.classList.remove('ub-hover');
+      panelFor = null;
       if (ready) render();
       ready = false;
     },
@@ -1493,10 +1349,53 @@ export function createBlockEditor(ui: HTMLElement, hooks: BlockEditorHooks) {
     discard() {
       if (!ready) return;
       state = JSON.parse(saved);
-      select(null);
       ensureZones();
       render();
     },
+    isReady: () => ready,
+    /** Element aus dem Baukasten auf der Seite */
+    element: (id: string) => blockEl(id),
+    /** Kurzinfo für die Seitenleiste */
+    info(id: string) {
+      const loc = find(id);
+      if (!loc) return null;
+      const def = blockDef(loc.block.type);
+      return {
+        id,
+        type: loc.block.type,
+        label: labelOf(loc.block),
+        parentId: loc.parent?.id ?? null,
+        canUp: canMove(loc, -1),
+        canDown: canMove(loc, 1),
+        container: Boolean(loc.block.slots?.length),
+        hasFields: Boolean(def?.fields.length),
+      };
+    },
+    /** Inhalt und Gestaltung eines Elements in einen Behälter der Seitenleiste zeichnen */
+    renderInspector(id: string, container: HTMLElement) {
+      const loc = find(id);
+      panelFields = container;
+      panelFor = null;
+      if (loc) buildPanel(loc.block);
+    },
+    moveBy,
+    duplicate,
+    remove,
+    /** Verschieben: Klick → Stelle auf der Seite anklicken · Ziehen (Maus) → direkt ablegen */
+    startMove(id: string, event?: PointerEvent) {
+      const loc = find(id);
+      if (!loc) return;
+      const item: Placing = { id, label: labelOf(loc.block) };
+      if (event) beginDrag(event, item);
+      else setPlacing(item);
+    },
+    cancelPlacing: () => setPlacing(null),
+    isPlacing: () => Boolean(placing || drag?.started),
+    targetFor,
+    insert(choice: string, target: InsertTarget) {
+      insertAt(choice, target.target, target.index, 'center');
+    },
+    showLibraryTab: showTab,
     async save() {
       const response = await fetch('/api/edit/bausteine/', {
         method: 'POST',

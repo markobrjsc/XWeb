@@ -7,7 +7,7 @@
  * Leistung, blättert man per „‹ vorheriges · aktuelles Projekt · nächstes ›“ – die Zeile passt immer in
  * die Karte (lange Namen werden gekürzt), beim Überfahren der Pfeile zeigt ein Tipp das Ziel-Projekt.
  */
-import { getEntries } from 'astro:content';
+import { getCollection, getEntries } from 'astro:content';
 import type { PillarId, Service } from '@/data/services';
 import Card from './Card.astro';
 import Carousel from './Carousel.astro';
@@ -23,14 +23,28 @@ interface Props {
   class?: string;
 }
 
-const { service, headingLevel: Heading = 'h4', reveal = true, class: className } = Astro.props;
-const projects = service.references?.length
+const { service, pillar, headingLevel: Heading = 'h4', reveal = true, class: className } = Astro.props;
+const listed = service.references?.length
   ? (await getEntries(service.references.map((id) => ({ collection: 'referenzen' as const, id })))).filter(Boolean)
   : [];
+// Im Bearbeiten-Modus angelegte Projekte nennen ihre Leistungskarte selbst (Feld `leistungen`)
+const added = (await getCollection('referenzen'))
+  .filter((entry) => entry.data.leistungen.includes(service.id) && !listed.some((item) => item.id === entry.id))
+  .sort((a, b) => a.data.order - b.data.order);
+const projects = [...listed, ...added];
 const key = (projectId: string) => `projekt-${service.id}-${projectId}`;
 ---
 
-<Card as="article" variant="dark" reveal={reveal} id={`leistung-${service.id}`} class:list={['service', className]}>
+<Card
+  as="article"
+  variant="dark"
+  reveal={reveal}
+  id={`leistung-${service.id}`}
+  class:list={['service', className]}
+  data-service={service.id}
+  data-pillar={pillar}
+  data-service-title={service.title}
+>
   <div class="service__head">
     <IconBadge name={service.icon} tone="soft" class="service__icon" />
     <Heading class="service__title"><span class="service__title-text">{service.title}</span></Heading>

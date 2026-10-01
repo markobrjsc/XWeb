@@ -52,7 +52,8 @@ export function renderZone(blocks: Block[], ctx: RenderContext, zone: string): s
     }
   }
   flush();
-  if (ctx.editing) html += addButton(ctx, `zone:${zone}`, 'Element hier einfügen', 'ub-add--zone');
+  // „+“ nur zwischen den Abschnitten – an einzelnen Elementen fügt man über die Seitenleiste ein
+  if (ctx.editing && !nested) html += addButton(ctx, `zone:${zone}`, 'Element hier einfügen', 'ub-add--zone');
   return html;
 }
 

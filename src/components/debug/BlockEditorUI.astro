@@ -1,48 +1,45 @@
 ---
 /**
- * Oberfläche des Element-Editors im Bearbeiten-Modus (Logik: src/scripts/block-editor.ts).
- *  · Auswahl: Vorlagen, Basis-Elemente und Container mit echter Vorschau – als Dialog („+“) oder als
- *    Seitenleiste („Elemente“), aus der man Elemente auf die Seite zieht
- *  · Einfüge-Markierung (gelbe Linie) und Zieh-Etikett
- *  · Werkzeugleiste am ausgewählten Element: hoch/runter, einfügen, duplizieren, verschieben, Einstellungen, löschen
- *  · Einstellungen: Felder je Elementtyp (src/lib/blocks/schema.ts)
- *  · Bildauswahl: alle Fotos der Website oder neu hochladen
- * Wird innerhalb von EditMode.astro eingebunden.
+ * Oberfläche des Element-Baukastens (Logik: src/scripts/block-editor.ts), eingebunden in EditMode.astro.
+ *  part="library":  Auswahl im Einfügen-Bereich der Seitenleiste – Vorlagen, Basis-Elemente und Container
+ *                   mit echter, verkleinerter Vorschau; anklicken oder auf die Seite ziehen
+ *  part="overlays": Bildauswahl, Einfüge-Markierung (grüne Linie) und Zieh-Etikett
+ * Stile der Einstellungsfelder in der Seitenleiste: EditMode.astro (.ed-block-fields).
  */
 import Icon from '@/components/ui/Icon.astro';
 import { PRESETS } from '@/lib/blocks/presets';
 import { BLOCKS, type BlockDef } from '@/lib/blocks/schema';
 
+interface Props {
+  part: 'library' | 'overlays';
+}
+
+const { part } = Astro.props;
 const defs = Object.entries(BLOCKS as Record<string, BlockDef>);
 const groups = [
-  { id: 'basis', title: 'Basis-Elemente', hint: 'Einzelne Bausteine – in Abschnitte, Spalten oder Karten einfügen.' },
+  { id: 'basis', title: 'Basis', hint: 'Einzelne Bausteine – frei kombinierbar, auch in Karten und Spalten.' },
   { id: 'container', title: 'Container', hint: 'Nehmen andere Elemente auf – auch ineinander verschachtelt.' },
 ];
 ---
 
-<dialog class="gallery-dialog ub-library" data-ub-library aria-labelledby="ub-library-title">
-  <form method="dialog" class="gallery-dialog__inner">
-    <header class="gallery-dialog__head">
-      <div>
-        <p class="gallery-dialog__kicker" data-ub-library-where>Element einfügen</p>
-        <h2 class="gallery-dialog__title" id="ub-library-title">Was möchten Sie einfügen?</h2>
+{
+  part === 'library' && (
+    <div class="ub-library" data-ub-library>
+      <div class="ub-library__tabs" role="tablist">
+        <button type="button" role="tab" aria-selected="true" data-ub-tab="vorlagen">
+          Vorlagen
+        </button>
+        {groups.map((group) => (
+          <button type="button" role="tab" aria-selected="false" data-ub-tab={group.id}>
+            {group.title}
+          </button>
+        ))}
       </div>
-      <button class="gallery-dialog__close" type="button" aria-label="Schließen">
-        <Icon name="x" size="1.1rem" />
-      </button>
-    </header>
 
-    <div class="ub-library__tabs" role="tablist">
-      <button type="button" role="tab" aria-selected="true" data-ub-tab="vorlagen">Vorlagen</button>
-      <button type="button" role="tab" aria-selected="false" data-ub-tab="basis">Basis-Elemente</button>
-      <button type="button" role="tab" aria-selected="false" data-ub-tab="container">Container</button>
-    </div>
-
-    <section class="ub-library__panel" data-ub-tabpanel="vorlagen">
-      <p class="gallery-dialog__hint">Fertig gestaltete Abschnitte – passen auf Computer, Tablet und Handy. Danach alles frei änderbar.</p>
-      <ul class="ub-library__grid" role="list">
-        {
-          PRESETS.map((preset) => (
+      <section class="ub-library__panel" data-ub-tabpanel="vorlagen">
+        <p class="ub-library__hint">Fertig gestaltete Abschnitte – passen auf Computer, Tablet und Handy.</p>
+        <ul class="ub-library__grid" role="list">
+          {PRESETS.map((preset) => (
             <li>
               <button type="button" class="ub-tile ub-tile--preset" data-ub-choice={`preset:${preset.id}`}>
                 <span class="ub-tile__preview" data-ub-preview aria-hidden="true">
@@ -50,7 +47,7 @@ const groups = [
                 </span>
                 <span class="ub-tile__meta">
                   <span class="ub-tile__icon">
-                    <Icon name={preset.icon} size="1.1rem" />
+                    <Icon name={preset.icon} size="1rem" />
                   </span>
                   <span class="ub-tile__text">
                     <strong>{preset.label}</strong>
@@ -59,16 +56,14 @@ const groups = [
                 </span>
               </button>
             </li>
-          ))
-        }
-      </ul>
-    </section>
+          ))}
+        </ul>
+      </section>
 
-    {
-      groups.map((group) => (
+      {groups.map((group) => (
         <section class="ub-library__panel" data-ub-tabpanel={group.id} hidden>
-          <p class="gallery-dialog__hint">{group.hint}</p>
-          <ul class="ub-library__grid" role="list">
+          <p class="ub-library__hint">{group.hint}</p>
+          <ul class="ub-library__grid ub-library__grid--small" role="list">
             {defs
               .filter(([, def]) => def.group === group.id)
               .map(([type, def]) => (
@@ -79,11 +74,10 @@ const groups = [
                     </span>
                     <span class="ub-tile__meta">
                       <span class="ub-tile__icon">
-                        <Icon name={def.icon} size="1.1rem" />
+                        <Icon name={def.icon} size="1rem" />
                       </span>
                       <span class="ub-tile__text">
                         <strong>{def.label}</strong>
-                        <small>{def.description}</small>
                       </span>
                     </span>
                   </button>
@@ -91,153 +85,139 @@ const groups = [
               ))}
           </ul>
         </section>
-      ))
-    }
-  </form>
-</dialog>
-
-<!-- Werkzeugleiste am ausgewählten Element -->
-<div class="ub-toolbar" data-ub-toolbar hidden>
-  <span class="ub-toolbar__label" data-ub-toolbar-label></span>
-  <button type="button" data-ub-action="parent" title="Übergeordnetes Element wählen" aria-label="Übergeordnetes Element wählen">
-    <Icon name="corner-left-up" size="1rem" />
-  </button>
-  <button type="button" data-ub-action="up" title="Nach oben" aria-label="Nach oben"><Icon name="arrow-up" size="1rem" /></button>
-  <button type="button" data-ub-action="down" title="Nach unten" aria-label="Nach unten"><Icon name="arrow-down" size="1rem" /></button>
-  <button type="button" data-ub-action="add" title="Danach einfügen" aria-label="Danach einfügen"><Icon name="plus" size="1rem" /></button>
-  <button type="button" data-ub-action="duplicate" title="Duplizieren" aria-label="Duplizieren"><Icon name="copy" size="1rem" /></button>
-  <button type="button" class="ub-toolbar__grab" data-ub-action="move" title="Verschieben: ziehen oder klicken und Stelle wählen" aria-label="Verschieben">
-    <Icon name="move" size="1rem" />
-  </button>
-  <button type="button" data-ub-action="settings" title="Einstellungen" aria-label="Einstellungen">
-    <Icon name="settings-2" size="1rem" />
-  </button>
-  <button type="button" class="ub-toolbar__danger" data-ub-action="delete" title="Löschen" aria-label="Löschen">
-    <Icon name="trash-2" size="1rem" />
-  </button>
-</div>
-
-<!-- Hinweis beim Verschieben -->
-<div class="ub-movebar" data-ub-movebar hidden>
-  <Icon name="move" size="1rem" />
-  <span data-ub-movebar-text>Stelle auf der Seite anklicken.</span>
-  <button type="button" data-ub-move-cancel>Abbrechen</button>
-</div>
-
-<!-- Einfüge-Stelle beim Ziehen/Platzieren -->
-<div class="ub-drop" data-ub-drop hidden>
-  <span class="ub-drop__tag" data-ub-drop-label>Hier einfügen</span>
-  <button type="button" class="ub-drop__ok" data-ub-drop-ok hidden>Hier einfügen</button>
-</div>
-<div class="ub-ghost" data-ub-ghost hidden aria-hidden="true"></div>
-
-<!-- Einstellungen des ausgewählten Elements -->
-<aside class="spacing-panel ub-panel" data-ub-panel hidden aria-labelledby="ub-panel-title">
-  <div class="ub-panel__head">
-    <div class="spacing-panel__head">
-      <p class="spacing-panel__title" id="ub-panel-title" data-ub-panel-title>Einstellungen</p>
-      <span class="spacing-panel__target">Änderungen sind sofort sichtbar</span>
+      ))}
     </div>
-    <button class="gallery-dialog__close" type="button" data-ub-panel-close aria-label="Einstellungen schließen">
-      <Icon name="x" size="1rem" />
-    </button>
-  </div>
-  <div class="ub-panel__fields" data-ub-panel-fields></div>
-</aside>
+  )
+}
 
-<!-- Bildauswahl -->
-<dialog class="gallery-dialog" data-ub-picker aria-labelledby="ub-picker-title">
-  <form method="dialog" class="gallery-dialog__inner">
-    <header class="gallery-dialog__head">
-      <div>
-        <p class="gallery-dialog__kicker">Bilder</p>
-        <h2 class="gallery-dialog__title" id="ub-picker-title" data-ub-picker-title>Bild auswählen</h2>
+{
+  part === 'overlays' && (
+    <>
+      <dialog class="gallery-dialog" data-ub-picker aria-labelledby="ub-picker-title">
+        <form method="dialog" class="gallery-dialog__inner">
+          <header class="gallery-dialog__head">
+            <div>
+              <p class="gallery-dialog__kicker">Bilder</p>
+              <h2 class="gallery-dialog__title" id="ub-picker-title" data-ub-picker-title>
+                Bild auswählen
+              </h2>
+            </div>
+            <button class="gallery-dialog__close" type="button" aria-label="Schließen">
+              <Icon name="x" size="1.1rem" />
+            </button>
+          </header>
+          <ol class="gallery-dialog__grid hero-choices" data-ub-picker-grid />
+          <footer class="gallery-dialog__foot">
+            <label class="gallery-dialog__add">
+              <input type="file" accept="image/jpeg,image/png,image/webp" multiple data-ub-picker-upload />
+              <Icon name="image-plus" size="1rem" /> Neues Bild hochladen
+            </label>
+            <p class="gallery-dialog__status" data-ub-picker-status aria-live="polite" />
+            <button class="ed-btn ed-btn--primary" type="button" data-ub-picker-done hidden>
+              Übernehmen
+            </button>
+          </footer>
+        </form>
+      </dialog>
+
+      <div class="ub-drop" data-ub-drop hidden>
+        <span class="ub-drop__tag" data-ub-drop-label>
+          Hier einfügen
+        </span>
+        <button type="button" class="ub-drop__ok" data-ub-drop-ok hidden>
+          Hier einfügen
+        </button>
       </div>
-      <button class="gallery-dialog__close" type="button" aria-label="Schließen">
-        <Icon name="x" size="1.1rem" />
-      </button>
-    </header>
-    <ol class="gallery-dialog__grid hero-choices" data-ub-picker-grid></ol>
-    <footer class="gallery-dialog__foot">
-      <label class="gallery-dialog__add">
-        <input type="file" accept="image/jpeg,image/png,image/webp" multiple data-ub-picker-upload />
-        <Icon name="image-plus" size="1rem" /> Neues Bild hochladen
-      </label>
-      <p class="gallery-dialog__status" data-ub-picker-status aria-live="polite"></p>
-      <button class="edit-bar__btn edit-bar__btn--primary" type="button" data-ub-picker-done hidden>Übernehmen</button>
-    </footer>
-  </form>
-</dialog>
+      <div class="ub-ghost" data-ub-ghost hidden aria-hidden="true" />
+    </>
+  )
+}
 
-<style>
-  /* Auswahl-Dialog */
+<style is:global>
+  /* ---------- Auswahl im Einfügen-Bereich ---------- */
   .ub-library {
-    width: min(60rem, calc(100vw - 2rem));
-  }
-
-  .ub-library__tabs {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.4rem;
-  }
-
-  .ub-library__tabs button {
-    padding: 0.45rem 1rem;
-    font-size: 0.85rem;
-    font-weight: 600;
-    color: #19191a;
-    border: 1px solid #cacac6;
-    border-radius: 999px;
-    background: #ffffff;
-    cursor: pointer;
-  }
-
-  .ub-library__tabs button[aria-selected='true'] {
-    color: #0b0b0c;
-    border-color: var(--color-accent, #f3a505);
-    background: var(--color-accent, #f3a505);
-  }
-
-  .ub-library__panel {
     display: grid;
     gap: 0.75rem;
   }
 
+  .ub-library__tabs {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0.25rem;
+    padding: 0.25rem;
+    border-radius: 999px;
+    background: var(--ed-surface);
+  }
+
+  .ub-library__tabs button {
+    padding: 0.45rem 0.5rem;
+    font: inherit;
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--ed-muted);
+    border: 0;
+    border-radius: 999px;
+    background: transparent;
+    cursor: pointer;
+  }
+
+  .ub-library__tabs button[aria-selected='true'] {
+    color: var(--ed-accent-ink);
+    background: var(--ed-accent);
+  }
+
+  .ub-library__panel {
+    display: grid;
+    gap: 0.6rem;
+  }
+
+  .ub-library__panel[hidden] {
+    display: none;
+  }
+
+  .ub-library__hint {
+    font-size: 0.78rem;
+    color: var(--ed-muted);
+  }
+
   .ub-library__grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr));
+    grid-template-columns: minmax(0, 1fr);
     gap: 0.6rem;
     margin: 0;
     padding: 0;
+    list-style: none;
+  }
+
+  .ub-library__grid--small {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .ub-tile {
     display: flex;
     flex-direction: column;
-    gap: 0.55rem;
+    gap: 0.5rem;
     width: 100%;
     height: 100%;
-    padding: 0.5rem 0.5rem 0.7rem;
+    padding: 0.45rem 0.45rem 0.6rem;
     font: inherit;
     text-align: left;
-    color: #19191a;
-    border: 1px solid #e2e2df;
-    border-radius: 0.9rem;
-    background: #ffffff;
-    cursor: pointer;
+    color: var(--ed-text);
+    border: 1px solid var(--ed-line);
+    border-radius: 0.85rem;
+    background: var(--ed-surface);
+    cursor: grab;
     user-select: none;
     -webkit-user-select: none;
     transition:
       border-color 150ms ease,
-      background-color 150ms ease,
-      box-shadow 150ms ease;
+      background-color 150ms ease;
   }
 
   .ub-tile:hover,
   .ub-tile:focus-visible {
-    border-color: var(--color-accent, #f3a505);
-    background: #fef8e7;
-    box-shadow: 0 8px 22px -14px rgb(0 0 0 / 0.45);
+    border-color: var(--ed-accent);
+    background: var(--ed-surface-2);
   }
 
   /* Echte Vorschau: in Originalbreite gezeichnet und verkleinert (Maße setzt block-editor.ts) */
@@ -245,10 +225,9 @@ const groups = [
     position: relative;
     display: block;
     overflow: hidden;
-    height: 7rem;
-    border-radius: 0.6rem;
+    height: 6rem;
+    border-radius: 0.55rem;
     background: var(--color-bg, #ffffff);
-    box-shadow: inset 0 0 0 1px #e8e8e5;
     pointer-events: none;
   }
 
@@ -266,7 +245,6 @@ const groups = [
     transform-origin: 0 0;
   }
 
-  /* Einzelne Elemente mit etwas Rand um den Inhalt */
   .ub-tile:not(.ub-tile--preset) .ub-tile__stage {
     padding: 2rem;
   }
@@ -274,113 +252,61 @@ const groups = [
   .ub-tile__meta {
     display: flex;
     align-items: flex-start;
-    gap: 0.6rem;
-    padding-inline: 0.2rem;
+    gap: 0.55rem;
+    padding-inline: 0.15rem;
   }
 
   .ub-tile__icon {
     display: grid;
     place-items: center;
     flex-shrink: 0;
-    width: 2rem;
-    height: 2rem;
-    color: #0b0b0c;
-    border-radius: 0.6rem;
-    background: #efefed;
-  }
-
-  .ub-tile--preset .ub-tile__icon {
-    color: var(--color-accent, #f3a505);
-    background: #0b0b0c;
+    width: 1.8rem;
+    height: 1.8rem;
+    color: var(--ed-accent);
+    border-radius: 0.5rem;
+    background: var(--ed-bg);
   }
 
   .ub-tile__text {
     display: grid;
-    gap: 0.15rem;
+    gap: 0.1rem;
+    min-width: 0;
   }
 
   .ub-tile__text strong {
-    font-size: 0.88rem;
+    font-size: 0.84rem;
   }
 
   .ub-tile__text small {
-    font-size: 0.74rem;
+    font-size: 0.72rem;
     line-height: 1.35;
-    color: #62625e;
+    color: var(--ed-muted);
   }
 
-  /* Als Seitenleiste: nicht modal, die Seite bleibt bedienbar (Elemente auf die Seite ziehen) */
-  .ub-library.ub-library--drawer {
-    inset: calc(var(--header-height) + 0.75rem) 0.75rem 5.25rem auto;
-    z-index: 1002;
-    width: min(25rem, calc(100vw - 1.5rem));
-    height: auto;
-    max-height: none;
-    margin: 0;
-    box-shadow:
-      0 0 0 1px rgb(0 0 0 / 0.06),
-      0 24px 60px -18px rgb(0 0 0 / 0.55);
-  }
-
-  .ub-library--drawer .gallery-dialog__inner {
-    gap: 0.75rem;
-    padding: 1rem;
-  }
-
-  .ub-library--drawer .gallery-dialog__title {
-    font-size: 1.05rem;
-  }
-
-  .ub-library--drawer .ub-library__grid {
-    grid-template-columns: minmax(0, 1fr);
-  }
-
-  .ub-library--drawer [data-ub-tabpanel]:not([data-ub-tabpanel='vorlagen']) .ub-library__grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  .ub-library--drawer .ub-tile {
-    cursor: grab;
-  }
-
-  /* Leiste unten ist hier zweizeilig */
-  @media (max-width: 64rem) {
-    .ub-library.ub-library--drawer {
-      bottom: 7.5rem;
-    }
-  }
-
-  @media (max-width: 47.99rem) {
-    .ub-library.ub-library--drawer {
-      inset: auto 0 0 0;
-      width: 100%;
-      height: min(62dvh, 34rem);
-      border-radius: 1.2rem 1.2rem 0 0;
-    }
-  }
-
-  /* Einfüge-Stelle: gelbe Linie – bei „+“-Feldern ein Rahmen */
+  /* ---------- Einfüge-Stelle und Zieh-Etikett ---------- */
   .ub-drop {
     position: fixed;
     top: 0;
     left: 0;
     z-index: 1006;
     border-radius: 999px;
-    background: var(--color-accent, #f3a505);
+    background: var(--ed-accent);
     box-shadow:
       0 0 0 2px #ffffff,
       0 6px 18px -6px rgb(0 0 0 / 0.55);
     pointer-events: none;
   }
 
-  .ub-drop[hidden] {
+  .ub-drop[hidden],
+  .ub-drop [hidden],
+  .ub-ghost[hidden] {
     display: none;
   }
 
   .ub-drop[data-axis='box'] {
     border-radius: 0.8rem;
-    background: rgb(243 165 5 / 0.18);
-    box-shadow: inset 0 0 0 2px var(--color-accent, #f3a505);
+    background: rgb(52 211 153 / 0.16);
+    box-shadow: inset 0 0 0 2px var(--ed-accent);
   }
 
   .ub-drop__tag,
@@ -395,8 +321,8 @@ const groups = [
   }
 
   .ub-drop__tag {
-    color: var(--color-accent, #f3a505);
-    background: #0b0b0c;
+    color: var(--ed-accent);
+    background: var(--ed-bg);
   }
 
   .ub-drop__ok {
@@ -404,9 +330,9 @@ const groups = [
     translate: -50% 0;
     padding: 0.55rem 1rem;
     font-size: 0.85rem;
-    color: #0b0b0c;
+    color: var(--ed-accent-ink);
     border: 0;
-    background: var(--color-accent, #f3a505);
+    background: var(--ed-accent);
     box-shadow: 0 8px 20px -8px rgb(0 0 0 / 0.6);
     cursor: pointer;
     pointer-events: auto;
@@ -421,17 +347,9 @@ const groups = [
     top: 0;
     bottom: auto;
     left: 10px;
-  }
-
-  .ub-drop[data-axis='x'] .ub-drop__ok {
     translate: none;
   }
 
-  .ub-drop [hidden] {
-    display: none;
-  }
-
-  /* Etikett am Mauszeiger beim Ziehen */
   .ub-ghost {
     position: fixed;
     top: 0;
@@ -440,597 +358,74 @@ const groups = [
     padding: 0.45rem 0.9rem;
     font: 700 0.8rem/1.2 var(--font-sans);
     white-space: nowrap;
-    color: #0b0b0c;
+    color: var(--ed-accent-ink);
     border-radius: 999px;
-    background: var(--color-accent, #f3a505);
+    background: var(--ed-accent);
     box-shadow: 0 10px 24px -8px rgb(0 0 0 / 0.5);
     pointer-events: none;
   }
 
-  .ub-ghost[hidden] {
-    display: none;
-  }
-
-  :global(.ub-dragging),
-  :global(.ub-dragging *) {
+  .ub-dragging,
+  .ub-dragging * {
     cursor: grabbing !important;
     user-select: none !important;
     -webkit-user-select: none !important;
   }
 
-  :global(.ub-moving main),
-  :global(.ub-moving main *) {
+  .ub-moving main,
+  .ub-moving main * {
     cursor: crosshair !important;
   }
 
-  /* Werkzeugleiste */
-  .ub-toolbar {
-    position: fixed;
-    z-index: 1003;
-    display: flex;
-    align-items: center;
-    gap: 0.1rem;
-    max-width: calc(100vw - 1rem);
-    padding: 0.2rem;
-    color: #ffffff;
-    border-radius: 0.6rem;
-    background: #111a24;
-    box-shadow: 0 10px 28px -10px rgb(0 0 0 / 0.55);
-  }
-
-  .ub-toolbar[hidden] {
+  /* ---------- Elemente auf der Seite (nur im Bearbeiten-Modus) ---------- */
+  .ub-add {
     display: none;
   }
 
-  .ub-toolbar__label {
-    padding: 0 0.5rem 0 0.4rem;
-    overflow: hidden;
-    font-size: 0.72rem;
-    font-weight: 700;
-    white-space: nowrap;
-    text-overflow: ellipsis;
-    color: var(--color-accent, #f3a505);
-  }
-
-  .ub-toolbar button {
-    display: grid;
-    place-items: center;
-    flex-shrink: 0;
-    width: 2rem;
-    height: 2rem;
-    color: inherit;
-    border: 0;
-    border-radius: 0.45rem;
-    background: transparent;
-    cursor: pointer;
-  }
-
-  .ub-toolbar button:hover,
-  .ub-toolbar button:focus-visible {
-    background: rgb(255 255 255 / 0.14);
-  }
-
-  .ub-toolbar .ub-toolbar__grab {
-    cursor: grab;
-    touch-action: none;
-  }
-
-  .ub-toolbar button:disabled {
-    opacity: 0.35;
-    cursor: default;
-  }
-
-  .ub-toolbar .ub-toolbar__danger:hover {
-    color: #0b0b0c;
-    background: var(--color-accent, #f3a505);
-  }
-
-  .ub-movebar {
-    position: fixed;
-    top: calc(var(--header-height) + 0.75rem);
-    left: 50%;
-    z-index: 1003;
-    display: flex;
-    align-items: center;
-    gap: 0.6rem;
-    max-width: calc(100vw - 2rem);
-    padding: 0.45rem 0.5rem 0.45rem 1rem;
-    font-size: 0.85rem;
-    color: #0b0b0c;
-    border-radius: 999px;
-    background: var(--color-accent, #f3a505);
-    box-shadow: 0 10px 28px -10px rgb(0 0 0 / 0.5);
-    translate: -50% 0;
-  }
-
-  .ub-movebar[hidden] {
-    display: none;
-  }
-
-  .ub-movebar [data-ub-movebar-text] {
-    min-width: 0;
-    line-height: 1.3;
-  }
-
-  @media (max-width: 47.99rem) {
-    .ub-movebar {
-      width: calc(100vw - 1.5rem);
-      padding: 0.5rem 0.5rem 0.5rem 0.9rem;
-      font-size: 0.8rem;
-      border-radius: 1rem;
-    }
-
-    .ub-movebar [data-ub-movebar-text] {
-      flex: 1;
-    }
-  }
-
-  .ub-movebar button {
-    flex: none;
-    padding: 0.35rem 0.8rem;
-    font: inherit;
-    font-weight: 700;
-    color: #ffffff;
-    border: 0;
-    border-radius: 999px;
-    background: #0b0b0c;
-    cursor: pointer;
-  }
-
-  /* Einstellungen */
-  .ub-panel {
-    z-index: 1004;
-    width: min(23rem, calc(100vw - 2rem));
-    top: calc(var(--header-height) + 4.5rem);
-    bottom: auto;
-    overflow-y: auto;
-    max-height: calc(100dvh - var(--header-height) - 10rem);
-  }
-
-  .ub-panel__head {
-    display: flex;
-    align-items: flex-start;
-    justify-content: space-between;
-    gap: 0.5rem;
-  }
-
-  .ub-panel__fields {
-    display: grid;
-    gap: 0.8rem;
-  }
-
-  .ub-panel__fields :global(.ub-f) {
-    display: grid;
-    gap: 0.3rem;
-    font-size: 0.78rem;
-    font-weight: 600;
-    color: #373735;
-  }
-
-  .ub-panel__fields :global(.ub-f small) {
-    font-weight: 400;
-    color: #62625e;
-  }
-
-  .ub-panel__fields :global(:is(input[type='text'], textarea, select)) {
-    width: 100%;
-    min-width: 0;
-    padding: 0.45rem 0.55rem;
-    font: inherit;
-    font-size: 0.88rem;
-    font-weight: 400;
-    color: #0b0b0c;
-    border: 1px solid #cacac6;
-    border-radius: 0.5rem;
-    background: #ffffff;
-  }
-
-  .ub-panel__fields :global(textarea) {
-    min-height: 5.5rem;
-    resize: vertical;
-  }
-
-  .ub-panel__fields :global(.ub-f--toggle) {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-  }
-
-  .ub-panel__fields :global(.ub-f__invalid) {
-    color: #8a5c00;
-  }
-
-  .ub-panel__fields :global(.ub-f__image) {
-    display: grid;
-    grid-template-columns: 5rem minmax(0, 1fr);
-    align-items: center;
-    gap: 0.6rem;
-  }
-
-  .ub-panel__fields :global(.ub-f__thumb) {
-    width: 5rem;
-    height: 3.6rem;
-    overflow: hidden;
-    border-radius: 0.45rem;
-    background: #efefed;
-  }
-
-  .ub-panel__fields :global(.ub-f__thumb img) {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-  }
-
-  .ub-panel__fields :global(.ub-f__buttons) {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.35rem;
-  }
-
-  .ub-panel__fields :global(.ub-f__buttons button),
-  .ub-panel__fields :global(.ub-f__mini) {
-    padding: 0.35rem 0.7rem;
-    font: inherit;
-    font-size: 0.78rem;
-    font-weight: 600;
-    color: #19191a;
-    border: 1px solid #cacac6;
-    border-radius: 999px;
-    background: #ffffff;
-    cursor: pointer;
-  }
-
-  .ub-panel__fields :global(.ub-f__list) {
-    display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 0.35rem;
-    margin: 0;
-    padding: 0;
-    list-style: none;
-  }
-
-  .ub-panel__fields :global(.ub-f__list li) {
-    position: relative;
-    overflow: hidden;
-    aspect-ratio: 4 / 3;
-    border-radius: 0.45rem;
-    background: #efefed;
-  }
-
-  .ub-panel__fields :global(.ub-f__list img) {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-  }
-
-  .ub-panel__fields :global(.ub-f__list span) {
-    position: absolute;
-    right: 0.15rem;
-    bottom: 0.15rem;
-    left: 0.15rem;
-    display: flex;
-    justify-content: space-between;
-  }
-
-  .ub-panel__fields :global(.ub-f__list button) {
-    width: 1.35rem;
-    height: 1.35rem;
-    padding: 0;
-    font-size: 0.7rem;
-    line-height: 1;
-    color: #111a24;
-    border: 0;
-    border-radius: 50%;
-    background: rgb(255 255 255 / 0.92);
-    cursor: pointer;
-  }
-
-  .ub-panel__fields :global(.ub-f__icons) {
-    display: grid;
-    grid-template-columns: repeat(8, minmax(0, 1fr));
-    gap: 0.25rem;
-  }
-
-  .ub-panel__fields :global(.ub-f__icons button) {
-    display: grid;
-    place-items: center;
-    aspect-ratio: 1;
-    padding: 0;
-    font-size: 1.05rem;
-    color: #19191a;
-    border: 1px solid #e2e2df;
-    border-radius: 0.4rem;
-    background: #ffffff;
-    cursor: pointer;
-  }
-
-  .ub-panel__fields :global(.ub-f__icons button[aria-pressed='true']) {
-    border-color: #0b0b0c;
-    color: var(--color-accent, #f3a505);
-    background: #0b0b0c;
-  }
-
-  /* Gruppen im Einstellungs-Feld (aufklappbar) */
-  .ub-panel__fields {
-    gap: 0.4rem;
-  }
-
-  .ub-panel__fields :global(.ub-g) {
-    border: 1px solid #e2e2df;
-    border-radius: 0.7rem;
-    background: #ffffff;
-  }
-
-  .ub-panel__fields :global(.ub-g > summary) {
-    padding: 0.55rem 0.75rem;
-    font-size: 0.8rem;
-    font-weight: 700;
-    color: #19191a;
-    cursor: pointer;
-    list-style-position: inside;
-  }
-
-  .ub-panel__fields :global(.ub-g[open] > summary) {
-    border-bottom: 1px solid #efefed;
-  }
-
-  .ub-panel__fields :global(.ub-g > :not(summary)) {
-    margin: 0.6rem 0.75rem;
-  }
-
-  .ub-panel__fields :global(.ub-num) {
-    display: flex;
-    align-items: center;
-    gap: 0.4rem;
-    font-weight: 400;
-    color: #62625e;
-  }
-
-  .ub-panel__fields :global(input[type='number']) {
-    width: 100%;
-    min-width: 0;
-    padding: 0.4rem 0.5rem;
-    font: inherit;
-    font-size: 0.85rem;
-    color: #0b0b0c;
-    border: 1px solid #cacac6;
-    border-radius: 0.45rem;
-    background: #ffffff;
-  }
-
-  .ub-panel__fields :global(.ub-num input) {
-    max-width: 7rem;
-  }
-
-  .ub-panel__fields :global(.ub-sides) {
-    display: grid;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-    gap: 0.35rem;
-  }
-
-  .ub-panel__fields :global(.ub-sides label) {
-    display: grid;
-    gap: 0.15rem;
-    font-size: 0.68rem;
-    font-weight: 400;
-    color: #62625e;
-  }
-
-  .ub-panel__fields :global(.ub-align) {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(3.6rem, 1fr));
-    gap: 0.3rem;
-  }
-
-  .ub-panel__fields :global(.ub-align button) {
-    display: grid;
-    justify-items: center;
-    gap: 0.15rem;
-    padding: 0.4rem 0.2rem;
-    font: inherit;
-    font-size: 0.68rem;
-    color: #19191a;
-    border: 1px solid #e2e2df;
-    border-radius: 0.5rem;
-    background: #ffffff;
-    cursor: pointer;
-  }
-
-  .ub-panel__fields :global(.ub-align button .icon) {
-    font-size: 1.1rem;
-  }
-
-  .ub-panel__fields :global(.ub-align button[aria-pressed='true']) {
-    color: var(--color-accent, #f3a505);
-    border-color: #0b0b0c;
-    background: #0b0b0c;
-  }
-
-  .ub-panel__fields :global(.ub-color) {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: 0.4rem;
-  }
-
-  .ub-panel__fields :global(.ub-color input[type='color']) {
-    width: 2.1rem;
-    height: 2.1rem;
-    padding: 0;
-    border: 1px solid #cacac6;
-    border-radius: 0.45rem;
-    background: none;
-    cursor: pointer;
-  }
-
-  .ub-panel__fields :global(.ub-color.is-default input[type='color']) {
-    opacity: 0.35;
-  }
-
-  .ub-panel__fields :global(.ub-color code) {
-    min-width: 4.6rem;
-    font-size: 0.72rem;
-    font-weight: 400;
-    color: #4b4b48;
-  }
-
-  .ub-panel__fields :global(.ub-swatches) {
-    display: flex;
-    gap: 0.2rem;
-  }
-
-  .ub-panel__fields :global(.ub-swatches button) {
-    width: 1.35rem;
-    height: 1.35rem;
-    padding: 0;
-    border: 1px solid rgb(0 0 0 / 0.2);
-    border-radius: 50%;
-    background: var(--swatch);
-    cursor: pointer;
-  }
-
-  .ub-panel__fields :global(.ub-color__reset) {
-    padding: 0.2rem 0.55rem;
-    font: inherit;
-    font-size: 0.7rem;
-    color: #4b4b48;
-    border: 1px solid #cacac6;
-    border-radius: 999px;
-    background: #ffffff;
-    cursor: pointer;
-  }
-
-  .ub-panel__fields :global(.ub-reset) {
-    justify-self: start;
-    margin-top: 0.3rem;
-  }
-
-  /* Im Bearbeiten-Modus sichtbar, auf der Seite ausgeblendet */
-  :global(.is-editing :is(.ub-hide-mobil, .ub-hide-desktop)) {
-    opacity: 0.5;
-  }
-
-  /* Bildauswahl: ausgewählte Bilder (Galerie) */
-  [data-ub-picker-grid] :global(.hero-choice[aria-pressed='true']) {
-    border-color: var(--color-accent, #f3a505);
-    box-shadow: 0 0 0 3px var(--color-accent, #f3a505);
-  }
-
-  [data-ub-picker-grid] :global(.hero-choice) {
-    position: relative;
-  }
-
-  [data-ub-picker-grid] :global(.hero-choice[aria-pressed='true'])::after {
-    content: '✓';
-    position: absolute;
-    top: 0.3rem;
-    right: 0.3rem;
-    display: grid;
-    place-items: center;
-    width: 1.5rem;
-    height: 1.5rem;
-    font-weight: 800;
-    color: #0b0b0c;
-    border-radius: 50%;
-    background: var(--color-accent, #f3a505);
-  }
-
-  /* Elemente auf der Seite (nur im Bearbeiten-Modus) */
-  :global(.ub-add) {
-    display: none;
-  }
-
-  :global(.is-editing .ub-add) {
+  .is-editing .ub-add {
     display: flex;
     align-items: center;
     justify-content: center;
     gap: 0.4rem;
-    min-height: 2.4rem;
-    padding: 0.35rem 0.9rem;
-    font: 600 0.8rem/1.2 var(--font-sans);
-    color: #4b4b48;
-    border: 1.5px dashed #b8b8b4;
+    min-height: 2.2rem;
+    padding: 0.3rem 0.9rem;
+    font: 600 0.78rem/1.2 var(--font-sans);
+    color: #0f5132;
+    border: 1.5px dashed rgb(16 185 129 / 0.55);
     border-radius: 0.7rem;
-    background: rgb(255 255 255 / 0.7);
-    cursor: pointer;
-    opacity: 0.55;
-    transition:
-      opacity 150ms ease,
-      border-color 150ms ease;
+    background: rgb(236 253 245 / 0.75);
+    cursor: pointer !important;
+    opacity: 0.6;
+    transition: opacity 150ms ease;
   }
 
-  :global(.is-editing .ub-add:hover),
-  :global(.is-editing .ub-add:focus-visible),
-  :global(.is-editing .ub-add--empty) {
+  .is-editing .ub-add:hover,
+  .is-editing .ub-add:focus-visible,
+  .is-editing .ub-add--empty {
     opacity: 1;
-    border-color: var(--color-accent, #f3a505);
+    border-color: var(--ed-accent-strong);
   }
 
-  :global(.is-editing .ub-add--zone) {
+  .is-editing .ub-add--zone {
     flex: 1 1 100%;
     width: calc(100% - var(--gutter) * 2);
     max-width: var(--container-max);
-    margin: 0.75rem auto;
+    margin: 0.6rem auto;
   }
 
-  :global(.is-editing ub-zone:empty),
-  :global(.is-editing ub-zone) {
+  .is-editing ub-zone {
     display: flow-root;
   }
 
-  :global(.is-spacing .ub-add),
-  :global(.is-spacing [data-ub-toolbar]),
-  :global(.is-spacing [data-ub-panel]) {
-    display: none !important;
-  }
-
-  /* Beim Verschieben: alle Ziele gelb */
-  :global(.ub-moving .ub-add) {
-    color: #0b0b0c;
+  .ub-moving .ub-add {
+    color: var(--ed-accent-ink);
     border-style: solid;
-    border-color: var(--color-accent, #f3a505);
-    background: rgb(243 165 5 / 0.25);
+    border-color: var(--ed-accent-strong);
+    background: rgb(52 211 153 / 0.25);
     opacity: 1;
   }
 
-  :global(.ub-moving .ub-add[data-ub-invalid]) {
+  .ub-moving .ub-add[data-ub-invalid] {
     display: none;
-  }
-
-  :global(.is-editing .ub-hover) {
-    outline: 1px dashed rgb(243 165 5 / 0.9);
-    outline-offset: 3px;
-  }
-
-  :global(.is-editing .ub-selected) {
-    outline: 2px solid var(--color-accent, #f3a505);
-    outline-offset: 3px;
-  }
-
-  :global(.is-editing [data-ub-field]) {
-    min-width: 2ch;
-    outline: 1px dashed rgb(246 201 69 / 0.6);
-    outline-offset: 2px;
-    cursor: text;
-  }
-
-  :global(.is-editing [data-ub-field]:focus) {
-    outline: 2px solid var(--color-accent, #f3a505);
-    background: rgb(246 201 69 / 0.14);
-  }
-
-  :global(.is-editing [data-ub-field]:empty::before) {
-    content: attr(data-placeholder);
-    opacity: 0.45;
-  }
-
-  :global(.is-editing [data-ub-pick]) {
-    cursor: pointer;
-  }
-
-  :global(.is-editing [data-ub-pick='image']:hover),
-  :global(.is-editing [data-ub-pick='images']:hover),
-  :global(.is-editing [data-ub-pick='icon']:hover) {
-    box-shadow: 0 0 0 3px var(--color-accent, #f3a505);
   }
 </style>

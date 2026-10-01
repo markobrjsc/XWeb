@@ -69,28 +69,41 @@ Die **Originalfotos** (ca. 1,6 GB) liegen in `fotos-original/`. Dieser Ordner wi
 ### Referenzprojekte & Zertifikate
 
 - **Referenzen** erscheinen auf der Leistungsseite in den passenden Leistungskarten (Feld `references` in
-  `src/data/services.ts`). Projekt anlegen: Markdown-Datei in `src/content/referenzen/`, Fotos in
-  `src/assets/images/referenzen/<dateiname>/`.
+  `src/data/services.ts` oder `leistungen` in der Projektdatei). Projekt anlegen: im Bearbeiten-Modus Leistungskarte
+  anklicken → „Neues Projekt mit Galerie anlegen“ – oder von Hand: Markdown-Datei in `src/content/referenzen/`,
+  Fotos in `src/assets/images/referenzen/<dateiname>/`.
 - **Zertifikate:** PDF in `src/assets/zertifikate/` legen, Titel/Aussteller/Jahr in
   `src/assets/zertifikate/zertifikate.json` eintragen. Vorschaubilder erzeugt `scripts/build-zertifikate.mjs`
   automatisch vor `npm run dev` und `npm run build`.
 
-### Elemente im Bearbeiten-Modus
+### Bearbeiten-Modus
 
-Im Bearbeiten-Modus (Stift oben rechts) gibt es zwei Wege zum Einfügen:
+„Bearbeiten“ oben rechts öffnet links eine **Seitenleiste** (Dunkelgrün – alles, was zur Bearbeitung gehört, ist
+so klar von der Website zu unterscheiden; auf dem Handy als Fenster von unten). Vier Werkzeuge:
 
-- **„Elemente“** in der Leiste unten öffnet eine Seitenleiste – Element **per Drag & Drop an fast jede Stelle** der Seite
-  ziehen (vor/hinter Abschnitte, Überschriften, Absätze, Karten, Spalten …; eine gelbe Linie zeigt die Stelle).
-  Oder antippen und danach die Stelle anklicken – auf dem Handy Stelle antippen und „Hier einfügen“ bestätigen.
-- **„+ Element hier einfügen“** zwischen den Abschnitten und in Containern öffnet die Auswahl als Dialog.
+- **Auswahl** – Element auf der Seite anklicken: Text → nur dieser Text, freie Fläche einer Karte → die ganze Karte.
+  Die Leiste zeigt den Pfad (übergeordnete Elemente), das Textfeld, je nach Bereich Kopfbild, Galerie oder
+  Referenzprojekte, die **Gestaltung** (Schriftfarbe, Hintergrund, Schriftgröße/-stärke, Ausrichtung, Ecken, Breite,
+  auf Handy/Computer ausblenden), die **Abstände** (außen/innen je Seite), **Einfügen** (davor, dahinter, innen
+  oben/unten) und die **enthaltenen Elemente**, die sich ebenso auswählen und bearbeiten lassen.
+- **Einfügen** – Vorlagen, Basis-Elemente und Container mit echter Vorschau: an die gewählte Stelle, per
+  Drag & Drop auf die Seite (grüne Linie zeigt die Stelle) oder antippen und Stelle anklicken.
+- **Ebenen** – der Aufbau der ganzen Seite als Baum (Kopfzeile, Abschnitte, Inhalte, Fußzeile).
+- **Abstände** – beim Überfahren werden Außen- (orange) und Innenabstände (blau) sichtbar, Klick wählt aus.
 
-Jede Kachel zeigt eine **echte Vorschau** des Elements (mit demselben Renderer gezeichnet und verkleinert).
+Das Hand-Symbol (oder Alt + Klick) schaltet auf „Seite bedienen“ – z. B. um Reiter zu wechseln. **Speichern** schreibt
+Texte (`src/content/edits.json`), Gestaltung (`src/content/spacing.json` → `scripts/build-spacing.mjs`) und Elemente
+(`src/content/blocks.json`) als Commit auf `main`; Kopfbilder, Galerien und neue Projekte speichern direkt.
+Code: `src/components/debug/EditMode.astro` (Leiste), `src/scripts/editor/` (Auswahl, Inspektor, Texte, Gestaltung,
+Fotos, Projekte), `src/scripts/block-editor.ts` (Elemente), Server: `worker/edit.ts`.
+
+### Elemente aus dem Baukasten
+
 Zur Auswahl stehen **Vorlagen** (Text mit Bild, Drei Vorteile, Karten, Kennzahlen, Aufruf, Galerie, FAQ, Kundenstimme,
 Ansprechpartner, Kontakt-Kasten …), **Basis-Elemente** (Überschrift, Text, Bild, Button, Liste, Icon mit Text, Zitat …)
 und **Container** (Abschnitt, Spalten, Karte), die weitere Elemente aufnehmen – auch ineinander verschachtelt.
-Texte direkt anklicken, Bilder/Symbole anklicken zum Tauschen; ein Klick aufs Element zeigt die Werkzeugleiste
-(übergeordnetes wählen, hoch/runter, einfügen, duplizieren, verschieben – Knopf ziehen oder klicken –, Einstellungen, löschen).
-In den **Einstellungen** hat jedes Element neben seinen eigenen Optionen eine **Gestaltung**: Ausrichtung,
+In der Seitenleiste: hoch/runter, duplizieren, verschieben (Knopf ziehen oder klicken), löschen.
+Jedes Element hat neben seinen eigenen Optionen eine **Gestaltung**: Ausrichtung,
 Farben (Schrift, Hintergrund, Akzent), Schrift (Größe, Stärke, kursiv, Großbuchstaben), Außen-/Innenabstände je Seite,
 Rahmen, Ecken, Schatten, maximale Breite und „nur auf Handy/Computer anzeigen“. Große Schriften und Abstände
 werden auf kleinen Bildschirmen automatisch verkleinert. Daraus entsteht beim Build CSS je Element

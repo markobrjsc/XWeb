@@ -1,19 +1,14 @@
 ---
 /**
- * EditMode – Bearbeiten-Modus der Website (Stift oben rechts).
- *  · Jeder sichtbare Text wird anklickbar und direkt editierbar. Speichern → Commit auf main
- *    (src/content/edits.json), beim nächsten Build eingesetzt von src/middleware.ts.
- *  · Kopfbilder (Startseite + Seitenköpfe, [data-hero-edit]): aus allen Fotos wählen oder neues hochladen
- *    (src/content/heroes.json, neue Bilder unter src/assets/images/hero/).
- *  · Farben: Farbwähler für Akzent (Gelb), Onyx-Töne und hellen Hintergrund – Vorschau sofort,
- *    Speichern schreibt src/styles/custom-colors.css (überschreibt tokens.css).
- *  · Abstände: Element anklicken → Außen- (margin, orange) und Innenabstände (padding, grün) werden angezeigt
- *    und lassen sich einstellen; Speichern schreibt src/content/spacing.json (→ scripts/build-spacing.mjs).
- *  · Galerien (Carousel mit `folder`): Bilder hinzufügen, Reihenfolge per Ziehen ändern, ausblenden
- *    (src/content/galleries.json, neue Bilder als Dateien unter src/assets/images/<ordner>/).
- *  · Elemente: „+“ zwischen den Abschnitten und in Containern fügt Vorlagen, Basis-Elemente und Container ein;
- *    Texte/Bilder direkt änderbar, verschachtelbar (src/scripts/block-editor.ts → src/content/blocks.json).
- * Erscheint nur, wenn der Worker den Modus meldet (GET /api/edit/status/) – Server-Teil: worker/edit.ts.
+ * EditMode – Bearbeiten-Modus der Website (Knopf „Bearbeiten“ oben rechts).
+ * Seitenleiste links in Dunkelgrün – so ist alles, was zur Bearbeitung gehört, klar von der Website zu unterscheiden:
+ *  · Auswahl:  Element anklicken (Text → nur der Text, freie Fläche → Karte/Abschnitt) und in der Leiste bearbeiten:
+ *              Text, Kopfbild, Galerie, Referenzprojekte, Gestaltung, Abstände, Einfügen, enthaltene Elemente
+ *  · Einfügen: Vorlagen, Basis-Elemente und Container mit Vorschau (BlockEditorUI.astro)
+ *  · Ebenen:   Aufbau der Seite als Baum
+ *  · Abstände: Außen-/Innenabstände sichtbar machen und einstellen
+ * Logik: src/scripts/editor/ (Seitenleiste) und src/scripts/block-editor.ts (Elemente) · Server: worker/edit.ts.
+ * Erscheint nur, wenn der Worker den Modus meldet (GET /api/edit/status/).
  */
 import { getImage } from 'astro:assets';
 import BlockEditorUI from './BlockEditorUI.astro';
@@ -27,105 +22,100 @@ const heroChoices = await Promise.all(
     .sort((a, b) => a.name.localeCompare(b.name, 'de', { numeric: true }))
     .map(async ({ name, image }) => ({ name, thumb: (await getImage({ src: image, width: 320, format: 'webp', quality: 60 })).src })),
 );
+
+// Symbole für die Seitenleiste (werden im Browser geklont – src/scripts/editor/index.ts)
+const ICONS = [
+  'box', 'mouse-pointer-click', 'plus', 'layers', 'corner-left-up', 'arrow-up', 'arrow-down', 'copy', 'move', 'trash-2',
+  'play', 'blocks', 'link', 'palette', 'move-diagonal', 'list-tree', 'type', 'image', 'images', 'folder-plus',
+  'rotate-ccw', 'align-left', 'align-center', 'align-right', 'align-justify', 'arrow-up-to-line', 'panel-top-open',
+  'panel-bottom-open', 'arrow-down-to-line', 'crosshair', 'hand', 'x', 'chevron-right', 'sliders-horizontal',
+  'panel-top', 'panel-bottom', 'square-stack', 'minus', 'heading', 'highlighter', 'tag', 'shapes', 'square', 'dot',
+  'list', 'quote', 'text-cursor-input', 'menu', 'layout-template', 'layout-grid', 'rows-3',
+  'eye', 'eye-off', 'smartphone', 'monitor', 'sparkles', 'square-plus',
+];
 ---
 
 <div class="edit-ui" data-edit-ui hidden>
-  <button class="edit-toggle" type="button" data-edit-toggle aria-pressed="false" title="Bearbeiten-Modus">
-    <Icon name="pencil" size="1.15rem" class="edit-toggle__on" />
-    <Icon name="x" size="1.15rem" class="edit-toggle__off" />
-    <span class="visually-hidden">Bearbeiten-Modus</span>
+  <button class="ed-toggle" type="button" data-ed-toggle title="Seite bearbeiten">
+    <Icon name="pencil" size="1rem" />
+    <span>Bearbeiten</span>
   </button>
 
-  <div class="edit-bar" data-edit-bar hidden>
-    <span class="edit-bar__dot" aria-hidden="true"></span>
-    <p class="edit-bar__text" data-edit-status aria-live="polite">Bearbeiten-Modus: Text anklicken und ändern · „Elemente“ fügt Neues ein.</p>
-    <button class="edit-bar__btn" type="button" data-ub-drawer-toggle aria-pressed="false">Elemente</button>
-    <button class="edit-bar__btn" type="button" data-spacing-toggle aria-pressed="false">Abstände</button>
-    <button class="edit-bar__btn" type="button" data-colors-open>Farben</button>
-    <button class="edit-bar__btn" type="button" data-edit-discard>Verwerfen</button>
-    <button class="edit-bar__btn edit-bar__btn--primary" type="button" data-edit-save>Speichern</button>
-  </div>
-
-  <!-- Abstände: Markierung (margin orange, padding grün) und Einstell-Feld -->
-  <div class="spacing-overlay" data-spacing-overlay hidden aria-hidden="true">
-    <div class="spacing-overlay__margin" data-spacing-margin></div>
-    <div class="spacing-overlay__padding" data-spacing-padding></div>
-    <div class="spacing-overlay__label" data-spacing-label></div>
-  </div>
-
-  <div class="spacing-panel" data-spacing-panel hidden>
-    <div class="spacing-panel__head">
-      <p class="spacing-panel__title">Abstände</p>
-      <code class="spacing-panel__target" data-spacing-target></code>
-    </div>
-    <fieldset class="spacing-panel__group spacing-panel__group--margin">
-      <legend>Außen (margin) in px</legend>
-      <label>Oben <input type="number" step="1" data-spacing-prop="margin-top" /></label>
-      <label>Rechts <input type="number" step="1" data-spacing-prop="margin-right" /></label>
-      <label>Unten <input type="number" step="1" data-spacing-prop="margin-bottom" /></label>
-      <label>Links <input type="number" step="1" data-spacing-prop="margin-left" /></label>
-    </fieldset>
-    <fieldset class="spacing-panel__group spacing-panel__group--padding">
-      <legend>Innen (padding) in px</legend>
-      <label>Oben <input type="number" step="1" min="0" data-spacing-prop="padding-top" /></label>
-      <label>Rechts <input type="number" step="1" min="0" data-spacing-prop="padding-right" /></label>
-      <label>Unten <input type="number" step="1" min="0" data-spacing-prop="padding-bottom" /></label>
-      <label>Links <input type="number" step="1" min="0" data-spacing-prop="padding-left" /></label>
-    </fieldset>
-    <p class="spacing-panel__status" data-spacing-status aria-live="polite"></p>
-    <div class="spacing-panel__actions">
-      <button class="spacing-panel__btn" type="button" data-spacing-reset>Element zurücksetzen</button>
-      <button class="spacing-panel__btn" type="button" data-spacing-done>Fertig</button>
-      <button class="spacing-panel__btn spacing-panel__btn--primary" type="button" data-spacing-save disabled>Abstände speichern</button>
-    </div>
-  </div>
-
-  <dialog class="gallery-dialog colors-dialog" data-colors-dialog aria-labelledby="colors-dialog-title">
-    <form method="dialog" class="gallery-dialog__inner">
-      <header class="gallery-dialog__head">
-        <div>
-          <p class="gallery-dialog__kicker">Farben</p>
-          <h2 class="gallery-dialog__title" id="colors-dialog-title">Farben der Website anpassen</h2>
-        </div>
-        <button class="gallery-dialog__close" type="button" aria-label="Schließen">
-          <Icon name="x" size="1.1rem" />
-        </button>
-      </header>
-      <p class="gallery-dialog__hint">Änderungen sind sofort als Vorschau sichtbar. Hell- und Hover-Töne werden automatisch berechnet.</p>
-      <div class="colors-grid">
-        <label class="color-field">
-          <input type="color" data-color-var="--yellow-500" />
-          <span><strong>Akzent (Gelb)</strong><small>Buttons, Hervorhebungen, aktive Reiter</small></span>
-          <code data-color-code></code>
-        </label>
-        <label class="color-field">
-          <input type="color" data-color-var="--onyx-950" />
-          <span><strong>Onyx dunkel</strong><small>Header, Footer, Überschriften, Verdunklungen</small></span>
-          <code data-color-code></code>
-        </label>
-        <label class="color-field">
-          <input type="color" data-color-var="--onyx-800" />
-          <span><strong>Onyx mittel</strong><small>Links, Flächen im dunklen Bereich</small></span>
-          <code data-color-code></code>
-        </label>
-        <label class="color-field">
-          <input type="color" data-color-var="--onyx-600" />
-          <span><strong>Onyx Flächen</strong><small>Icon-Flächen, Badges</small></span>
-          <code data-color-code></code>
-        </label>
-        <label class="color-field">
-          <input type="color" data-color-var="--gray-50" />
-          <span><strong>Heller Hintergrund</strong><small>Hellgraue Abschnitte</small></span>
-          <code data-color-code></code>
-        </label>
+  <aside class="ed-sidebar" data-ed-sidebar data-size="half" hidden aria-label="Bearbeiten">
+    <header class="ed-head">
+      <button class="ed-head__logo" type="button" data-ed-collapse title="Leiste ein- oder ausklappen">
+        <Icon name="pencil" size="1rem" class="ed-head__pen" />
+        <Icon name="panel-left-open" size="1.05rem" class="ed-head__open" />
+      </button>
+      <div class="ed-head__title">
+        <strong>Bearbeiten</strong>
+        <small data-ed-page></small>
       </div>
-      <footer class="gallery-dialog__foot">
-        <button class="gallery-dialog__add" type="button" data-colors-reset>Auf Standard zurücksetzen</button>
-        <p class="gallery-dialog__status" data-colors-status aria-live="polite"></p>
-        <button class="edit-bar__btn edit-bar__btn--primary" type="button" data-colors-save>Farben speichern</button>
-      </footer>
-    </form>
-  </dialog>
+      <button class="ed-icon-btn" type="button" data-ed-interact aria-pressed="false" title="Seite bedienen (Reiter, Galerien …) – geht auch mit Alt + Klick">
+        <Icon name="hand" size="1.05rem" />
+      </button>
+      <button class="ed-icon-btn ed-sheet-btn" type="button" data-ed-sheet title="Leiste größer oder kleiner">
+        <Icon name="chevrons-up-down" size="1.05rem" />
+      </button>
+      <button class="ed-icon-btn ed-collapse-btn" type="button" data-ed-collapse title="Leiste einklappen">
+        <Icon name="panel-left-close" size="1.05rem" />
+      </button>
+      <button class="ed-icon-btn" type="button" data-ed-close title="Bearbeiten beenden">
+        <Icon name="x" size="1.1rem" />
+      </button>
+    </header>
+
+    <nav class="ed-tabs" role="tablist" aria-label="Werkzeuge">
+      <button type="button" role="tab" data-ed-tab="inspect" aria-selected="true"><Icon name="mouse-pointer-2" size="1.05rem" /><span>Auswahl</span></button>
+      <button type="button" role="tab" data-ed-tab="insert" aria-selected="false"><Icon name="square-plus" size="1.05rem" /><span>Einfügen</span></button>
+      <button type="button" role="tab" data-ed-tab="layers" aria-selected="false"><Icon name="layers" size="1.05rem" /><span>Ebenen</span></button>
+      <button type="button" role="tab" data-ed-tab="spacing" aria-selected="false"><Icon name="move-diagonal" size="1.05rem" /><span>Abstände</span></button>
+    </nav>
+
+    <div class="ed-hint" data-ed-hint hidden>
+      <span data-ed-hint-text></span>
+      <button type="button" data-ed-hint-cancel>Abbrechen</button>
+    </div>
+
+    <div class="ed-body">
+      <section data-ed-panel="inspect"><div data-ed-inspector></div></section>
+      <section data-ed-panel="insert" hidden>
+        <div data-ed-target></div>
+        <BlockEditorUI part="library" />
+      </section>
+      <section data-ed-panel="layers" hidden><div class="ed-tree" data-ed-tree></div></section>
+      <section data-ed-panel="spacing" hidden><div class="ed-spacing" data-ed-spacing></div></section>
+    </div>
+
+    <footer class="ed-foot">
+      <p class="ed-status" data-ed-status aria-live="polite"></p>
+      <div class="ed-foot__buttons">
+        <button class="ed-btn" type="button" data-ed-discard disabled><Icon name="undo-2" size="1rem" /><span>Verwerfen</span></button>
+        <button class="ed-btn ed-btn--primary" type="button" data-ed-save disabled><Icon name="save" size="1rem" /><span>Speichern</span></button>
+      </div>
+    </footer>
+  </aside>
+
+  <!-- Markierungen auf der Seite -->
+  <div class="ed-box ed-box--hover" data-ed-hover hidden><span class="ed-box__tag"></span></div>
+  <div class="ed-box ed-box--select" data-ed-select hidden>
+    <div class="ed-box__bar">
+      <span class="ed-box__tag"></span>
+      <button type="button" data-ed-quick="parent" title="Übergeordnetes Element wählen"><Icon name="corner-left-up" size="0.95rem" /></button>
+      <button type="button" data-ed-quick="duplicate" title="Duplizieren"><Icon name="copy" size="0.95rem" /></button>
+      <button type="button" data-ed-quick="delete" title="Löschen"><Icon name="trash-2" size="0.95rem" /></button>
+    </div>
+    <button class="ed-plus" type="button" data-ed-plus="before" title="Davor einfügen"><Icon name="plus" size="0.95rem" /></button>
+    <button class="ed-plus" type="button" data-ed-plus="after" title="Dahinter einfügen"><Icon name="plus" size="0.95rem" /></button>
+  </div>
+  <div class="ed-spacing-overlay" data-ed-spacing-overlay hidden>
+    <div class="ed-spacing-overlay__margin" data-ed-margin></div>
+    <div class="ed-spacing-overlay__padding" data-ed-padding></div>
+  </div>
+
+  <template data-ed-icons>
+    {ICONS.map((name) => <span class="ed-ico" data-icon={name}><Icon name={name} size="1rem" /></span>)}
+  </template>
 
   <dialog class="gallery-dialog" data-hero-dialog aria-labelledby="hero-dialog-title">
     <form method="dialog" class="gallery-dialog__inner">
@@ -166,13 +156,11 @@ const heroChoices = await Promise.all(
           <p class="gallery-dialog__kicker">Galerie bearbeiten</p>
           <h2 class="gallery-dialog__title" id="gallery-dialog-title" data-gallery-title></h2>
         </div>
-        <button class="gallery-dialog__close" type="submit" value="cancel" aria-label="Schließen">
+        <button class="gallery-dialog__close" type="button" aria-label="Schließen">
           <Icon name="x" size="1.1rem" />
         </button>
       </header>
-      <p class="gallery-dialog__hint">
-        Ziehen zum Sortieren (oder Pfeile) · Auge zum Aus-/Einblenden · neue Bilder werden automatisch verkleinert.
-      </p>
+      <p class="gallery-dialog__hint">Ziehen zum Sortieren (oder Pfeile) · Auge zum Aus-/Einblenden · neue Bilder werden automatisch verkleinert.</p>
       <ol class="gallery-dialog__grid" data-gallery-grid></ol>
       <footer class="gallery-dialog__foot">
         <label class="gallery-dialog__add">
@@ -180,1162 +168,1586 @@ const heroChoices = await Promise.all(
           <Icon name="image-plus" size="1rem" /> Bilder hinzufügen
         </label>
         <p class="gallery-dialog__status" data-gallery-status aria-live="polite"></p>
-        <button class="edit-bar__btn edit-bar__btn--primary" type="button" data-gallery-save>Galerie speichern</button>
+        <button class="ed-btn ed-btn--primary" type="button" data-gallery-save>Galerie speichern</button>
       </footer>
     </form>
   </dialog>
 
-  <BlockEditorUI />
+  <BlockEditorUI part="overlays" />
 </div>
 
 <script>
-  import { createBlockEditor } from '@/scripts/block-editor';
+  import { initEditor } from '@/scripts/editor';
 
-  const ui = document.querySelector<HTMLElement>('[data-edit-ui]');
-
-  type Tracked = { block: HTMLElement; nodes: { node: Text; original: string }[]; scope: 'global' | 'page' };
-  const SKIP = 'script, style, noscript, template, svg, textarea, select, option, input, [data-edit-ui], [data-design-panel], ub-zone, [data-count-to], [data-carousel], .visually-hidden, [aria-hidden="true"]';
-  const normalize = (text: string) => text.replace(/\s+/g, ' ').trim();
-
-  async function init() {
-    if (!ui) return;
-    try {
-      const status = await (await fetch('/api/edit/status/')).json();
-      if (!status?.enabled) return;
-    } catch {
-      return;
-    }
-    ui.hidden = false;
-
-    const toggle = ui.querySelector<HTMLButtonElement>('[data-edit-toggle]')!;
-    const bar = ui.querySelector<HTMLElement>('[data-edit-bar]')!;
-    const statusText = ui.querySelector<HTMLElement>('[data-edit-status]')!;
-    const saveButton = ui.querySelector<HTMLButtonElement>('[data-edit-save]')!;
-    let tracked: Tracked[] = [];
-    // wird unten vom Abstands-Modus gesetzt
-    let spacingToggleOff = () => {};
-    let editing = false;
-    const IDLE = 'Bearbeiten-Modus: Text anklicken und ändern · „Elemente“ fügt Neues ein.';
-
-    // Elemente einfügen und bearbeiten (src/scripts/block-editor.ts)
-    const blocks = createBlockEditor(ui, {
-      onChange: () => updateBar(),
-      shrink: (file) => shrink(file),
-      status: (message) => (statusText.textContent = message),
-    });
-
-    const supportsPlain = (() => {
-      const probe = document.createElement('div');
-      probe.contentEditable = 'plaintext-only';
-      return probe.contentEditable === 'plaintext-only';
-    })();
-
-    /* ---------------- Texte ---------------- */
-    const collect = () => {
-      const blocks = new Map<HTMLElement, Tracked>();
-      const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT, {
-        acceptNode: (node) => {
-          const parent = node.parentElement;
-          if (!parent || !normalize(node.textContent ?? '')) return NodeFilter.FILTER_REJECT;
-          if (parent.closest(SKIP)) return NodeFilter.FILTER_REJECT;
-          return NodeFilter.FILTER_ACCEPT;
-        },
-      });
-      for (let node = walker.nextNode() as Text | null; node; node = walker.nextNode() as Text | null) {
-        const block = node.parentElement!;
-        const entry = blocks.get(block) ?? {
-          block,
-          nodes: [],
-          scope: block.closest('header, footer, .hero__legal') ? ('global' as const) : ('page' as const),
-        };
-        entry.nodes.push({ node, original: node.textContent ?? '' });
-        blocks.set(block, entry);
-      }
-      return [...blocks.values()];
-    };
-
-    const changes = () => {
-      const list: { scope: 'global' | 'page'; from: string; to: string }[] = [];
-      for (const entry of tracked) {
-        const detached = entry.nodes.some(({ node }) => !node.isConnected || node.parentElement !== entry.block);
-        if (detached && entry.nodes.length === 1) {
-          const to = normalize(entry.block.textContent ?? '');
-          const from = normalize(entry.nodes[0].original);
-          if (from !== to) list.push({ scope: entry.scope, from, to });
-          continue;
-        }
-        for (const { node, original } of entry.nodes) {
-          const from = normalize(original);
-          const to = normalize(node.isConnected ? (node.textContent ?? '') : '');
-          if (from !== to) list.push({ scope: entry.scope, from, to });
-        }
-      }
-      return list;
-    };
-
-    const updateBar = () => {
-      const count = changes().length;
-      const parts = [
-        ...(count ? [`${count} ${count === 1 ? 'Textänderung' : 'Textänderungen'}`] : []),
-        ...(blocks.dirty() ? ['Elemente geändert'] : []),
-      ];
-      statusText.textContent = parts.length ? `${parts.join(' · ')} – noch nicht gespeichert` : IDLE;
-      saveButton.disabled = parts.length === 0;
-    };
-    const unsaved = () => changes().length > 0 || blocks.dirty();
-
-    const start = () => {
-      editing = true;
-      document.querySelectorAll('[data-reveal]').forEach((el) => el.classList.add('is-revealed'));
-      tracked = collect();
-      tracked.forEach(({ block }) => {
-        block.setAttribute('contenteditable', supportsPlain ? 'plaintext-only' : 'true');
-        block.dataset.editable = '';
-        block.spellcheck = true;
-      });
-      document.querySelectorAll<HTMLElement>('[data-carousel][data-gallery]').forEach(addGalleryButton);
-      document.querySelectorAll<HTMLElement>('[data-hero-edit]').forEach(addHeroButton);
-      document.documentElement.classList.add('is-editing');
-      toggle.setAttribute('aria-pressed', 'true');
-      bar.hidden = false;
-      updateBar();
-      blocks.start();
-    };
-
-    const stop = () => {
-      editing = false;
-      tracked.forEach(({ block }) => {
-        block.removeAttribute('contenteditable');
-        delete block.dataset.editable;
-      });
-      document.querySelectorAll('[data-gallery-edit], [data-hero-edit-btn]').forEach((button) => button.remove());
-      blocks.stop();
-      document.documentElement.classList.remove('is-editing');
-      spacingToggleOff();
-      toggle.setAttribute('aria-pressed', 'false');
-      bar.hidden = true;
-    };
-
-    const discard = () => {
-      for (const entry of tracked) {
-        if (entry.nodes.length === 1 && !entry.nodes[0].node.isConnected) {
-          entry.block.textContent = entry.nodes[0].original;
-          entry.nodes[0].node = entry.block.firstChild as Text;
-          continue;
-        }
-        entry.nodes.forEach(({ node, original }) => node.isConnected && (node.textContent = original));
-      }
-      blocks.discard();
-      updateBar();
-    };
-
-    toggle.addEventListener('click', () => {
-      if (!editing) return start();
-      if (unsaved() && !confirm('Es gibt ungespeicherte Änderungen. Trotzdem beenden (Änderungen bleiben nur bis zum Neuladen sichtbar)?')) return;
-      stop();
-    });
-    ui.querySelector('[data-edit-discard]')!.addEventListener('click', discard);
-
-    saveButton.addEventListener('click', async () => {
-      const list = changes();
-      const blocksDirty = blocks.dirty();
-      if (!list.length && !blocksDirty) return;
-      saveButton.disabled = true;
-      statusText.textContent = 'Wird gespeichert …';
-      try {
-        if (list.length) {
-          const response = await fetch('/api/edit/texte/', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ page: location.pathname, changes: list }),
-          });
-          const result = await response.json();
-          if (!response.ok || !result.ok) throw new Error(result.error || 'Speichern fehlgeschlagen.');
-          // Gespeicherter Stand ist der neue Ausgangspunkt
-          tracked = collect();
-        }
-        if (blocksDirty) await blocks.save();
-        statusText.textContent = 'Gespeichert – nach dem automatischen Build in ca. 2 Minuten live.';
-      } catch (error) {
-        statusText.textContent = error instanceof Error ? error.message : 'Speichern fehlgeschlagen.';
-        saveButton.disabled = false;
-      }
-    });
-
-    // Während des Bearbeitens: keine Links/Buttons auslösen, keine Zeilenumbrüche, nur reiner Text
-    document.addEventListener(
-      'click',
-      (event) => {
-        if (!editing) return;
-        const target = event.target as HTMLElement;
-        if (target.closest('[data-edit-ui], [data-design-panel], [data-gallery-edit], [data-hero-edit-btn]')) return;
-        if (target.closest('a, button, summary, label')) event.preventDefault();
-      },
-      true,
-    );
-    document.addEventListener(
-      'submit',
-      (event) => {
-        if (editing && !(event.target as HTMLElement).closest('[data-edit-ui]')) event.preventDefault();
-      },
-      true,
-    );
-    document.addEventListener('keydown', (event) => {
-      // Zeilenumbrüche nur in mehrzeiligen Feldern von Elementen (Text, Antwort …)
-      const target = event.target as HTMLElement;
-      if (editing && event.key === 'Enter' && target.isContentEditable && !target.closest('[data-ub-multiline]')) event.preventDefault();
-    });
-    document.addEventListener('paste', (event) => {
-      const target = event.target as HTMLElement;
-      if (!editing || !target.isContentEditable || supportsPlain) return;
-      event.preventDefault();
-      document.execCommand('insertText', false, event.clipboardData?.getData('text/plain') ?? '');
-    });
-    document.addEventListener('input', () => editing && updateBar());
-    window.addEventListener('beforeunload', (event) => {
-      if (editing && unsaved()) event.preventDefault();
-    });
-
-    /* ---------------- Abstände ---------------- */
-    const spacingToggle = ui.querySelector<HTMLButtonElement>('[data-spacing-toggle]')!;
-    const overlay = ui.querySelector<HTMLElement>('[data-spacing-overlay]')!;
-    const marginBox = overlay.querySelector<HTMLElement>('[data-spacing-margin]')!;
-    const paddingBox = overlay.querySelector<HTMLElement>('[data-spacing-padding]')!;
-    const spacingLabel = overlay.querySelector<HTMLElement>('[data-spacing-label]')!;
-    const panel = ui.querySelector<HTMLElement>('[data-spacing-panel]')!;
-    const panelTarget = panel.querySelector<HTMLElement>('[data-spacing-target]')!;
-    const spacingStatus = panel.querySelector<HTMLElement>('[data-spacing-status]')!;
-    const spacingSave = panel.querySelector<HTMLButtonElement>('[data-spacing-save]')!;
-    const propInputs = [...panel.querySelectorAll<HTMLInputElement>('[data-spacing-prop]')];
-    const SIDES = ['top', 'right', 'bottom', 'left'] as const;
-    let spacingMode = false;
-    let selected: HTMLElement | null = null;
-    const pending = new Map<string, Record<string, string | null> | null>();
-
-    const isUi = (el: Element | null) => Boolean(el?.closest('[data-edit-ui], [data-design-panel], [data-gallery-edit], [data-hero-edit-btn]'));
-
-    // Eindeutiger, stabiler Selektor – Header/Footer gelten auf allen Seiten, sonst nur auf dieser Seite
-    const selectorFor = (el: HTMLElement) => {
-      const parts: string[] = [];
-      let node: HTMLElement | null = el;
-      while (node && node !== document.body) {
-        const tag = node.tagName.toLowerCase();
-        if (node.id && /^[a-zA-Z][a-zA-Z0-9_-]*$/.test(node.id)) {
-          parts.unshift(`${tag}#${node.id}`);
-          break;
-        }
-        const classes = [...node.classList].filter((c) => /^[a-zA-Z][a-zA-Z0-9_-]*$/.test(c) && !/^(is-|js$)/.test(c));
-        let part = tag + classes.map((c) => `.${c}`).join('');
-        const parent: HTMLElement | null = node.parentElement;
-        if (parent) {
-          const same = [...parent.children].filter((child) => child.tagName === node!.tagName);
-          if (same.length > 1) part += `:nth-of-type(${same.indexOf(node) + 1})`;
-        }
-        parts.unshift(part);
-        node = parent;
-      }
-      const chain = parts.join(' > ');
-      const rooted = node === document.body ? `> ${chain}` : chain;
-      return el.closest('header, footer')
-        ? `body ${rooted}`
-        : `body[data-page="${location.pathname}"] ${rooted}`;
-    };
-
-    const px = (value: string) => Math.round(parseFloat(value) || 0);
-
-    const draw = (el: HTMLElement | null) => {
-      if (!el) {
-        overlay.hidden = true;
-        return;
-      }
-      const cs = getComputedStyle(el);
-      const r = el.getBoundingClientRect();
-      const m = SIDES.map((side) => px(cs.getPropertyValue(`margin-${side}`)));
-      const pd = SIDES.map((side) => px(cs.getPropertyValue(`padding-${side}`)));
-      const b = SIDES.map((side) => px(cs.getPropertyValue(`border-${side}-width`)));
-      const pos = Math.max.bind(null, 0);
-      const set = (box: HTMLElement, left: number, top: number, width: number, height: number, widths: number[]) => {
-        box.style.left = `${left}px`;
-        box.style.top = `${top}px`;
-        box.style.width = `${Math.max(0, width)}px`;
-        box.style.height = `${Math.max(0, height)}px`;
-        box.style.borderWidth = widths.map((w) => `${pos(w)}px`).join(' ');
-      };
-      set(marginBox, r.left - pos(m[3]), r.top - pos(m[0]), r.width + pos(m[1]) + pos(m[3]), r.height + pos(m[0]) + pos(m[2]), m);
-      set(paddingBox, r.left + b[3], r.top + b[0], r.width - b[1] - b[3], r.height - b[0] - b[2], pd);
-      const name = el.tagName.toLowerCase() + (el.classList[0] ? `.${el.classList[0]}` : '');
-      spacingLabel.textContent = `${name}   Außen ${m.join(' ')} · Innen ${pd.join(' ')}`;
-      spacingLabel.style.left = `${Math.max(4, r.left - pos(m[3]))}px`;
-      spacingLabel.style.top = `${Math.max(4, r.top - pos(m[0]) - 26)}px`;
-      overlay.hidden = false;
-    };
-
-    const updateSaveButton = () => {
-      spacingSave.disabled = pending.size === 0;
-      spacingSave.textContent = pending.size ? `Abstände speichern (${pending.size})` : 'Abstände speichern';
-    };
-
-    const select = (el: HTMLElement) => {
-      selected = el;
-      const cs = getComputedStyle(el);
-      propInputs.forEach((input) => (input.value = String(px(cs.getPropertyValue(input.dataset.spacingProp!)))));
-      panelTarget.textContent = el.tagName.toLowerCase() + [...el.classList].slice(0, 2).map((c) => `.${c}`).join('');
-      panelTarget.title = selectorFor(el);
-      spacingStatus.textContent = el.closest('header, footer') ? 'Gilt auf allen Seiten (Header/Footer).' : 'Gilt nur auf dieser Seite.';
-      panel.hidden = false;
-      draw(el);
-    };
-
-    const setSpacingMode = (on: boolean) => {
-      spacingMode = on;
-      spacingToggle.setAttribute('aria-pressed', String(on));
-      document.documentElement.classList.toggle('is-spacing', on);
-      if (!on) {
-        selected = null;
-        panel.hidden = true;
-        overlay.hidden = true;
-      }
-    };
-    spacingToggle.addEventListener('click', () => setSpacingMode(!spacingMode));
-    spacingToggleOff = () => setSpacingMode(false);
-
-    document.addEventListener('mousemove', (event) => {
-      if (!spacingMode || selected) return;
-      const target = event.target as HTMLElement;
-      draw(isUi(target) || target === document.body || target === document.documentElement ? null : target);
-    });
-    // Im Abstands-Modus: Klick wählt ein Element (kein Textcursor, keine Links)
-    const intercept = (event: Event) => {
-      if (!spacingMode) return;
-      const target = event.target as HTMLElement;
-      if (isUi(target)) return;
-      event.preventDefault();
-      event.stopPropagation();
-      if (event.type === 'click' && target !== document.body) select(target);
-    };
-    document.addEventListener('mousedown', intercept, true);
-    document.addEventListener('click', intercept, true);
-    window.addEventListener('scroll', () => selected && draw(selected), { passive: true });
-    window.addEventListener('resize', () => selected && draw(selected));
-
-    propInputs.forEach((input) =>
-      input.addEventListener('input', () => {
-        if (!selected) return;
-        const prop = input.dataset.spacingProp!;
-        const value = input.value === '' ? null : `${Math.round(Number(input.value))}px`;
-        if (value) selected.style.setProperty(prop, value, 'important');
-        else selected.style.removeProperty(prop);
-        const key = selectorFor(selected);
-        const entry = pending.get(key) ?? {};
-        pending.set(key, { ...entry, [prop]: value });
-        updateSaveButton();
-        draw(selected);
-      }),
-    );
-
-    panel.querySelector('[data-spacing-reset]')!.addEventListener('click', () => {
-      if (!selected) return;
-      propInputs.forEach((input) => selected!.style.removeProperty(input.dataset.spacingProp!));
-      pending.set(selectorFor(selected), null);
-      updateSaveButton();
-      select(selected);
-      spacingStatus.textContent = 'Zurückgesetzt – gespeicherte Abstände dieses Elements werden beim Speichern entfernt.';
-    });
-
-    panel.querySelector('[data-spacing-done]')!.addEventListener('click', () => {
-      selected = null;
-      panel.hidden = true;
-      overlay.hidden = true;
-    });
-
-    spacingSave.addEventListener('click', async () => {
-      if (!pending.size) return;
-      spacingSave.disabled = true;
-      spacingStatus.textContent = 'Wird gespeichert …';
-      try {
-        const response = await fetch('/api/edit/abstaende/', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ rules: Object.fromEntries(pending) }),
-        });
-        const result = await response.json();
-        if (!response.ok || !result.ok) throw new Error(result.error || 'Speichern fehlgeschlagen.');
-        pending.clear();
-        updateSaveButton();
-        spacingStatus.textContent = 'Gespeichert – nach dem automatischen Build in ca. 2 Minuten live.';
-      } catch (error) {
-        spacingStatus.textContent = error instanceof Error ? error.message : 'Speichern fehlgeschlagen.';
-        spacingSave.disabled = false;
-      }
-    });
-
-    document.addEventListener('keydown', (event) => {
-      if (event.key === 'Escape' && spacingMode && selected) {
-        selected = null;
-        panel.hidden = true;
-        overlay.hidden = true;
-      }
-    });
-
-    /* ---------------- Farben ---------------- */
-    // Standardwerte wie in src/styles/tokens.css
-    const COLOR_DEFAULTS: Record<string, string> = {
-      '--yellow-500': '#f3a505',
-      '--onyx-950': '#0b0b0c',
-      '--onyx-800': '#19191a',
-      '--onyx-600': '#2c2c2d',
-      '--gray-50': '#f7f7f6',
-    };
-    const colorsDialog = ui.querySelector<HTMLDialogElement>('[data-colors-dialog]')!;
-    const colorsStatus = colorsDialog.querySelector<HTMLElement>('[data-colors-status]')!;
-    const colorInputs = [...colorsDialog.querySelectorAll<HTMLInputElement>('[data-color-var]')];
-    const root = document.documentElement;
-
-    const hexToRgb = (hex: string) => [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16));
-    const rgbToHex = (rgb: number[]) => `#${rgb.map((v) => Math.round(Math.max(0, Math.min(255, v))).toString(16).padStart(2, '0')).join('')}`;
-    const mix = (hex: string, target: string, amount: number) => {
-      const a = hexToRgb(hex);
-      const b = hexToRgb(target);
-      return rgbToHex(a.map((v, i) => v + (b[i] - v) * amount));
-    };
-    const toHex = (value: string) => {
-      const v = value.trim();
-      if (/^#[0-9a-f]{6}$/i.test(v)) return v.toLowerCase();
-      const probe = document.createElement('span');
-      probe.style.color = v;
-      document.body.append(probe);
-      const rgb = getComputedStyle(probe).color.match(/\d+/g)?.slice(0, 3).map(Number) ?? [0, 0, 0];
-      probe.remove();
-      return rgbToHex(rgb);
-    };
-
-    // Aus den gewählten Grundfarben alle abhängigen Töne berechnen
-    const derive = (base: Record<string, string>) => {
-      const y = base['--yellow-500'];
-      const o = base['--onyx-950'];
-      return {
-        ...base,
-        '--yellow-50': mix(y, '#ffffff', 0.9),
-        '--yellow-100': mix(y, '#ffffff', 0.75),
-        '--yellow-300': mix(y, '#ffffff', 0.35),
-        '--yellow-600': mix(y, '#000000', 0.1),
-        '--yellow-700': mix(y, '#000000', 0.45),
-        '--onyx-900': mix(o, '#ffffff', 0.03),
-        '--ink': hexToRgb(o).join(' '),
-      };
-    };
-
-    const currentBase = () =>
-      Object.fromEntries(colorInputs.map((input) => [input.dataset.colorVar!, input.value.toLowerCase()]));
-
-    const preview = () => {
-      Object.entries(derive(currentBase())).forEach(([name, value]) => root.style.setProperty(name, value));
-      colorInputs.forEach((input) => {
-        const code = input.parentElement?.querySelector('[data-color-code]');
-        if (code) code.textContent = input.value.toUpperCase();
-      });
-    };
-
-    ui.querySelector('[data-colors-open]')!.addEventListener('click', () => {
-      const styles = getComputedStyle(root);
-      colorInputs.forEach((input) => (input.value = toHex(styles.getPropertyValue(input.dataset.colorVar!))));
-      preview();
-      colorsStatus.textContent = '';
-      colorsDialog.showModal();
-    });
-    colorInputs.forEach((input) => input.addEventListener('input', preview));
-
-    colorsDialog.querySelector('[data-colors-reset]')!.addEventListener('click', () => {
-      colorInputs.forEach((input) => (input.value = COLOR_DEFAULTS[input.dataset.colorVar!]));
-      preview();
-      colorsStatus.textContent = 'Standardfarben als Vorschau – zum Übernehmen speichern.';
-    });
-
-    colorsDialog.querySelector('[data-colors-save]')!.addEventListener('click', async () => {
-      const base = currentBase();
-      const isDefault = Object.entries(COLOR_DEFAULTS).every(([name, value]) => base[name] === value);
-      colorsStatus.textContent = 'Wird gespeichert …';
-      try {
-        const response = await fetch('/api/edit/farben/', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ colors: isDefault ? {} : derive(base) }),
-        });
-        const result = await response.json();
-        if (!response.ok || !result.ok) throw new Error(result.error || 'Speichern fehlgeschlagen.');
-        colorsStatus.textContent = 'Gespeichert – nach dem automatischen Build in ca. 2 Minuten live.';
-      } catch (error) {
-        colorsStatus.textContent = error instanceof Error ? error.message : 'Speichern fehlgeschlagen.';
-      }
-    });
-
-    /* ---------------- Kopfbilder ---------------- */
-    const heroDialog = ui.querySelector<HTMLDialogElement>('[data-hero-dialog]')!;
-    const heroStatus = heroDialog.querySelector<HTMLElement>('[data-hero-status]')!;
-    let heroSection: HTMLElement | null = null;
-
-    function addHeroButton(section: HTMLElement) {
-      const button = document.createElement('button');
-      button.type = 'button';
-      button.className = 'gallery-edit-btn hero-edit-btn';
-      button.dataset.heroEditBtn = '';
-      button.textContent = 'Bild ändern';
-      button.addEventListener('click', (event) => {
-        event.preventDefault();
-        event.stopPropagation();
-        heroSection = section;
-        heroStatus.textContent = '';
-        heroDialog.showModal();
-      });
-      section.append(button);
-    }
-
-    // Vorschau sofort auf der Seite zeigen (volle Qualität nach dem Build)
-    const previewHero = (src: string) => {
-      const img = heroSection?.querySelector<HTMLImageElement>('.hero__bg img, .page-hero__photo img');
-      if (!img) return;
-      img.closest('picture')?.querySelectorAll('source').forEach((source) => source.remove());
-      img.removeAttribute('srcset');
-      img.src = src;
-    };
-
-    const saveHero = async (image: string, preview: string) => {
-      heroStatus.textContent = 'Wird gespeichert …';
-      const response = await fetch('/api/edit/hero/', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ page: heroSection?.dataset.heroEdit ?? location.pathname, image }),
-      });
-      const result = await response.json();
-      if (!response.ok || !result.ok) throw new Error(result.error || 'Speichern fehlgeschlagen.');
-      previewHero(preview);
-      heroStatus.textContent = 'Gespeichert – nach dem automatischen Build in ca. 2 Minuten live.';
-    };
-
-    heroDialog.querySelectorAll<HTMLButtonElement>('[data-hero-choice]').forEach((button) =>
-      button.addEventListener('click', async () => {
-        try {
-          await saveHero(button.dataset.heroChoice ?? '', button.querySelector('img')?.src ?? '');
-        } catch (error) {
-          heroStatus.textContent = error instanceof Error ? error.message : 'Speichern fehlgeschlagen.';
-        }
-      }),
-    );
-
-    heroDialog.querySelector<HTMLInputElement>('[data-hero-upload]')!.addEventListener('change', async (event) => {
-      const input = event.target as HTMLInputElement;
-      const file = input.files?.[0];
-      input.value = '';
-      if (!file) return;
-      try {
-        heroStatus.textContent = 'Bild wird hochgeladen …';
-        const base64 = await shrink(file);
-        const name = `neu-${Date.now().toString(36)}.jpg`;
-        const response = await fetch(`/api/edit/bild/?folder=hero&name=${name}`, {
-          method: 'PUT',
-          headers: { 'Content-Type': 'text/plain' },
-          body: base64,
-        });
-        const result = await response.json();
-        if (!response.ok || !result.ok) throw new Error(result.error || 'Hochladen fehlgeschlagen.');
-        await saveHero(`hero/${result.name}`, `data:image/jpeg;base64,${base64}`);
-      } catch (error) {
-        heroStatus.textContent = error instanceof Error ? error.message : 'Hochladen fehlgeschlagen.';
-      }
-    });
-
-    /* ---------------- Galerien ---------------- */
-    const dialog = ui.querySelector<HTMLDialogElement>('[data-gallery-dialog]')!;
-    const grid = dialog.querySelector<HTMLOListElement>('[data-gallery-grid]')!;
-    const galleryStatus = dialog.querySelector<HTMLElement>('[data-gallery-status]')!;
-    const addInput = dialog.querySelector<HTMLInputElement>('[data-gallery-add]')!;
-    const gallerySave = dialog.querySelector<HTMLButtonElement>('[data-gallery-save]')!;
-    type Item = { name: string; thumb: string; hidden: boolean; file?: File };
-    let items: Item[] = [];
-    let folder = '';
-    let dragIndex = -1;
-
-    // Schließen: X-Knopf und Klick auf den abgedunkelten Hintergrund (alle Dialoge)
-    ui.querySelectorAll<HTMLDialogElement>('dialog').forEach((dlg) => {
-      dlg.querySelector('.gallery-dialog__close')?.addEventListener('click', (event) => {
-        event.preventDefault();
-        dlg.close();
-      });
-      dlg.addEventListener('click', (event) => {
-        if (event.target === dlg) dlg.close();
-      });
-    });
-
-    function addGalleryButton(carousel: HTMLElement) {
-      const button = document.createElement('button');
-      button.type = 'button';
-      button.className = 'gallery-edit-btn';
-      button.dataset.galleryEdit = '';
-      button.textContent = 'Galerie bearbeiten';
-      button.addEventListener('click', (event) => {
-        event.preventDefault();
-        event.stopPropagation();
-        openGallery(carousel);
-      });
-      carousel.append(button);
-    }
-
-    const renderGrid = () => {
-      grid.replaceChildren(
-        ...items.map((item, index) => {
-          const li = document.createElement('li');
-          li.className = 'gallery-item';
-          li.draggable = true;
-          if (item.hidden) li.dataset.hidden = '';
-          if (item.file) li.dataset.new = '';
-          const img = document.createElement('img');
-          img.alt = item.name;
-          if (item.thumb) img.src = item.thumb;
-          const label = document.createElement('span');
-          label.className = 'gallery-item__label';
-          label.textContent = item.file ? 'neu' : item.hidden ? 'ausgeblendet' : `${index + 1}`;
-          const tools = document.createElement('span');
-          tools.className = 'gallery-item__tools';
-          const mk = (text: string, title: string, fn: () => void) => {
-            const b = document.createElement('button');
-            b.type = 'button';
-            b.textContent = text;
-            b.title = title;
-            b.setAttribute('aria-label', title);
-            b.addEventListener('click', fn);
-            return b;
-          };
-          tools.append(
-            mk('←', 'Nach vorne', () => move(index, index - 1)),
-            mk(item.hidden ? '◌' : '◉', item.hidden ? 'Einblenden' : 'Ausblenden', () => {
-              if (item.file) items.splice(index, 1);
-              else item.hidden = !item.hidden;
-              renderGrid();
-            }),
-            mk('→', 'Nach hinten', () => move(index, index + 1)),
-          );
-          li.append(img, label, tools);
-          li.addEventListener('dragstart', () => (dragIndex = index));
-          li.addEventListener('dragover', (event) => event.preventDefault());
-          li.addEventListener('drop', (event) => {
-            event.preventDefault();
-            move(dragIndex, index);
-          });
-          return li;
-        }),
-      );
-    };
-
-    const move = (from: number, to: number) => {
-      if (from < 0 || to < 0 || from >= items.length || to >= items.length || from === to) return;
-      const [item] = items.splice(from, 1);
-      items.splice(to, 0, item);
-      renderGrid();
-    };
-
-    function openGallery(carousel: HTMLElement) {
-      folder = carousel.dataset.gallery ?? '';
-      dialog.querySelector('[data-gallery-title]')!.textContent = carousel.dataset.galleryLabel ?? folder;
-      const visible = [...carousel.querySelectorAll<HTMLElement>('.carousel__slide[data-name]')].map((slide) => {
-        const img = slide.querySelector('img');
-        return { name: slide.dataset.name ?? '', thumb: img?.currentSrc || img?.src || '', hidden: false };
-      });
-      const hidden = (carousel.dataset.galleryHidden ?? '')
-        .split(',')
-        .filter(Boolean)
-        .map((name) => ({ name, thumb: '', hidden: true }));
-      items = [...visible, ...hidden];
-      galleryStatus.textContent = '';
-      gallerySave.disabled = false;
-      renderGrid();
-      dialog.showModal();
-    }
-
-    const readAsDataUrl = (blob: Blob) =>
-      new Promise<string>((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = () => resolve(String(reader.result));
-        reader.onerror = () => reject(reader.error);
-        reader.readAsDataURL(blob);
-      });
-
-    addInput.addEventListener('change', async () => {
-      for (const file of addInput.files ?? []) {
-        items.push({ name: '', thumb: await readAsDataUrl(file), hidden: false, file });
-      }
-      addInput.value = '';
-      renderGrid();
-    });
-
-    // Neue Bilder vor dem Hochladen auf max. 2400 px verkleinern (JPEG)
-    const shrink = async (file: File) => {
-      const bitmap = await createImageBitmap(file);
-      const scale = Math.min(1, 2400 / Math.max(bitmap.width, bitmap.height));
-      const canvas = document.createElement('canvas');
-      canvas.width = Math.round(bitmap.width * scale);
-      canvas.height = Math.round(bitmap.height * scale);
-      canvas.getContext('2d')!.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
-      const blob = await new Promise<Blob>((resolve, reject) =>
-        canvas.toBlob((b) => (b ? resolve(b) : reject(new Error('Bild konnte nicht verarbeitet werden.'))), 'image/jpeg', 0.85),
-      );
-      return (await readAsDataUrl(blob)).split(',')[1];
-    };
-
-    gallerySave.addEventListener('click', async () => {
-      gallerySave.disabled = true;
-      try {
-        const pending = items.filter((item) => item.file);
-        for (const [index, item] of pending.entries()) {
-          galleryStatus.textContent = `Lade Bild ${index + 1} von ${pending.length} hoch …`;
-          const base64 = await shrink(item.file!);
-          const name = `neu-${Date.now().toString(36)}-${index}.jpg`;
-          const response = await fetch(`/api/edit/bild/?folder=${encodeURIComponent(folder)}&name=${name}`, {
-            method: 'PUT',
-            headers: { 'Content-Type': 'text/plain' },
-            body: base64,
-          });
-          const result = await response.json();
-          if (!response.ok || !result.ok) throw new Error(result.error || 'Hochladen fehlgeschlagen.');
-          item.name = result.name;
-          item.file = undefined;
-        }
-        galleryStatus.textContent = 'Speichere Reihenfolge …';
-        const response = await fetch('/api/edit/galerie/', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            folder,
-            order: items.map((item) => item.name),
-            hidden: items.filter((item) => item.hidden).map((item) => item.name),
-          }),
-        });
-        const result = await response.json();
-        if (!response.ok || !result.ok) throw new Error(result.error || 'Speichern fehlgeschlagen.');
-        galleryStatus.textContent = 'Gespeichert – nach dem automatischen Build in ca. 2 Minuten live.';
-        renderGrid();
-      } catch (error) {
-        galleryStatus.textContent = error instanceof Error ? error.message : 'Speichern fehlgeschlagen.';
-      } finally {
-        gallerySave.disabled = false;
-      }
-    });
-  }
-
-  init();
+  initEditor();
 </script>
 
 <style is:global>
-  .edit-ui[hidden] {
-    display: none;
+  /* ======================================================================
+     Bearbeiten-Modus – eigenes dunkelgrünes Farbschema, klar getrennt von der Website
+     ====================================================================== */
+  :root {
+    --ed-w: 23rem;
+    --ed-rail: 3.75rem;
+    --ed-bg: #0c2b21;
+    --ed-bg-2: #0f3428;
+    --ed-surface: #154335;
+    --ed-surface-2: #1b5341;
+    --ed-line: rgb(255 255 255 / 0.1);
+    --ed-text: #e9f6f0;
+    --ed-muted: #9cc2b1;
+    --ed-accent: #34d399;
+    --ed-accent-strong: #10b981;
+    --ed-accent-ink: #04271b;
+    --ed-danger: #fca5a5;
   }
 
-  .edit-toggle {
+  .edit-ui[hidden],
+  .edit-ui [hidden] {
+    display: none !important;
+  }
+
+  /* Knopf zum Starten */
+  .ed-toggle {
     position: fixed;
     top: calc(var(--header-height) + 0.75rem);
     right: 1rem;
     z-index: 1001;
-    display: grid;
-    place-items: center;
-    width: 2.9rem;
-    height: 2.9rem;
-    color: #111a24;
-    border: 1px solid rgb(0 0 0 / 0.08);
-    border-radius: 50%;
-    background: #ffffff;
-    box-shadow: 0 10px 28px -10px rgb(0 0 0 / 0.45);
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    padding: 0.6rem 1rem 0.6rem 0.85rem;
+    font: 700 0.85rem/1 var(--font-sans);
+    color: var(--ed-text);
+    border: 1px solid rgb(255 255 255 / 0.18);
+    border-radius: 999px;
+    background: var(--ed-bg);
+    box-shadow: 0 12px 30px -12px rgb(0 0 0 / 0.55);
     cursor: pointer;
   }
 
-  .edit-toggle .edit-toggle__off,
-  .edit-toggle[aria-pressed='true'] .edit-toggle__on {
-    display: none;
+  .ed-toggle .icon {
+    color: var(--ed-accent);
   }
 
-  .edit-toggle[aria-pressed='true'] {
-    color: #ffffff;
-    background: #111a24;
-  }
-
-  .edit-toggle[aria-pressed='true'] .edit-toggle__off {
-    display: block;
-  }
-
-  .edit-bar {
-    position: fixed;
-    left: 50%;
-    bottom: 1rem;
-    z-index: 1001;
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
-    max-width: calc(100vw - 2rem);
-    padding: 0.5rem 0.5rem 0.5rem 1rem;
-    color: #ffffff;
-    border-radius: 999px;
-    background: #111a24;
-    box-shadow: 0 16px 40px -14px rgb(0 0 0 / 0.6);
-    translate: -50% 0;
-  }
-
-  .edit-bar[hidden] {
-    display: none;
-  }
-
-  /* Schmalere Bildschirme: Hinweistext über den Knöpfen */
-  @media (max-width: 64rem) {
-    .edit-bar {
-      flex-wrap: wrap;
-      justify-content: center;
-      width: calc(100vw - 2rem);
-      padding: 0.6rem;
-      border-radius: 1.25rem;
+  /*
+   * Platz für die Seitenleiste (ab Tablet): Die Seite wird neben der Leiste proportional verkleinert (--ed-zoom,
+   * gesetzt von src/scripts/editor/index.ts) – so bleibt das Layout genau wie in voller Breite, nichts bricht um.
+   * Auf dem Handy liegt die Leiste unten und die Seite bekommt dort Luft.
+   */
+  @media (min-width: 48rem) {
+    html.is-editing {
+      --ed-space: var(--ed-w);
     }
 
-    .edit-bar__dot {
+    html.is-editing.ed-collapsed {
+      --ed-space: var(--ed-rail);
+    }
+
+    html.is-editing body {
+      padding-left: var(--ed-space);
+    }
+
+    html.is-editing :is(main, .site-footer) {
+      zoom: var(--ed-zoom, 1);
+    }
+
+    html.is-editing .site-header {
+      zoom: var(--ed-zoom, 1);
+      left: calc(var(--ed-space) / var(--ed-zoom, 1));
+    }
+  }
+
+  @media (min-width: 48rem) and (max-width: 63.99rem) {
+    :root {
+      --ed-w: 20rem;
+    }
+  }
+
+  @media (min-width: 100rem) {
+    :root {
+      --ed-w: 25rem;
+    }
+  }
+
+  @media (max-width: 47.99rem) {
+    html.is-editing body {
+      padding-bottom: 55dvh;
+    }
+  }
+
+  /* Beim Auswählen keine Textcursor/Links auf der Seite */
+  html.is-editing:not(.ed-interact) :is(main, .site-header, .site-footer) * {
+    cursor: default;
+  }
+
+  /* Ausgeblendete Elemente bleiben im Bearbeiten-Modus abgeblendet sichtbar */
+  html.is-editing [data-ed-hide] {
+    opacity: 0.4 !important;
+    outline: 2px dashed rgb(16 185 129 / 0.6);
+    outline-offset: -2px;
+  }
+
+  /* ---------------- Seitenleiste ---------------- */
+  .ed-sidebar {
+    position: fixed;
+    inset: 0 auto 0 0;
+    z-index: 1005;
+    display: flex;
+    flex-direction: column;
+    width: var(--ed-w);
+    font: 400 0.875rem/1.45 var(--font-sans);
+    color: var(--ed-text);
+    border-right: 1px solid var(--ed-line);
+    background: var(--ed-bg);
+    box-shadow: 8px 0 40px -20px rgb(0 0 0 / 0.6);
+    color-scheme: dark;
+    animation: ed-slide-in 320ms cubic-bezier(0.2, 0.8, 0.2, 1);
+    transition: width 260ms cubic-bezier(0.2, 0.8, 0.2, 1);
+  }
+
+  @keyframes ed-slide-in {
+    from {
+      transform: translateX(-100%);
+    }
+  }
+
+  @keyframes ed-fade-up {
+    from {
+      opacity: 0;
+      transform: translateY(6px);
+    }
+  }
+
+  .ed-body > section:not([hidden]) {
+    animation: ed-fade-up 220ms ease;
+  }
+
+  .ed-sidebar :is(h1, h2, h3, p, ul, ol) {
+    margin: 0;
+  }
+
+  .ed-sidebar .icon {
+    flex: none;
+  }
+
+  .ed-sheet-btn {
+    display: none !important;
+  }
+
+  .ed-sidebar .ed-head__logo .ed-head__open {
+    display: none;
+  }
+
+  /* Eingeklappt: schmale Symbolleiste – Werkzeuge bleiben mit einem Klick erreichbar */
+  @media (min-width: 48rem) {
+    .ed-sidebar[data-collapsed] {
+      width: var(--ed-rail);
+    }
+
+    .ed-sidebar[data-collapsed] :is(.ed-head__title, .ed-head .ed-icon-btn, .ed-hint, .ed-body, .ed-status, .ed-tabs span, .ed-foot__buttons span, [data-ed-discard]) {
+      display: none !important;
+    }
+
+    .ed-sidebar[data-collapsed] .ed-head {
+      justify-content: center;
+      padding-inline: 0;
+    }
+
+    .ed-sidebar[data-collapsed] .ed-head__logo .ed-head__pen {
       display: none;
     }
 
-    .edit-bar__text {
-      flex-basis: 100%;
-      text-align: center;
+    .ed-sidebar[data-collapsed] .ed-head__logo .ed-head__open {
+      display: block;
+    }
+
+    .ed-sidebar[data-collapsed] .ed-tabs {
+      grid-template-columns: 1fr;
+      border-bottom: 0;
+    }
+
+    .ed-sidebar[data-collapsed] .ed-tabs button {
+      padding-block: 0.7rem;
+    }
+
+    .ed-sidebar[data-collapsed] .ed-foot {
+      margin-top: auto;
+      padding-inline: 0.5rem;
+    }
+
+    .ed-sidebar[data-collapsed] .ed-foot__buttons {
+      grid-template-columns: 1fr;
     }
   }
 
-  .edit-bar__dot {
-    flex: none;
-    width: 0.55rem;
-    height: 0.55rem;
-    border-radius: 50%;
-    background: var(--color-accent, #f3a505);
+  @media (max-width: 47.99rem) {
+    .ed-collapse-btn {
+      display: none !important;
+    }
+
+    .ed-sidebar {
+      inset: auto 0 0 0;
+      width: 100%;
+      height: 52dvh;
+      border-right: 0;
+      border-radius: 1.1rem 1.1rem 0 0;
+      box-shadow: 0 -10px 40px -16px rgb(0 0 0 / 0.6);
+      transition: height 250ms ease;
+    }
+
+    .ed-sidebar[data-size='full'] {
+      height: 88dvh;
+    }
+
+    .ed-sidebar[data-size='min'] {
+      height: auto;
+    }
+
+    .ed-sidebar[data-size='min'] :is(.ed-tabs, .ed-body, .ed-foot) {
+      display: none;
+    }
+
+    .ed-sheet-btn {
+      display: grid !important;
+    }
   }
 
-  .edit-bar__text {
+  .ed-head {
+    display: flex;
+    flex: none;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.7rem 0.6rem 0.6rem 0.9rem;
+    border-bottom: 1px solid var(--ed-line);
+  }
+
+  .ed-head__logo {
+    display: grid;
+    flex: none;
+    place-items: center;
+    width: 2.2rem;
+    height: 2.2rem;
+    color: var(--ed-accent-ink);
+    border: 0;
+    border-radius: 0.65rem;
+    background: linear-gradient(140deg, #6ee7b7, var(--ed-accent-strong));
+    box-shadow: 0 6px 16px -8px rgb(16 185 129 / 0.8);
+    cursor: pointer;
+  }
+
+  .ed-head__title {
+    display: grid;
+    flex: 1;
     min-width: 0;
-    font-size: 0.85rem;
+    line-height: 1.25;
   }
 
-  .edit-bar__btn {
-    flex: none;
-    padding: 0.5rem 1rem;
-    font: inherit;
-    font-size: 0.85rem;
-    font-weight: 600;
-    color: #ffffff;
-    border: 1px solid rgb(255 255 255 / 0.3);
-    border-radius: 999px;
+  .ed-head__title small {
+    overflow: hidden;
+    font-size: 0.75rem;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    color: var(--ed-muted);
+  }
+
+  .ed-icon-btn {
+    display: grid;
+    place-items: center;
+    width: 2.1rem;
+    height: 2.1rem;
+    color: var(--ed-muted);
+    border: 0;
+    border-radius: 0.55rem;
     background: transparent;
     cursor: pointer;
   }
 
-  .edit-bar__btn--primary {
-    color: #111a24;
-    border-color: #ffffff;
-    background: #ffffff;
+  .ed-icon-btn:hover,
+  .ed-icon-btn:focus-visible {
+    color: var(--ed-text);
+    background: var(--ed-surface);
   }
 
-  .edit-bar__btn:disabled {
-    opacity: 0.45;
+  .ed-icon-btn[aria-pressed='true'] {
+    color: var(--ed-accent-ink);
+    background: var(--ed-accent);
+  }
+
+  .ed-tabs {
+    display: grid;
+    flex: none;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 0.25rem;
+    padding: 0.5rem 0.6rem;
+    border-bottom: 1px solid var(--ed-line);
+  }
+
+  .ed-tabs button {
+    display: grid;
+    justify-items: center;
+    gap: 0.2rem;
+    padding: 0.45rem 0.2rem 0.4rem;
+    font: 600 0.72rem/1.2 var(--font-sans);
+    color: var(--ed-muted);
+    border: 0;
+    border-radius: 0.6rem;
+    background: transparent;
+    cursor: pointer;
+  }
+
+  .ed-tabs button:hover {
+    color: var(--ed-text);
+  }
+
+  .ed-tabs button[aria-selected='true'] {
+    color: var(--ed-text);
+    background: var(--ed-surface);
+    box-shadow: inset 0 -2px 0 var(--ed-accent);
+  }
+
+  .ed-tabs button[aria-selected='true'] .icon {
+    color: var(--ed-accent);
+  }
+
+  .ed-hint {
+    display: flex;
+    flex: none;
+    align-items: center;
+    gap: 0.6rem;
+    margin: 0.6rem 0.6rem 0;
+    padding: 0.55rem 0.55rem 0.55rem 0.8rem;
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--ed-accent-ink);
+    border-radius: 0.7rem;
+    background: var(--ed-accent);
+  }
+
+  .ed-hint span {
+    flex: 1;
+  }
+
+  .ed-hint button {
+    padding: 0.35rem 0.7rem;
+    font: inherit;
+    color: var(--ed-text);
+    border: 0;
+    border-radius: 999px;
+    background: var(--ed-bg);
+    cursor: pointer;
+  }
+
+  .ed-body {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    padding: 0.8rem 0.8rem 1.2rem;
+    scrollbar-color: var(--ed-surface-2) transparent;
+  }
+
+  .ed-body > section {
+    display: grid;
+    gap: 0.75rem;
+  }
+
+  .ed-foot {
+    display: grid;
+    flex: none;
+    gap: 0.5rem;
+    padding: 0.65rem 0.8rem 0.8rem;
+    border-top: 1px solid var(--ed-line);
+    background: var(--ed-bg-2);
+  }
+
+  .ed-status {
+    font-size: 0.76rem;
+    color: var(--ed-muted);
+  }
+
+  .ed-status.is-dirty {
+    color: var(--ed-text);
+  }
+
+  .ed-status.is-dirty::before {
+    content: '';
+    display: inline-block;
+    width: 0.5rem;
+    height: 0.5rem;
+    margin-right: 0.4rem;
+    border-radius: 50%;
+    background: #fbbf24;
+  }
+
+  .ed-foot__buttons {
+    display: grid;
+    grid-template-columns: 1fr 1.6fr;
+    gap: 0.5rem;
+  }
+
+  /* ---------------- Bausteine der Seitenleiste ---------------- */
+  .ed-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.4rem;
+    min-height: 2.2rem;
+    padding: 0.4rem 0.8rem;
+    font: 600 0.8rem/1.2 var(--font-sans);
+    color: var(--ed-text);
+    border: 1px solid var(--ed-line);
+    border-radius: 0.6rem;
+    background: var(--ed-surface);
+    cursor: pointer;
+  }
+
+  .ed-btn:hover:not(:disabled),
+  .ed-btn:focus-visible {
+    border-color: rgb(52 211 153 / 0.6);
+    background: var(--ed-surface-2);
+  }
+
+  .ed-btn:disabled {
+    opacity: 0.4;
     cursor: default;
   }
 
-  /* Editierbare Texte auf der Seite */
-  .is-editing [data-editable] {
-    outline: 1px dashed rgb(246 201 69 / 0.9);
-    outline-offset: 2px;
-    cursor: text;
+  .ed-btn--primary {
+    color: var(--ed-accent-ink);
+    border-color: var(--ed-accent);
+    background: var(--ed-accent);
   }
 
-  .is-editing [data-editable]:hover {
-    outline-style: solid;
-    background: rgb(246 201 69 / 0.12);
+  .ed-btn--primary:hover:not(:disabled),
+  .ed-btn--primary:focus-visible {
+    color: var(--ed-accent-ink);
+    background: #6ee7b7;
   }
 
-  .is-editing [data-editable]:focus {
-    outline: 2px solid var(--color-accent, #f3a505);
-    background: rgb(246 201 69 / 0.16);
+  .ed-btn--danger:hover:not(:disabled) {
+    color: #450a0a;
+    border-color: var(--ed-danger);
+    background: var(--ed-danger);
   }
 
-  .gallery-edit-btn {
-    position: absolute;
-    left: 0.6rem;
-    bottom: 0.6rem;
-    z-index: 5;
-    padding: 0.45rem 0.9rem;
-    font: inherit;
-    font-size: 0.8rem;
-    font-weight: 700;
-    color: #111a24;
-    border: 0;
-    border-radius: 999px;
-    background: var(--color-accent, #f3a505);
-    box-shadow: 0 6px 18px -6px rgb(0 0 0 / 0.5);
-    cursor: pointer;
+  .ed-btn--ghost {
+    min-height: 1.9rem;
+    padding: 0.3rem;
+    border-color: transparent;
+    background: transparent;
   }
 
-  .hero-edit-btn {
-    top: calc(var(--header-height) + 0.75rem);
-    bottom: auto;
-    left: 1rem;
-    z-index: 20;
-  }
-
-  .hero-choices .hero-choice {
-    display: block;
+  .ed-btn--block {
     width: 100%;
-    padding: 0;
-    overflow: hidden;
-    aspect-ratio: 16 / 10;
-    border: 2px solid transparent;
+  }
+
+  .ed-btn--small {
+    min-height: 1.8rem;
+    padding: 0.25rem 0.6rem;
+    font-size: 0.75rem;
+  }
+
+  .ed-note {
+    font-size: 0.75rem;
+    line-height: 1.45;
+    color: var(--ed-muted);
+  }
+
+  .ed-note--ok {
+    padding: 0.5rem 0.65rem;
+    color: var(--ed-text);
     border-radius: 0.6rem;
-    background: #eef2f6;
+    background: rgb(52 211 153 / 0.15);
+  }
+
+  .ed-muted {
+    color: var(--ed-muted);
+  }
+
+  .ed-code {
+    padding: 0.4rem 0.55rem;
+    overflow-wrap: anywhere;
+    font: 0.78rem/1.4 ui-monospace, 'Cascadia Code', monospace;
+    border-radius: 0.45rem;
+    background: var(--ed-bg-2);
+  }
+
+  .ed-row2 {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.5rem;
+  }
+
+  /* Leerer Zustand */
+  .ed-empty {
+    display: grid;
+    justify-items: start;
+    gap: 0.6rem;
+    padding: 0.4rem 0.2rem;
+  }
+
+  .ed-empty__art {
+    position: relative;
+    display: grid;
+    place-items: center;
+    width: 100%;
+    height: 7.5rem;
+    overflow: hidden;
+    border-radius: 1rem;
+    background:
+      radial-gradient(circle at 30% 30%, rgb(52 211 153 / 0.35), transparent 55%),
+      radial-gradient(circle at 80% 70%, rgb(16 185 129 / 0.25), transparent 50%),
+      var(--ed-surface);
+  }
+
+  .ed-empty__art::before {
+    content: '';
+    position: absolute;
+    inset: 1.4rem 2.2rem;
+    border: 2px dashed rgb(110 231 183 / 0.7);
+    border-radius: 0.6rem;
+  }
+
+  .ed-empty__art .ed-ico {
+    position: relative;
+    display: grid;
+    place-items: center;
+    width: 3rem;
+    height: 3rem;
+    font-size: 1.4rem;
+    color: var(--ed-accent-ink);
+    border-radius: 50%;
+    background: var(--ed-accent);
+    box-shadow: 0 10px 24px -8px rgb(16 185 129 / 0.9);
+  }
+
+  .ed-empty strong {
+    font-size: 1rem;
+  }
+
+  .ed-empty p {
+    color: var(--ed-muted);
+  }
+
+  .ed-tips {
+    display: grid;
+    gap: 0.35rem;
+    width: 100%;
+    padding: 0.7rem 0.8rem 0.7rem 1.6rem !important;
+    font-size: 0.8rem;
+    border-radius: 0.7rem;
+    background: var(--ed-bg-2);
+  }
+
+  .ed-empty .ed-row2 {
+    width: 100%;
+  }
+
+  /* Pfad (Brotkrumen) */
+  .ed-crumbs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.2rem;
+  }
+
+  .ed-crumb {
+    min-height: 1.6rem;
+    padding: 0.15rem 0.55rem;
+    font-size: 0.72rem;
+    font-weight: 600;
+    color: var(--ed-muted);
+    border-color: transparent;
+    border-radius: 999px;
+    background: var(--ed-bg-2);
+  }
+
+  .ed-crumb + .ed-crumb::before {
+    content: '›';
+    margin-right: 0.15rem;
+    opacity: 0.6;
+  }
+
+  .ed-crumb.is-current {
+    color: var(--ed-accent-ink);
+    background: var(--ed-accent);
+  }
+
+  /* Titel des gewählten Elements */
+  .ed-title {
+    display: flex;
+    align-items: center;
+    gap: 0.65rem;
+  }
+
+  .ed-title__icon {
+    display: grid;
+    place-items: center;
+    width: 2.4rem;
+    height: 2.4rem;
+    font-size: 1.15rem;
+    color: var(--ed-accent);
+    border-radius: 0.7rem;
+    background: var(--ed-surface);
+  }
+
+  .ed-title__text {
+    display: grid;
+    min-width: 0;
+    line-height: 1.3;
+  }
+
+  .ed-title__text strong {
+    font-size: 1.02rem;
+  }
+
+  .ed-title__text code {
+    overflow: hidden;
+    font: 0.72rem/1.4 ui-monospace, 'Cascadia Code', monospace;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    color: var(--ed-muted);
+  }
+
+  .ed-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.3rem;
+  }
+
+  .ed-actions .ed-btn {
+    min-width: 2.2rem;
+    padding-inline: 0.5rem;
+  }
+
+  .ed-grab {
+    cursor: grab;
+    touch-action: none;
+  }
+
+  /* Aufklappbare Gruppen (auch die Felder der Baukasten-Elemente) */
+  .ed-group,
+  .ed-block-fields .ub-g {
+    border: 1px solid var(--ed-line);
+    border-radius: 0.8rem;
+    background: var(--ed-bg-2);
+  }
+
+  .ed-block-fields {
+    display: grid;
+    gap: 0.75rem;
+  }
+
+  .ed-group > summary,
+  .ed-block-fields .ub-g > summary {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.6rem 0.75rem;
+    font-size: 0.82rem;
+    font-weight: 700;
+    list-style: none;
     cursor: pointer;
   }
 
-  .hero-choices .hero-choice:hover,
-  .hero-choices .hero-choice:focus-visible {
-    border-color: var(--color-accent, #f3a505);
+  .ed-group > summary::-webkit-details-marker,
+  .ed-block-fields .ub-g > summary::-webkit-details-marker {
+    display: none;
   }
 
-  .hero-choices .hero-choice img {
+  .ed-group > summary .icon {
+    color: var(--ed-accent);
+  }
+
+  .ed-group > summary::after,
+  .ed-block-fields .ub-g > summary::after {
+    content: '';
+    width: 0.45rem;
+    height: 0.45rem;
+    margin-left: auto;
+    border-right: 2px solid var(--ed-muted);
+    border-bottom: 2px solid var(--ed-muted);
+    rotate: -45deg;
+    transition: rotate 150ms ease;
+  }
+
+  .ed-group[open] > summary::after,
+  .ed-block-fields .ub-g[open] > summary::after {
+    rotate: 45deg;
+  }
+
+  .ed-group > :not(summary),
+  .ed-block-fields .ub-g > :not(summary) {
+    margin: 0 0.75rem 0.75rem;
+  }
+
+  .ed-group[open] > summary,
+  .ed-block-fields .ub-g[open] > summary {
+    padding-bottom: 0.45rem;
+  }
+
+  /* Felder */
+  .ed-field,
+  .ed-block-fields .ub-f {
+    display: grid;
+    gap: 0.3rem;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--ed-muted);
+  }
+
+  .ed-field.is-changed > span::after {
+    content: ' · geändert';
+    color: #fbbf24;
+  }
+
+  .ed-sidebar :is(input[type='text'], input[type='number'], textarea, select) {
+    width: 100%;
+    min-width: 0;
+    padding: 0.45rem 0.55rem;
+    font: 400 0.88rem/1.4 var(--font-sans);
+    color: var(--ed-text);
+    border: 1px solid rgb(255 255 255 / 0.14);
+    border-radius: 0.5rem;
+    background: var(--ed-bg);
+  }
+
+  .ed-sidebar :is(input, textarea, select):focus {
+    outline: none;
+    border-color: var(--ed-accent);
+    box-shadow: 0 0 0 3px rgb(52 211 153 / 0.25);
+  }
+
+  .ed-sidebar textarea {
+    resize: vertical;
+    overflow: hidden;
+  }
+
+  .ed-sidebar input::placeholder,
+  .ed-sidebar textarea::placeholder {
+    color: rgb(156 194 177 / 0.6);
+  }
+
+  .ed-unit {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    font-weight: 400;
+  }
+
+  .ed-color {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.4rem;
+  }
+
+  .ed-color input[type='color'] {
+    width: 2rem;
+    height: 2rem;
+    padding: 0;
+    border: 1px solid rgb(255 255 255 / 0.25);
+    border-radius: 0.45rem;
+    background: none;
+    cursor: pointer;
+  }
+
+  .ed-color code {
+    min-width: 4.6rem;
+    font-size: 0.72rem;
+    color: var(--ed-text);
+  }
+
+  .ed-swatches {
+    display: flex;
+    gap: 0.25rem;
+  }
+
+  .ed-swatch {
+    width: 1.35rem;
+    min-height: 1.35rem !important;
+    padding: 0 !important;
+    border: 1px solid rgb(255 255 255 / 0.35) !important;
+    border-radius: 50% !important;
+    background: var(--swatch) !important;
+  }
+
+  .ed-seg {
+    display: grid;
+    grid-auto-columns: minmax(0, 1fr);
+    grid-auto-flow: column;
+    gap: 2px;
+    padding: 2px;
+    border-radius: 0.6rem;
+    background: var(--ed-bg);
+  }
+
+  .ed-seg .ed-btn {
+    min-height: 2rem;
+    padding: 0.3rem 0.25rem;
+    font-size: 0.72rem;
+    border-color: transparent;
+    border-radius: 0.45rem;
+    background: transparent;
+  }
+
+  .ed-seg .ed-btn[aria-pressed='true'] {
+    color: var(--ed-accent-ink);
+    background: var(--ed-accent);
+  }
+
+  .ed-subhead {
+    margin-top: 0.3rem !important;
+    padding-top: 0.6rem;
+    font-size: 0.66rem;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--ed-accent);
+    border-top: 1px solid var(--ed-line);
+  }
+
+  .ed-subhead:first-of-type {
+    margin-top: 0 !important;
+    padding-top: 0;
+    border-top: 0;
+  }
+
+  /* Schieberegler mit Zahlenfeld */
+  .ed-range {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 4.6rem;
+    align-items: center;
+    gap: 0.6rem;
+  }
+
+  .ed-range input[type='range'] {
+    width: 100%;
+    accent-color: var(--ed-accent);
+    cursor: pointer;
+  }
+
+  .ed-range .ed-unit input {
+    padding-inline: 0.4rem;
+  }
+
+  /* Startbildschirm */
+  .ed-steps {
+    display: grid;
+    gap: 0.45rem;
+    width: 100%;
+  }
+
+  .ed-step {
+    display: grid;
+    grid-template-columns: 2.1rem minmax(0, 1fr);
+    align-items: center;
+    gap: 0.65rem;
+    padding: 0.6rem 0.7rem;
+    font: inherit;
+    text-align: left;
+    color: var(--ed-text);
+    border: 1px solid var(--ed-line);
+    border-radius: 0.8rem;
+    background: var(--ed-bg-2);
+    cursor: pointer;
+    transition:
+      border-color 150ms ease,
+      transform 150ms ease;
+  }
+
+  .ed-step:hover {
+    border-color: rgb(52 211 153 / 0.6);
+    transform: translateX(2px);
+  }
+
+  .ed-step > .ed-ico {
+    display: grid;
+    place-items: center;
+    width: 2.1rem;
+    height: 2.1rem;
+    color: var(--ed-accent);
+    border-radius: 0.6rem;
+    background: var(--ed-surface);
+  }
+
+  .ed-step span {
+    display: grid;
+    font-size: 0.8rem;
+    line-height: 1.35;
+  }
+
+  .ed-step small {
+    color: var(--ed-muted);
+  }
+
+  .ed-count {
+    min-width: 1.3rem;
+    padding: 0.05rem 0.35rem;
+    font-size: 0.7rem;
+    font-weight: 800;
+    color: var(--ed-accent);
+    border-radius: 999px;
+    background: var(--ed-accent-ink);
+  }
+
+  /* Abstände als Box (wie in den Entwicklerwerkzeugen) */
+  .ed-bm,
+  .ed-bm__inner {
+    position: relative;
+    display: grid;
+    grid-template-columns: 3.6rem minmax(0, 1fr) 3.6rem;
+    grid-template-areas: '. t .' 'l c r' '. b .';
+    align-items: center;
+    justify-items: center;
+    gap: 0.35rem;
+    padding: 1.3rem 0.45rem 0.45rem;
+    border: 1px dashed rgb(251 146 60 / 0.7);
+    border-radius: 0.7rem;
+    background: rgb(251 146 60 / 0.1);
+  }
+
+  .ed-bm__inner {
+    grid-area: c;
+    width: 100%;
+    border-color: rgb(56 189 248 / 0.7);
+    background: rgb(56 189 248 / 0.1);
+  }
+
+  .ed-bm__label {
+    position: absolute;
+    top: 0.25rem;
+    left: 0.5rem;
+    font-size: 0.66rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--ed-muted);
+  }
+
+  .ed-bm input {
+    width: 3.4rem !important;
+    padding: 0.3rem 0.25rem !important;
+    font-size: 0.8rem !important;
+    text-align: center;
+  }
+
+  .ed-bm__mt,
+  .ed-bm__pt {
+    grid-area: t;
+  }
+
+  .ed-bm__ml,
+  .ed-bm__pl {
+    grid-area: l;
+  }
+
+  .ed-bm__mr,
+  .ed-bm__pr {
+    grid-area: r;
+  }
+
+  .ed-bm__mb,
+  .ed-bm__pb {
+    grid-area: b;
+  }
+
+  .ed-bm__size {
+    grid-area: c;
+    font-size: 0.7rem;
+    color: var(--ed-muted);
+    white-space: nowrap;
+  }
+
+  /* Einfügen relativ zum Element */
+  .ed-insert-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.35rem;
+  }
+
+  .ed-insert-grid .ed-btn {
+    justify-content: flex-start;
+  }
+
+  .ed-target {
+    display: flex;
+    align-items: center;
+    gap: 0.65rem;
+    padding: 0.65rem 0.7rem;
+    border: 1px dashed rgb(52 211 153 / 0.45);
+    border-radius: 0.8rem;
+  }
+
+  .ed-target > .ed-ico {
+    font-size: 1.2rem;
+    color: var(--ed-accent);
+  }
+
+  .ed-target > span {
+    display: grid;
+    flex: 1;
+    gap: 0.1rem;
+    font-size: 0.78rem;
+  }
+
+  .ed-target small {
+    font-size: 0.74rem;
+    color: var(--ed-muted);
+  }
+
+  .ed-target.is-set {
+    border-style: solid;
+    border-color: var(--ed-accent);
+    background: rgb(52 211 153 / 0.12);
+  }
+
+  /* Listen: enthaltene Elemente und Ebenen */
+  .ed-nodes {
+    display: grid;
+    gap: 0.15rem;
+  }
+
+  .ed-node {
+    display: flex;
+    flex: 1;
+    align-items: center;
+    gap: 0.45rem;
+    min-width: 0;
+    padding: 0.4rem 0.5rem;
+    font: 400 0.8rem/1.3 var(--font-sans);
+    text-align: left;
+    color: var(--ed-text);
+    border: 0;
+    border-radius: 0.5rem;
+    background: transparent;
+    cursor: pointer;
+  }
+
+  .ed-node:hover,
+  .ed-node:focus-visible {
+    background: var(--ed-surface);
+  }
+
+  .ed-node.is-current {
+    background: var(--ed-surface-2);
+    box-shadow: inset 2px 0 0 var(--ed-accent);
+  }
+
+  .ed-node > .ed-ico {
+    color: var(--ed-accent);
+  }
+
+  .ed-node__name {
+    flex: none;
+    font-weight: 600;
+  }
+
+  .ed-node__text {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    color: var(--ed-muted);
+  }
+
+  .ed-badge {
+    flex: none;
+    padding: 0.05rem 0.4rem;
+    font-size: 0.66rem;
+    font-weight: 700;
+    color: #fde68a;
+    border-radius: 999px;
+    background: rgb(251 191 36 / 0.15);
+  }
+
+  .ed-tree {
+    display: grid;
+    gap: 0.1rem;
+  }
+
+  .ed-tree__line {
+    display: flex;
+    align-items: center;
+    gap: 0.1rem;
+    min-width: 0;
+    padding-left: calc(var(--depth, 0) * 0.9rem);
+  }
+
+  .ed-tree__line > .ed-node {
+    overflow: hidden;
+  }
+
+  .ed-body {
+    overflow-x: hidden;
+  }
+
+  .ed-twisty {
+    display: grid;
+    flex: none;
+    place-items: center;
+    width: 1.5rem;
+    min-height: 1.5rem !important;
+    padding: 0 !important;
+    border: 0 !important;
+    background: transparent !important;
+  }
+
+  .ed-twisty .icon {
+    transition: rotate 150ms ease;
+  }
+
+  .ed-twisty.is-open .icon {
+    rotate: 90deg;
+  }
+
+  /* Projekte einer Leistungskarte */
+  .ed-projects {
+    display: grid;
+    gap: 0.6rem;
+  }
+
+  .ed-projects__list {
+    display: grid;
+    gap: 0.35rem;
+    padding: 0;
+    list-style: none;
+  }
+
+  .ed-projects__list li {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.45rem 0.55rem;
+    border-radius: 0.55rem;
+    background: var(--ed-surface);
+  }
+
+  .ed-projects__list li > span {
+    display: grid;
+    flex: 1;
+    min-width: 0;
+    font-size: 0.8rem;
+  }
+
+  .ed-projects__list small {
+    font-size: 0.7rem;
+    color: var(--ed-muted);
+  }
+
+  .ed-form {
+    display: grid;
+    gap: 0.55rem;
+  }
+
+  .ed-upload {
+    position: relative;
+    display: grid;
+    place-items: center;
+    padding: 0.9rem 0.7rem;
+    font-size: 0.78rem;
+    font-weight: 600;
+    text-align: center;
+    color: var(--ed-text);
+    border: 1.5px dashed rgb(52 211 153 / 0.55);
+    border-radius: 0.7rem;
+    cursor: pointer;
+  }
+
+  .ed-upload input {
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    cursor: pointer;
+  }
+
+  .ed-thumbs {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 0.3rem;
+  }
+
+  .ed-thumbs:empty {
+    display: none;
+  }
+
+  .ed-thumbs img {
+    width: 100%;
+    aspect-ratio: 1;
+    object-fit: cover;
+    border-radius: 0.4rem;
+  }
+
+  .ed-thumbs img:first-child {
+    outline: 2px solid var(--ed-accent);
+  }
+
+  .ed-form__status:empty {
+    display: none;
+  }
+
+  .ed-form__status {
+    font-size: 0.75rem;
+    color: var(--ed-muted);
+  }
+
+  /* Einstellungsfelder der Baukasten-Elemente (src/scripts/block-editor.ts) */
+  .ed-block-fields .ub-f small {
+    font-weight: 400;
+    color: var(--ed-muted);
+  }
+
+  .ed-block-fields .ub-f--toggle {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: var(--ed-text);
+  }
+
+  .ed-block-fields .ub-f__invalid {
+    color: #fde68a !important;
+  }
+
+  .ed-block-fields .ub-f__image {
+    display: grid;
+    grid-template-columns: 5rem minmax(0, 1fr);
+    align-items: center;
+    gap: 0.6rem;
+  }
+
+  .ed-block-fields .ub-f__thumb {
+    width: 5rem;
+    height: 3.6rem;
+    overflow: hidden;
+    border-radius: 0.45rem;
+    background: var(--ed-bg);
+  }
+
+  .ed-block-fields .ub-f__thumb img {
     width: 100%;
     height: 100%;
     object-fit: cover;
   }
 
-  /* Abstände: Markierung wie in den Entwicklerwerkzeugen – außen orange, innen grün */
-  .spacing-overlay {
+  .ed-block-fields .ub-f__buttons {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+  }
+
+  .ed-block-fields :is(.ub-f__buttons button, .ub-f__mini, .ub-reset, .ub-color__reset, .ub-f__list button) {
+    padding: 0.35rem 0.7rem;
+    font: 600 0.75rem/1.2 var(--font-sans);
+    color: var(--ed-text);
+    border: 1px solid var(--ed-line);
+    border-radius: 0.5rem;
+    background: var(--ed-surface);
+    cursor: pointer;
+  }
+
+  .ed-block-fields .ub-f__list {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0.35rem;
+    padding: 0;
+    list-style: none;
+  }
+
+  .ed-block-fields .ub-f__list li {
+    position: relative;
+    overflow: hidden;
+    aspect-ratio: 4 / 3;
+    border-radius: 0.45rem;
+    background: var(--ed-bg);
+  }
+
+  .ed-block-fields .ub-f__list img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  .ed-block-fields .ub-f__list span {
+    position: absolute;
+    inset: auto 0.2rem 0.2rem;
+    display: flex;
+    justify-content: space-between;
+  }
+
+  .ed-block-fields .ub-f__list button {
+    padding: 0.1rem 0.35rem;
+  }
+
+  .ed-block-fields .ub-f__icons {
+    display: grid;
+    grid-template-columns: repeat(8, minmax(0, 1fr));
+    gap: 0.25rem;
+  }
+
+  .ed-block-fields .ub-f__icons button {
+    display: grid;
+    place-items: center;
+    aspect-ratio: 1;
+    font-size: 1rem;
+    color: var(--ed-text);
+    border: 1px solid var(--ed-line);
+    border-radius: 0.45rem;
+    background: var(--ed-bg);
+    cursor: pointer;
+  }
+
+  .ed-block-fields .ub-f__icons button[aria-pressed='true'] {
+    color: var(--ed-accent-ink);
+    background: var(--ed-accent);
+  }
+
+  .ed-block-fields .ub-num {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    font-weight: 400;
+  }
+
+  .ed-block-fields .ub-sides {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 0.3rem;
+  }
+
+  .ed-block-fields .ub-sides label {
+    display: grid;
+    gap: 0.15rem;
+    font-size: 0.66rem;
+  }
+
+  .ed-block-fields .ub-align {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 0.25rem;
+  }
+
+  .ed-block-fields .ub-align button {
+    display: grid;
+    justify-items: center;
+    gap: 0.1rem;
+    padding: 0.35rem 0.2rem;
+    font: 600 0.65rem/1.2 var(--font-sans);
+    color: var(--ed-text);
+    border: 1px solid var(--ed-line);
+    border-radius: 0.5rem;
+    background: var(--ed-bg);
+    cursor: pointer;
+  }
+
+  .ed-block-fields .ub-align button[aria-pressed='true'] {
+    color: var(--ed-accent-ink);
+    background: var(--ed-accent);
+  }
+
+  .ed-block-fields .ub-color {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.4rem;
+  }
+
+  .ed-block-fields .ub-color input[type='color'] {
+    width: 2rem;
+    height: 2rem;
+    padding: 0;
+    border: 1px solid rgb(255 255 255 / 0.25);
+    border-radius: 0.45rem;
+    background: none;
+  }
+
+  .ed-block-fields .ub-color code {
+    font-size: 0.72rem;
+    color: var(--ed-text);
+  }
+
+  .ed-block-fields .ub-swatches {
+    display: flex;
+    gap: 0.25rem;
+  }
+
+  .ed-block-fields .ub-swatches button {
+    width: 1.35rem;
+    height: 1.35rem;
+    padding: 0;
+    border: 1px solid rgb(255 255 255 / 0.35);
+    border-radius: 50%;
+    background: var(--swatch);
+    cursor: pointer;
+  }
+
+  /* ---------------- Markierungen auf der Seite ---------------- */
+  .ed-box {
     position: fixed;
-    inset: 0;
-    z-index: 1000;
+    top: 0;
+    left: 0;
+    z-index: 1003;
+    border-radius: 3px;
     pointer-events: none;
   }
 
-  .spacing-overlay[hidden] {
+  .ed-box--hover {
+    outline: 1.5px dashed var(--ed-accent-strong);
+    outline-offset: 1px;
+    background: rgb(52 211 153 / 0.06);
+  }
+
+  .ed-box--select {
+    outline: 2px solid var(--ed-accent-strong);
+    outline-offset: 2px;
+    box-shadow: 0 0 0 6px rgb(52 211 153 / 0.18);
+  }
+
+  .ed-box__tag {
+    position: absolute;
+    bottom: calc(100% + 5px);
+    left: -2px;
+    padding: 0.15rem 0.5rem;
+    font: 700 0.7rem/1.35 var(--font-sans);
+    white-space: nowrap;
+    color: var(--ed-accent-ink);
+    border-radius: 0.35rem;
+    background: var(--ed-accent);
+  }
+
+  .ed-box--hover .ed-box__tag {
+    color: var(--ed-accent);
+    background: var(--ed-bg);
+  }
+
+  .ed-box[data-below] .ed-box__tag {
+    top: calc(100% + 5px);
+    bottom: auto;
+  }
+
+  .ed-box__tag:empty {
     display: none;
   }
 
-  .spacing-overlay__margin,
-  .spacing-overlay__padding {
+  /* Gewähltes Element: kleine Werkzeugleiste und „+“-Punkte zum Einfügen davor/dahinter */
+  .ed-box__bar {
+    position: absolute;
+    bottom: calc(100% + 6px);
+    left: -2px;
+    display: flex;
+    align-items: center;
+    gap: 1px;
+    padding: 2px;
+    border-radius: 0.5rem;
+    background: var(--ed-bg);
+    box-shadow: 0 8px 22px -10px rgb(0 0 0 / 0.6);
+    pointer-events: auto;
+    animation: ed-fade-up 160ms ease;
+  }
+
+  .ed-box__bar .ed-box__tag {
+    position: static;
+    margin-right: 2px;
+  }
+
+  .ed-box__bar button,
+  .ed-plus {
+    display: grid;
+    place-items: center;
+    width: 1.7rem;
+    height: 1.7rem;
+    padding: 0;
+    color: var(--ed-text);
+    border: 0;
+    border-radius: 0.4rem;
+    background: transparent;
+    cursor: pointer !important;
+  }
+
+  .ed-box__bar button:hover {
+    color: var(--ed-accent-ink);
+    background: var(--ed-accent);
+  }
+
+  .ed-box__bar button[data-ed-quick='delete']:hover {
+    color: #450a0a;
+    background: var(--ed-danger);
+  }
+
+  .ed-box[data-below] .ed-box__bar {
+    top: 6px;
+    bottom: auto;
+    left: 6px;
+  }
+
+  .ed-plus {
+    position: absolute;
+    width: 1.6rem;
+    height: 1.6rem;
+    color: var(--ed-accent-ink);
+    border: 2px solid #ffffff;
+    border-radius: 50%;
+    background: var(--ed-accent-strong);
+    box-shadow: 0 4px 12px -4px rgb(0 0 0 / 0.5);
+    pointer-events: auto;
+    transition:
+      transform 150ms ease,
+      background-color 150ms ease;
+  }
+
+  .ed-plus:hover {
+    background: var(--ed-accent);
+    transform: scale(1.18);
+  }
+
+  .ed-box:not([data-axis='x']) [data-ed-plus='before'] {
+    top: 0;
+    left: 50%;
+    translate: -50% -50%;
+  }
+
+  .ed-box:not([data-axis='x']) [data-ed-plus='after'] {
+    top: 100%;
+    left: 50%;
+    translate: -50% -50%;
+  }
+
+  .ed-box[data-axis='x'] [data-ed-plus='before'] {
+    top: 50%;
+    left: 0;
+    translate: -50% -50%;
+  }
+
+  .ed-box[data-axis='x'] [data-ed-plus='after'] {
+    top: 50%;
+    left: 100%;
+    translate: -50% -50%;
+  }
+
+  .ed-spacing-overlay {
     position: fixed;
+    inset: 0;
+    z-index: 1002;
+    pointer-events: none;
+  }
+
+  .ed-spacing-overlay > div {
+    position: fixed;
+    top: 0;
+    left: 0;
     box-sizing: border-box;
     border-style: solid;
   }
 
-  .spacing-overlay__margin {
-    border-color: rgb(246 178 107 / 0.55);
-    outline: 1px dashed rgb(230 126 34 / 0.9);
+  .ed-spacing-overlay__margin {
+    border-color: rgb(251 146 60 / 0.45);
   }
 
-  .spacing-overlay__padding {
-    border-color: rgb(147 196 125 / 0.55);
-    background: rgb(111 168 220 / 0.12);
+  .ed-spacing-overlay__padding {
+    border-color: rgb(56 189 248 / 0.4);
   }
 
-  .spacing-overlay__label {
-    position: fixed;
-    max-width: calc(100vw - 1rem);
-    padding: 0.2rem 0.5rem;
-    overflow: hidden;
-    font: 600 0.72rem/1.4 ui-monospace, 'Cascadia Code', monospace;
-    white-space: pre;
-    text-overflow: ellipsis;
-    color: #ffffff;
-    border-radius: 0.35rem;
-    background: #111a24;
-  }
-
-  .is-spacing body * {
-    cursor: crosshair !important;
-  }
-
-  .spacing-panel {
-    position: fixed;
-    right: 1rem;
-    bottom: 5rem;
-    z-index: 1002;
-    display: grid;
-    gap: 0.7rem;
-    width: min(21rem, calc(100vw - 2rem));
-    padding: 1rem;
-    color: #1f2a36;
-    border-radius: 1rem;
-    background: #ffffff;
-    box-shadow:
-      0 0 0 1px rgb(0 0 0 / 0.08),
-      0 20px 50px -18px rgb(0 0 0 / 0.5);
-  }
-
-  .spacing-panel[hidden] {
-    display: none;
-  }
-
-  .spacing-panel__head {
-    display: grid;
-    gap: 0.15rem;
-  }
-
-  .spacing-panel__title {
-    font-size: 0.95rem;
-    font-weight: 700;
-  }
-
-  .spacing-panel__target {
-    overflow: hidden;
-    font-size: 0.72rem;
-    white-space: nowrap;
-    text-overflow: ellipsis;
-    color: #4b4b48;
-  }
-
-  .spacing-panel__group {
-    display: grid;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-    gap: 0.4rem;
-    margin: 0;
-    padding: 0.6rem;
-    border: 0;
-    border-radius: 0.7rem;
-  }
-
-  .spacing-panel__group--margin {
-    background: rgb(246 178 107 / 0.18);
-  }
-
-  .spacing-panel__group--padding {
-    background: rgb(147 196 125 / 0.2);
-  }
-
-  .spacing-panel__group legend {
-    float: left;
-    grid-column: 1 / -1;
-    width: 100%;
-    margin-bottom: 0.2rem;
-    padding: 0;
-    font-size: 0.72rem;
-    font-weight: 700;
-  }
-
-  .spacing-panel__group label {
-    display: grid;
-    gap: 0.15rem;
-    font-size: 0.68rem;
-    color: #4b4b48;
-  }
-
-  .spacing-panel__group input {
-    width: 100%;
-    min-width: 0;
-    padding: 0.35rem 0.4rem;
-    font: inherit;
-    font-size: 0.85rem;
-    color: #0b0b0c;
-    border: 1px solid #cacac6;
-    border-radius: 0.45rem;
-    background: #ffffff;
-  }
-
-  .spacing-panel__status {
-    font-size: 0.75rem;
-    color: #4b4b48;
-  }
-
-  .spacing-panel__status:empty {
-    display: none;
-  }
-
-  .spacing-panel__actions {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.4rem;
-  }
-
-  .spacing-panel__btn {
-    padding: 0.45rem 0.85rem;
-    font: inherit;
-    font-size: 0.8rem;
-    font-weight: 600;
-    color: #1f2a36;
-    border: 1px solid #cacac6;
-    border-radius: 999px;
-    background: #ffffff;
-    cursor: pointer;
-  }
-
-  .spacing-panel__btn--primary {
-    margin-left: auto;
-    color: #ffffff;
-    border-color: #111a24;
-    background: #111a24;
-  }
-
-  .spacing-panel__btn:disabled {
-    opacity: 0.45;
-    cursor: default;
-  }
-
-  .edit-bar__btn[aria-pressed='true'] {
-    color: #111a24;
-    border-color: var(--color-accent, #f3a505);
-    background: var(--color-accent, #f3a505);
-  }
-
-  /* Farben-Dialog */
-  .colors-dialog {
-    width: min(34rem, calc(100vw - 2rem));
-  }
-
-  .colors-grid {
-    display: grid;
-    gap: 0.5rem;
-  }
-
-  .color-field {
-    display: grid;
-    grid-template-columns: auto minmax(0, 1fr) auto;
-    align-items: center;
-    gap: 0.8rem;
-    padding: 0.55rem 0.75rem;
-    border: 1px solid #e2e2df;
-    border-radius: 0.8rem;
-    cursor: pointer;
-  }
-
-  .color-field input {
-    width: 2.6rem;
-    height: 2.6rem;
-    padding: 0;
-    border: 0;
-    border-radius: 50%;
-    background: none;
-    cursor: pointer;
-  }
-
-  .color-field input::-webkit-color-swatch-wrapper {
-    padding: 0;
-  }
-
-  .color-field input::-webkit-color-swatch {
-    border: 1px solid rgb(0 0 0 / 0.15);
-    border-radius: 50%;
-  }
-
-  .color-field span {
-    display: grid;
-    font-size: 0.85rem;
-  }
-
-  .color-field small {
-    font-size: 0.72rem;
-    color: #62625e;
-  }
-
-  .color-field code {
-    font-size: 0.75rem;
-    color: #4b4b48;
-  }
-
-  /* Galerie-Dialog */
-  /* Mittig im Bildschirm (der globale Reset setzt margin: 0 – daher hier ausdrücklich) */
+  /* ---------------- Dialoge (Kopfbild, Galerie, Bildauswahl) ---------------- */
   .gallery-dialog {
     position: fixed;
     inset: 0;
@@ -1345,13 +1757,17 @@ const heroChoices = await Promise.all(
     height: fit-content;
     max-height: calc(100dvh - 2rem);
     padding: 0;
-    border: 0;
+    font-family: var(--font-sans);
+    color: var(--ed-text);
+    border: 1px solid var(--ed-line);
     border-radius: 1.2rem;
-    box-shadow: 0 30px 80px -20px rgb(0 0 0 / 0.6);
+    background: var(--ed-bg);
+    box-shadow: 0 30px 80px -20px rgb(0 0 0 / 0.7);
+    color-scheme: dark;
   }
 
   .gallery-dialog::backdrop {
-    background: rgb(0 0 0 / 0.55);
+    background: rgb(4 20 14 / 0.7);
   }
 
   .gallery-dialog__inner {
@@ -1372,11 +1788,12 @@ const heroChoices = await Promise.all(
     font-weight: 700;
     letter-spacing: 0.08em;
     text-transform: uppercase;
-    color: #5f6e80;
+    color: var(--ed-accent);
   }
 
   .gallery-dialog__title {
-    font-size: 1.25rem;
+    font-size: 1.2rem;
+    color: var(--ed-text);
   }
 
   .gallery-dialog__close {
@@ -1384,15 +1801,16 @@ const heroChoices = await Promise.all(
     place-items: center;
     width: 2.2rem;
     height: 2.2rem;
-    border: 1px solid #dfe5ec;
+    color: var(--ed-text);
+    border: 1px solid var(--ed-line);
     border-radius: 50%;
-    background: #ffffff;
+    background: var(--ed-surface);
     cursor: pointer;
   }
 
   .gallery-dialog__hint {
     font-size: 0.8rem;
-    color: #5f6e80;
+    color: var(--ed-muted);
   }
 
   .gallery-dialog__grid {
@@ -1410,12 +1828,12 @@ const heroChoices = await Promise.all(
     aspect-ratio: 4 / 3;
     border: 2px solid transparent;
     border-radius: 0.7rem;
-    background: #eef2f6;
+    background: var(--ed-surface);
     cursor: grab;
   }
 
   .gallery-dialog__grid .gallery-item[data-new] {
-    border-color: var(--color-accent, #f3a505);
+    border-color: var(--ed-accent);
   }
 
   .gallery-dialog__grid .gallery-item[data-hidden] img {
@@ -1438,7 +1856,7 @@ const heroChoices = await Promise.all(
     font-weight: 700;
     color: #ffffff;
     border-radius: 999px;
-    background: rgb(17 26 36 / 0.75);
+    background: rgb(4 20 14 / 0.8);
   }
 
   .gallery-dialog__grid .gallery-item__tools {
@@ -1454,11 +1872,51 @@ const heroChoices = await Promise.all(
     width: 1.8rem;
     height: 1.8rem;
     font-size: 0.9rem;
-    color: #111a24;
+    color: var(--ed-accent-ink);
     border: 0;
     border-radius: 50%;
-    background: rgb(255 255 255 / 0.92);
+    background: rgb(236 253 245 / 0.92);
     cursor: pointer;
+  }
+
+  .hero-choices .hero-choice {
+    position: relative;
+    display: block;
+    width: 100%;
+    padding: 0;
+    overflow: hidden;
+    aspect-ratio: 16 / 10;
+    border: 2px solid transparent;
+    border-radius: 0.6rem;
+    background: var(--ed-surface);
+    cursor: pointer;
+  }
+
+  .hero-choices .hero-choice:hover,
+  .hero-choices .hero-choice:focus-visible,
+  .hero-choices .hero-choice[aria-pressed='true'] {
+    border-color: var(--ed-accent);
+  }
+
+  .hero-choices .hero-choice[aria-pressed='true']::after {
+    content: '✓';
+    position: absolute;
+    top: 0.3rem;
+    right: 0.3rem;
+    display: grid;
+    place-items: center;
+    width: 1.5rem;
+    height: 1.5rem;
+    font-weight: 800;
+    color: var(--ed-accent-ink);
+    border-radius: 50%;
+    background: var(--ed-accent);
+  }
+
+  .hero-choices .hero-choice img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
   }
 
   .gallery-dialog__foot {
@@ -1467,7 +1925,7 @@ const heroChoices = await Promise.all(
     align-items: center;
     gap: 0.75rem;
     padding-top: 0.75rem;
-    border-top: 1px solid #eef2f6;
+    border-top: 1px solid var(--ed-line);
   }
 
   .gallery-dialog__add {
@@ -1478,7 +1936,8 @@ const heroChoices = await Promise.all(
     padding: 0.5rem 1rem;
     font-size: 0.85rem;
     font-weight: 600;
-    border: 1px solid #c5cfda;
+    color: var(--ed-text);
+    border: 1px solid rgb(52 211 153 / 0.55);
     border-radius: 999px;
     cursor: pointer;
   }
@@ -1493,12 +1952,6 @@ const heroChoices = await Promise.all(
   .gallery-dialog__status {
     flex: 1;
     font-size: 0.8rem;
-    color: #5f6e80;
-  }
-
-  .gallery-dialog__foot .edit-bar__btn--primary {
-    color: #ffffff;
-    border-color: #111a24;
-    background: #111a24;
+    color: var(--ed-muted);
   }
 </style>

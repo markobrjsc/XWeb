@@ -17,6 +17,11 @@ const referenzen = defineCollection({
     year: z.number().int().optional(),
     summary: z.string(),
     services: z.array(z.string()).default([]),
+    /**
+     * Leistungskarten (IDs aus src/data/services.ts), in denen das Projekt zusätzlich erscheint –
+     * so legt der Bearbeiten-Modus neue Projekte an, ohne services.ts zu ändern.
+     */
+    leistungen: z.array(z.string()).default([]),
     /** Icon für den Platzhalter, solange kein Foto vorhanden ist */
     icon: z.string().default('image'),
     /**

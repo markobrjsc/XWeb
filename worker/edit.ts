@@ -7,10 +7,14 @@
  *  POST /api/edit/galerie/           { folder, order: [..], hidden: [..] }                        → src/content/galleries.json
  *  POST /api/edit/hero/             { page, image }  – Kopfbild einer Seite                            → src/content/heroes.json
  *  POST /api/edit/farben/           { colors: { "--yellow-500": "#f3a505", … } }                    → src/styles/custom-colors.css
- *  POST /api/edit/abstaende/        { rules: { "<Selektor>": { "margin-top": "24px", … } | null } } → src/content/spacing.json
+ *  GET  /api/edit/abstaende/         gespeicherte Gestaltung je Element (direkt aus GitHub)
+ *  POST /api/edit/abstaende/        { rules: { "<Selektor>": { "margin-top": "24px", "color": "#fff", … } | null } }
+ *                                   Abstände, Farben, Schrift, Ecken, Ausblenden je Element  → src/content/spacing.json
  *  GET  /api/edit/bausteine/?page=   aktueller Stand der Elemente einer Seite (direkt aus GitHub, auch vor dem Build)
  *  POST /api/edit/bausteine/        { page, zones: { "2": [Block, …] } } – Elemente einer Seite             → src/content/blocks.json
  *  PUT  /api/edit/bild/?folder=&name=  Bild als Base64-Text (vom Browser verkleinert)             → src/assets/images/<folder>/<name>
+ *  POST /api/edit/projekt/          { slug, service, pillar, title, summary, location?, year? } – neues Referenzprojekt
+ *                                   in einer Leistungskarte (Fotos vorher per /bild/ nach referenzen/<slug>/) → src/content/referenzen/<slug>.md
  *
  * Einrichtung: GitHub-Token (Fine-grained, nur dieses Repository, „Contents: Read and write“)
  *   npx wrangler secret put GITHUB_TOKEN
@@ -43,19 +47,32 @@ const SPACING_PATH = 'src/content/spacing.json';
 const BLOCKS_PATH = 'src/content/blocks.json';
 const PAGE_PATTERN = /^\/[a-z0-9/_-]*$/i;
 
-/** Abstände: erlaubte Eigenschaften, Selektoren und Werte (gleiche Regeln wie scripts/build-spacing.mjs) */
-const SPACING_PROPS = new Set([
-  'margin-top',
-  'margin-right',
-  'margin-bottom',
-  'margin-left',
-  'padding-top',
-  'padding-right',
-  'padding-bottom',
-  'padding-left',
-]);
+/** Gestaltung je Element: erlaubte Eigenschaften und Werte (gleiche Regeln wie scripts/build-spacing.mjs) */
+const LENGTH = /^(-?\d{1,4}(\.\d{1,3})?(px|rem|em|%)|0|auto)$/;
+const COLOR = /^(#[0-9a-f]{6}|transparent)$/i;
+const STYLE_PROPS: Record<string, RegExp> = {
+  'margin-top': LENGTH,
+  'margin-right': LENGTH,
+  'margin-bottom': LENGTH,
+  'margin-left': LENGTH,
+  'padding-top': LENGTH,
+  'padding-right': LENGTH,
+  'padding-bottom': LENGTH,
+  'padding-left': LENGTH,
+  color: COLOR,
+  'background-color': COLOR,
+  'font-size': /^\d{1,3}(\.\d{1,2})?(px|rem)$/,
+  'font-weight': /^[1-9]00$/,
+  'text-align': /^(left|center|right|justify)$/,
+  'border-radius': /^\d{1,4}(px|%)$/,
+  'max-width': /^(\d{1,4}px|none)$/,
+  /** Ausblenden: all | mobile | desktop (wird zu display: none, im Bearbeiten-Modus nur abgeblendet) */
+  hide: /^(all|mobile|desktop)$/,
+};
 const SPACING_SELECTOR = /^[a-zA-Z0-9\s\-_.#[\]="/:>()*,]{1,500}$/;
-const SPACING_VALUE = /^(-?\d{1,4}(\.\d{1,3})?(px|rem|em|%)|0|auto)$/;
+const SLUG_PATTERN = /^[a-z0-9]+(-[a-z0-9]+){0,12}$/;
+const PILLARS = new Set(['gartenbau', 'tiefbau', 'strassenbau']);
+const PROJECTS_DIR = 'src/content/referenzen';
 
 /** Farb-Variablen, die der Bearbeiten-Modus setzen darf (Standardwerte: src/styles/tokens.css) */
 const COLOR_VARIABLES = new Set([
@@ -280,17 +297,64 @@ async function saveSpacing(request: Request, env: EditEnv) {
         }
         const next = { ...(file[selector] ?? {}) };
         for (const [prop, raw] of Object.entries(props)) {
-          if (!SPACING_PROPS.has(prop)) continue;
+          const rule = STYLE_PROPS[prop];
+          if (!rule) continue;
           if (raw === null || raw === '') delete next[prop];
-          else if (SPACING_VALUE.test(String(raw).trim())) next[prop] = String(raw).trim();
+          else if (rule.test(String(raw).trim())) next[prop] = String(raw).trim();
         }
         if (Object.keys(next).length) file[selector] = next;
         else delete file[selector];
       }
     },
-    `Abstände bearbeitet (${changes.length} ${changes.length === 1 ? 'Element' : 'Elemente'})`,
+    `Gestaltung bearbeitet (${changes.length} ${changes.length === 1 ? 'Element' : 'Elemente'})`,
   );
   return json({ ok: true, saved: changes.length });
+}
+
+async function loadSpacing(env: EditEnv) {
+  const { data } = await readJsonFile<Spacing>(env, SPACING_PATH, {});
+  return json({ ok: true, rules: data });
+}
+
+/* ------------------------------------------------------------------------ */
+/* Neue Referenzprojekte                                                     */
+/* ------------------------------------------------------------------------ */
+async function createProject(request: Request, env: EditEnv) {
+  const body = (await request.json()) as Record<string, unknown>;
+  const text = (key: string, max: number) => String(body[key] ?? '').replace(/\s+/g, ' ').trim().slice(0, max);
+  const slug = String(body.slug ?? '');
+  const service = String(body.service ?? '');
+  const pillar = String(body.pillar ?? '');
+  const title = text('title', 120);
+  const summary = text('summary', 500);
+  const location = text('location', 80);
+  const year = Number(body.year);
+  if (!SLUG_PATTERN.test(slug) || slug.length > 80) return fail('Ungültiger Projektname.');
+  if (!/^[a-z0-9-]{1,60}$/.test(service) || !PILLARS.has(pillar)) return fail('Ungültige Leistung.');
+  if (!title || !summary) return fail('Bitte Titel und Kurzbeschreibung angeben.');
+  const validYear = Number.isInteger(year) && year >= 1950 && year <= 2100;
+
+  const path = `${PROJECTS_DIR}/${slug}.md`;
+  const existing = await fetch(`${contentsUrl(env, path)}?ref=${env.GITHUB_BRANCH ?? 'main'}`, { headers: ghHeaders(env) });
+  if (existing.ok) return fail('Ein Projekt mit diesem Namen gibt es schon.', 409);
+
+  // JSON-Strings sind gültige YAML-Werte (doppelte Anführungszeichen, Escapes)
+  const lines = [
+    '---',
+    `# Angelegt im Bearbeiten-Modus. Fotos: src/assets/images/referenzen/${slug}/ (erstes Foto = Titelbild)`,
+    `title: ${JSON.stringify(title)}`,
+    `category: ${pillar}`,
+    ...(location ? [`location: ${JSON.stringify(location)}`] : []),
+    ...(validYear ? [`year: ${year}`] : []),
+    `summary: ${JSON.stringify(summary)}`,
+    `leistungen: [${service}]`,
+    'icon: image',
+    'order: 100',
+    '---',
+    '',
+  ];
+  await writeTextFile(env, path, lines.join('\n'), `Neues Projekt: ${title} (${service})`);
+  return json({ ok: true, slug });
 }
 
 /* ------------------------------------------------------------------------ */
@@ -379,6 +443,8 @@ export async function handleEdit(request: Request, env: EditEnv, url: URL, pathn
     if (pathname === '/api/edit/hero' && request.method === 'POST') return await saveHero(request, env);
     if (pathname === '/api/edit/farben' && request.method === 'POST') return await saveColors(request, env);
     if (pathname === '/api/edit/abstaende' && request.method === 'POST') return await saveSpacing(request, env);
+    if (pathname === '/api/edit/abstaende' && request.method === 'GET') return await loadSpacing(env);
+    if (pathname === '/api/edit/projekt' && request.method === 'POST') return await createProject(request, env);
     if (pathname === '/api/edit/bausteine' && request.method === 'GET') return await loadBlocks(env, url);
     if (pathname === '/api/edit/bausteine' && request.method === 'POST') return await saveBlocks(request, env);
     if (pathname === '/api/edit/bild' && request.method === 'PUT') return await uploadImage(request, env, url);
