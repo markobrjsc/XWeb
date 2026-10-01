@@ -33,7 +33,7 @@ const { tone = 'default', showLink = true } = Astro.props;
       {
         values.map((value) => (
           <li class="values__item">
-            <FeatureCard icon={value.icon} title={value.title} text={value.text} />
+            <FeatureCard variant="dark" icon={value.icon} title={value.title} text={value.text} />
           </li>
         ))
       }

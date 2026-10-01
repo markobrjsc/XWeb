@@ -17,12 +17,12 @@ const { job, class: className } = Astro.props;
 const { title, type, start, location, summary, icon } = job.data;
 ---
 
-<Card interactive reveal="up" padding="sm" class:list={['job-card', className]}>
+<Card variant="dark" interactive reveal="up" padding="sm" class:list={['job-card', className]}>
   <div class="job-card__layout">
     <div class="job-card__head">
       <IconBadge name={icon} tone="soft" />
       <div class="job-card__meta">
-        <Badge tone="primary" size="sm">{type}</Badge>
+        <Badge tone="light" size="sm">{type}</Badge>
         <span class="job-card__detail"><Icon name="calendar" size="1em" /> {start}</span>
         <span class="job-card__detail"><Icon name="map-pin" size="1em" /> {location}</span>
       </div>
@@ -49,7 +49,7 @@ const { title, type, start, location, summary, icon } = job.data;
     display: flex;
     flex: 1;
     flex-direction: column;
-    gap: var(--space-3);
+    gap: var(--space-2);
   }
 
   .job-card__head {
@@ -61,13 +61,12 @@ const { title, type, start, location, summary, icon } = job.data;
   .job-card__main {
     display: flex;
     flex-direction: column;
-    gap: var(--space-2);
+    gap: var(--space-1);
   }
 
   .job-card__more {
     align-self: flex-start;
     margin-top: auto;
-    padding-top: var(--space-1);
   }
 
   .job-card__meta {
@@ -90,10 +89,16 @@ const { title, type, start, location, summary, icon } = job.data;
     line-height: 1.25;
   }
 
+  /* Höchstens zwei Zeilen – alle Details stehen auf der Stellenseite */
   .job-card__summary {
+    display: -webkit-box;
+    overflow: hidden;
     font-size: var(--text-xs);
     line-height: var(--leading-normal);
     color: var(--color-text-muted);
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
   }
 
   .job-card__more {
@@ -102,7 +107,7 @@ const { title, type, start, location, summary, icon } = job.data;
     gap: var(--space-2);
     font-size: var(--text-sm);
     font-weight: var(--weight-semibold);
-    color: var(--blue-600);
+    color: var(--color-accent);
     white-space: nowrap;
   }
 

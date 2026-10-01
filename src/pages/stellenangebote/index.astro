@@ -10,7 +10,6 @@ import PageHero from '@/components/sections/PageHero.astro';
 import ProcessSection from '@/components/sections/ProcessSection.astro';
 import Button from '@/components/ui/Button.astro';
 import FactList from '@/components/ui/FactList.astro';
-import FeatureCard from '@/components/ui/FeatureCard.astro';
 import Icon from '@/components/ui/Icon.astro';
 import JobCard from '@/components/ui/JobCard.astro';
 import Section from '@/components/ui/Section.astro';
@@ -110,8 +109,11 @@ const highlights = [
     <ul class="benefits" role="list" data-reveal-group="70">
       {
         benefits.map((benefit) => (
-          <li class="benefits__item">
-            <FeatureCard icon={benefit.icon} title={benefit.title} text={benefit.text} layout="inline" padding="sm" />
+          <li class="benefits__item" title={benefit.text} data-reveal="up">
+            <span class="benefits__icon" aria-hidden="true">
+              <Icon name={benefit.icon} size="1.05rem" />
+            </span>
+            {benefit.title}
           </li>
         ))
       }
@@ -190,9 +192,9 @@ const highlights = [
 
   /* Angesprungene Stelle kurz hervorheben */
   .jobs__item:target > :global(.card) {
-    border-color: var(--blue-400);
+    border-color: var(--color-accent);
     box-shadow:
-      0 0 0 4px var(--blue-100),
+      0 0 0 4px rgb(243 165 5 / 0.25),
       var(--shadow-md);
     transition:
       border-color var(--duration-slow) ease,
@@ -221,32 +223,41 @@ const highlights = [
     flex: 1;
   }
 
+  /* Vorteile: runde Labels, zentriert umbrechend */
   .benefits {
-    display: grid;
-    gap: var(--grid-gap);
-    margin: 0;
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: var(--space-3);
+    max-width: 60rem;
+    margin: 0 auto;
     padding: 0;
   }
 
-  /* Vorteile: zwei flache Karten je Zeile */
-  .benefits {
-    gap: var(--space-4);
-    max-width: 64rem;
-    margin-inline: auto;
-  }
-
-  @media (min-width: 40rem) {
-    .benefits {
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-    }
-  }
-
   .benefits__item {
-    display: flex;
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+    padding: 0.4rem 1.1rem 0.4rem 0.4rem;
+    font-size: var(--text-sm);
+    font-weight: var(--weight-semibold);
+    line-height: 1.2;
+    color: var(--color-heading);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-full);
+    background: var(--color-surface);
+    box-shadow: var(--shadow-xs);
   }
 
-  .benefits__item > :global(*) {
-    flex: 1;
+  .benefits__icon {
+    display: grid;
+    place-items: center;
+    flex: none;
+    width: 2rem;
+    height: 2rem;
+    color: var(--color-accent);
+    border-radius: 50%;
+    background: var(--onyx-950);
   }
 
   @media (max-width: 40rem) {

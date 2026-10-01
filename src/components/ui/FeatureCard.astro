@@ -76,6 +76,9 @@ const {
     font-size: var(--text-sm);
     line-height: var(--leading-normal);
     color: var(--color-text-muted);
+    /* Lange Wörter („Versorgungsunternehmen“) in schmalen Karten trennen */
+    overflow-wrap: break-word;
+    hyphens: auto;
   }
 
   .feature:hover :global(.feature__icon) {
