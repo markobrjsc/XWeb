@@ -30,12 +30,12 @@
     "MAIL_FROM": "Website Hildebrand <onboarding@resend.dev>",
     "MAIL_TO": "markobarjasic66@gmail.com",
 
-    // Bearbeiten-Modus (Stift oben rechts, worker/edit.ts): speichert Änderungen als Commit in diesem Repository.
-    // OHNE Zugangsschutz – jeder mit der Adresse kann Inhalte ändern. Zusätzlich nötig:
-    // npx wrangler secret put GITHUB_TOKEN · Abschalten (z. B. zum Livegang): "EDIT_MODE": "0"
+    // Bearbeiten-Modus (worker/edit.ts): speichert Änderungen als Commit in diesem Repository.
+    // Öffnen: auf der Seite „Xaver will was ändern“ tippen → Passwort. Geschützt durch das Passwort im Worker.
+    // Zusätzlich nötig: npx wrangler secret put GITHUB_TOKEN · Passwort: npm run edit-password · Abschalten: "EDIT_MODE": "0"
     "GITHUB_REPO": "markobrjsc/XWeb",
     "GITHUB_BRANCH": "main",
-    "EDIT_MODE": "0"
+    "EDIT_MODE": "1"
   },
   // Live-Domain: Cloudflare legt DNS-Einträge und Zertifikate selbst an.
   // Die Adresse ohne „www“ leitet eine Weiterleitungsregel im Dashboard auf www um.
@@ -43,6 +43,8 @@
     { "pattern": "www.pflasterarbeiten-hildebrand.de", "custom_domain": true },
     { "pattern": "pflasterarbeiten-hildebrand.de", "custom_domain": true }
   ],
+  // `wrangler dev` soll lokal bleiben, nicht als Live-Domain auftreten (sonst greift die Herkunftsprüfung)
+  "dev": { "host": "localhost" },
   "observability": {
     "enabled": true
   }

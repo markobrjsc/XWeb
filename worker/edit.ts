@@ -33,6 +33,10 @@ export interface EditEnv {
   GITHUB_BRANCH?: string;
   /** "0" schaltet den Bearbeiten-Modus ab */
   EDIT_MODE?: string;
+  /** Passwort-Hash "pbkdf2$<Runden>$<Salz>$<Hash>" (Base64) – erzeugen mit `npm run edit-password` */
+  EDIT_PASSWORD_HASH?: string;
+  /** Fehlversuche je IP (Sperre nach zu vielen falschen Passwörtern) */
+  UPLOADS?: KVNamespace;
 }
 
 declare const FixedLengthStream: {
@@ -106,7 +110,92 @@ const json = (data: unknown, status = 200) =>
   });
 const fail = (message: string, status = 400) => json({ ok: false, error: message }, status);
 
-const enabled = (env: EditEnv) => Boolean(env.GITHUB_TOKEN && env.GITHUB_REPO) && env.EDIT_MODE !== '0';
+const enabled = (env: EditEnv) =>
+  Boolean(env.GITHUB_TOKEN && env.GITHUB_REPO && env.EDIT_PASSWORD_HASH) && env.EDIT_MODE !== '0';
+
+/* ------------------------------------------------------------------------ */
+/* Anmeldung                                                                 */
+/* ------------------------------------------------------------------------ */
+// Das Passwort wird nur hier im Worker geprüft (PBKDF2, Einweg-Hash) – der Hash liegt als Secret
+// im Worker, nie im Browser. Danach gilt ein signiertes Cookie; ohne es lehnt jede /api/edit/-Anfrage ab.
+const SESSION_COOKIE = 'ed_session';
+const SESSION_SECONDS = 12 * 60 * 60;
+const MAX_FAILS = 5;
+const LOCK_SECONDS = 15 * 60;
+
+const b64 = (bytes: ArrayBuffer) => btoa(String.fromCharCode(...new Uint8Array(bytes)));
+const unb64 = (text: string) => Uint8Array.from(atob(text), (c) => c.charCodeAt(0));
+
+/** Vergleich in konstanter Zeit, damit die Antwortzeit nichts verrät */
+function sameBytes(a: Uint8Array, b: Uint8Array) {
+  if (a.length !== b.length) return false;
+  let diff = 0;
+  for (let i = 0; i < a.length; i++) diff |= a[i] ^ b[i];
+  return diff === 0;
+}
+
+async function checkPassword(password: string, stored: string) {
+  const [scheme, rounds, salt, hash] = stored.split('$');
+  if (scheme !== 'pbkdf2' || !rounds || !salt || !hash) return false;
+  const key = await crypto.subtle.importKey('raw', new TextEncoder().encode(password), 'PBKDF2', false, ['deriveBits']);
+  const bits = await crypto.subtle.deriveBits(
+    { name: 'PBKDF2', hash: 'SHA-256', salt: unb64(salt), iterations: Number(rounds) },
+    key,
+    256,
+  );
+  return sameBytes(new Uint8Array(bits), unb64(hash));
+}
+
+/** Signaturschlüssel aus dem Passwort-Hash – ein neues Passwort meldet automatisch alle Sitzungen ab */
+const sessionKey = (env: EditEnv) =>
+  crypto.subtle.importKey('raw', new TextEncoder().encode(`session:${env.EDIT_PASSWORD_HASH}`), { name: 'HMAC', hash: 'SHA-256' }, false, [
+    'sign',
+    'verify',
+  ]);
+
+async function createSession(env: EditEnv) {
+  const expires = String(Math.floor(Date.now() / 1000) + SESSION_SECONDS);
+  const signature = await crypto.subtle.sign('HMAC', await sessionKey(env), new TextEncoder().encode(expires));
+  return `${expires}.${b64(signature).replace(/=+$/, '')}`;
+}
+
+async function hasSession(request: Request, env: EditEnv) {
+  const cookie = request.headers.get('Cookie') ?? '';
+  const value = cookie.match(new RegExp(`(?:^|;\\s*)${SESSION_COOKIE}=([^;]+)`))?.[1];
+  const [expires, signature] = value?.split('.') ?? [];
+  if (!expires || !signature || Number(expires) < Date.now() / 1000) return false;
+  try {
+    const padded = signature + '='.repeat((4 - (signature.length % 4)) % 4);
+    return await crypto.subtle.verify('HMAC', await sessionKey(env), unb64(padded), new TextEncoder().encode(expires));
+  } catch {
+    return false;
+  }
+}
+
+const sessionCookie = (value: string, maxAge: number) =>
+  `${SESSION_COOKIE}=${value}; Path=/api/edit; Max-Age=${maxAge}; HttpOnly; Secure; SameSite=Strict`;
+
+async function login(request: Request, env: EditEnv) {
+  const ip = request.headers.get('CF-Connecting-IP') ?? 'unbekannt';
+  const failKey = `login-fail:${ip}`;
+  const fails = Number((await env.UPLOADS?.get(failKey)) ?? 0);
+  if (fails >= MAX_FAILS) return fail('Zu viele Fehlversuche – bitte in 15 Minuten erneut versuchen.', 429);
+
+  let password = '';
+  try {
+    password = String(((await request.json()) as { password?: unknown }).password ?? '');
+  } catch {
+    return fail('Ungültige Anfrage.');
+  }
+  if (!password || password.length > 200 || !(await checkPassword(password, env.EDIT_PASSWORD_HASH!))) {
+    await env.UPLOADS?.put(failKey, String(fails + 1), { expirationTtl: LOCK_SECONDS });
+    return fail('Falsches Passwort.', 401);
+  }
+  await env.UPLOADS?.delete(failKey);
+  const response = json({ ok: true });
+  response.headers.append('Set-Cookie', sessionCookie(await createSession(env), SESSION_SECONDS));
+  return response;
+}
 
 /* ------------------------------------------------------------------------ */
 /* GitHub                                                                    */
@@ -438,9 +527,18 @@ async function uploadImage(request: Request, env: EditEnv, url: URL) {
 
 /* ------------------------------------------------------------------------ */
 export async function handleEdit(request: Request, env: EditEnv, url: URL, pathname: string): Promise<Response | null> {
-  if (pathname === '/api/edit/status') return json({ enabled: enabled(env) });
   if (!pathname.startsWith('/api/edit/')) return null;
-  if (!enabled(env)) return fail('Der Bearbeiten-Modus ist nicht eingerichtet.', 503);
+  if (!enabled(env)) {
+    return pathname === '/api/edit/status' ? json({ enabled: false }) : fail('Der Bearbeiten-Modus ist nicht eingerichtet.', 503);
+  }
+  if (pathname === '/api/edit/status') return json({ enabled: true, loggedIn: await hasSession(request, env) });
+  if (pathname === '/api/edit/login' && request.method === 'POST') return await login(request, env);
+  if (pathname === '/api/edit/logout' && request.method === 'POST') {
+    const response = json({ ok: true });
+    response.headers.append('Set-Cookie', sessionCookie('', 0));
+    return response;
+  }
+  if (!(await hasSession(request, env))) return fail('Bitte zuerst anmelden.', 401);
 
   try {
     if (pathname === '/api/edit/texte' && request.method === 'POST') return await saveTexts(request, env);

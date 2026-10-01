@@ -78,6 +78,11 @@ Die **Originalfotos** (ca. 1,6 GB) liegen in `fotos-original/`. Dieser Ordner wi
 
 ### Bearbeiten-Modus
 
+**Öffnen:** Auf der Website (ohne in ein Feld geklickt zu haben) „Xaver will was ändern“ tippen → Passwort eingeben.
+Geprüft wird nur im Worker (PBKDF2-Hash als Secret `EDIT_PASSWORD_HASH`, nach 5 Fehlversuchen 15 Minuten Sperre);
+danach gilt die Anmeldung 12 Stunden. Ohne Anmeldung lehnt der Worker jede Änderung ab.
+Passwort festlegen oder ändern: `npm run edit-password` (meldet alle bisherigen Sitzungen ab).
+
 „Bearbeiten“ oben rechts öffnet links eine **Seitenleiste**, schlicht in Weiß auf Schwarz (auf dem Handy als Fenster
 von unten); oben rechts darin „Einklappen“ und „Schließen“. Alles, was auf der Seite selbst zur Bearbeitung gehört
 (Markierungen, Werkzeugleiste am Element, „+“-Punkte, Einfügestellen), ist grün. Vier Werkzeuge:

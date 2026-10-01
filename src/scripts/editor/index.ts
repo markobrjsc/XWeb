@@ -30,6 +30,119 @@ const SAVED = 'Gespeichert – nach dem automatischen Build in ca. 2 Minuten liv
 const SIDES = ['top', 'right', 'bottom', 'left'] as const;
 const SIDE_LABELS = { top: 'Oben', right: 'Rechts', bottom: 'Unten', left: 'Links' } as const;
 
+/** Geheime Tastenfolge (ohne Fokus in einem Feld getippt, Leerzeichen egal, „ä“ auch als „ae“) */
+const UNLOCK_PHRASE = 'xaverwillwasaendern';
+
+/**
+ * Wartet auf die Tastenfolge, fragt dann das Passwort ab und meldet beim Worker an.
+ * Geprüft wird nur auf dem Server (worker/edit.ts) – im Browser liegt weder Passwort noch Hash.
+ */
+function unlock() {
+  return new Promise<void>((resolve) => {
+    let typed = '';
+    const onKey = (event: KeyboardEvent) => {
+      const target = event.target as HTMLElement | null;
+      if (event.ctrlKey || event.metaKey || event.altKey || event.key.length !== 1) return;
+      if (target?.closest('input, textarea, select, [contenteditable]:not([contenteditable="false"])')) return;
+      const char = event.key.toLowerCase().replace('ä', 'ae');
+      if (!/^[a-zß]+$/.test(char)) return;
+      typed = (typed + char).slice(-UNLOCK_PHRASE.length);
+      if (typed !== UNLOCK_PHRASE) return;
+      typed = '';
+      document.removeEventListener('keydown', onKey);
+      askPassword(() => document.addEventListener('keydown', onKey)).then(resolve);
+    };
+    document.addEventListener('keydown', onKey);
+  });
+}
+
+/** Passwort-Dialog; löst erst nach erfolgreicher Anmeldung auf, `onCancel` beim Abbrechen */
+function askPassword(onCancel: () => void) {
+  return new Promise<void>((resolve) => {
+    const dialog = document.createElement('dialog');
+    const form = document.createElement('form');
+    const label = document.createElement('label');
+    const input = document.createElement('input');
+    const error = document.createElement('p');
+    const actions = document.createElement('div');
+    const cancel = document.createElement('button');
+    const submit = document.createElement('button');
+
+    label.textContent = 'Passwort für den Bearbeiten-Modus';
+    input.type = 'password';
+    input.autocomplete = 'current-password';
+    input.required = true;
+    cancel.type = 'button';
+    cancel.textContent = 'Abbrechen';
+    submit.type = 'submit';
+    submit.textContent = 'Anmelden';
+    actions.append(cancel, submit);
+    label.append(input);
+    form.append(label, error, actions);
+    dialog.append(form);
+
+    // Stile per CSSOM – die Content-Security-Policy erlaubt keine style-Attribute im HTML
+    Object.assign(dialog.style, {
+      position: 'fixed', inset: '0', margin: 'auto', height: 'fit-content', zIndex: '2147483647',
+      border: '0', borderRadius: '12px', padding: '24px', width: 'min(360px, calc(100vw - 32px))',
+      background: '#14342b', color: '#fff', boxShadow: '0 20px 60px rgb(0 0 0 / 0.4)', fontFamily: 'inherit',
+    });
+    Object.assign(label.style, { display: 'grid', gap: '8px', fontWeight: '600' });
+    Object.assign(input.style, {
+      padding: '10px 12px', borderRadius: '8px', border: '1px solid rgb(255 255 255 / 0.3)',
+      background: 'rgb(255 255 255 / 0.08)', color: '#fff', font: 'inherit',
+    });
+    Object.assign(error.style, { minHeight: '1.4em', margin: '8px 0', color: '#ffb4a8', fontSize: '0.9rem' });
+    Object.assign(actions.style, { display: 'flex', justifyContent: 'flex-end', gap: '8px' });
+    for (const button of [cancel, submit]) {
+      Object.assign(button.style, { padding: '8px 14px', borderRadius: '8px', border: '0', font: 'inherit', cursor: 'pointer' });
+    }
+    Object.assign(cancel.style, { background: 'transparent', color: '#fff' });
+    Object.assign(submit.style, { background: '#fff', color: '#14342b', fontWeight: '600' });
+
+    const close = () => {
+      dialog.close();
+      dialog.remove();
+    };
+    cancel.addEventListener('click', () => {
+      close();
+      onCancel();
+    });
+    dialog.addEventListener('cancel', (event) => {
+      event.preventDefault();
+      close();
+      onCancel();
+    });
+    form.addEventListener('submit', async (event) => {
+      event.preventDefault();
+      submit.disabled = true;
+      error.textContent = '';
+      try {
+        const response = await fetch('/api/edit/login/', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ password: input.value }),
+        });
+        const result = await response.json().catch(() => ({}));
+        if (response.ok && result.ok) {
+          close();
+          resolve();
+          return;
+        }
+        error.textContent = result.error || 'Anmeldung fehlgeschlagen.';
+      } catch {
+        error.textContent = 'Keine Verbindung – bitte erneut versuchen.';
+      }
+      submit.disabled = false;
+      input.select();
+    });
+
+    document.body.append(dialog);
+    dialog.showModal();
+    input.focus();
+  });
+}
+
 export async function initEditor() {
   const ui = document.querySelector<HTMLElement>('[data-edit-ui]');
   const main = document.querySelector<HTMLElement>('main');
@@ -37,6 +150,7 @@ export async function initEditor() {
   try {
     const status = await (await fetch('/api/edit/status/')).json();
     if (!status?.enabled) return;
+    if (!status.loggedIn) await unlock();
   } catch {
     return;
   }
