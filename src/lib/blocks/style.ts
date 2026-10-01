@@ -1,44 +1,76 @@
 /**
- * Gestaltung einzelner Elemente (Farben, Schrift, Abstände, Rahmen, Breite …) → CSS.
+ * Gestaltung einzelner Elemente (Design Hell/Dunkel, Farben, Schrift, Abstände, Rahmen, Breite …) → CSS.
  * Jedes gestaltete Element bekommt die Klasse `ub-i-<id>`; die Regeln dazu entstehen hier.
  *  · Build: src/lib/blocks/server.ts setzt sie als <style> in den <head> (Hash in der Content-Security-Policy)
  *  · Editor: src/scripts/block-editor.ts setzt sie live über ein CSSOM-Stylesheet (von der CSP erlaubt)
  * Ausrichtung, Schatten und Sichtbarkeit sind Klassen (src/styles/blocks.css).
  * Große Werte (Schrift, Abstände) werden auf kleinen Bildschirmen automatisch verkleinert.
  */
+import { designCss } from '../tone-css.mjs';
 import type { Block, BlockStyle, BlockType, Sides } from './schema';
 
 export type StyleGroup = 'align' | 'colors' | 'font' | 'spacing' | 'box' | 'size' | 'visibility';
+export type ColorKey = 'text' | 'bg' | 'accent';
 
 type StyleOptions = {
   groups: StyleGroup[];
+  /** Einstellbare Farben (bei Gruppe „colors“) */
+  colors?: ColorKey[];
+  /** Innenabstand einstellbar (Standard: ja) */
+  padding?: false;
   /** Worauf Schriftgröße/-stärke wirken (Selektor relativ zum Element, '' = das Element selbst) */
   font?: string;
   /** Worauf die Eckenrundung wirkt */
   radius?: string;
 };
 
-const BOX: StyleGroup[] = ['align', 'colors', 'spacing', 'box', 'size', 'visibility'];
-const TEXT: StyleGroup[] = ['align', 'colors', 'font', 'spacing', 'box', 'size', 'visibility'];
-
-/** Welche Gestaltungs-Gruppen der Editor je Elementtyp anbietet – ohne Unnötiges */
+/**
+ * Welche Einstellungen der Editor je Elementtyp anbietet – nur, was für das Element sinnvoll ist.
+ * Design Hell/Dunkel und Außenabstand hat jedes Element.
+ */
 export const STYLE_OPTIONS: Record<BlockType, StyleOptions> = {
-  section: { groups: ['align', 'colors', 'spacing', 'box', 'visibility'] },
-  columns: { groups: BOX },
-  card: { groups: BOX },
-  eyebrow: { groups: TEXT, font: '' },
-  heading: { groups: TEXT, font: '' },
-  text: { groups: TEXT, font: '' },
-  image: { groups: ['align', 'colors', 'font', 'spacing', 'box', 'size', 'visibility'], font: ' .ub-image__caption', radius: ' .ub-image__frame' },
-  button: { groups: TEXT, font: '' },
-  list: { groups: TEXT, font: '' },
-  iconbox: { groups: TEXT, font: ' .ub-iconbox__title' },
-  stat: { groups: TEXT, font: ' .ub-stat__value' },
-  quote: { groups: TEXT, font: ' .ub-quote__text' },
-  faq: { groups: TEXT, font: ' .ub-faq__q' },
-  gallery: { groups: ['spacing', 'box', 'size', 'visibility'], radius: ' .ub-gallery__item' },
-  spacer: { groups: ['spacing', 'visibility'] },
-  divider: { groups: ['align', 'spacing', 'visibility'] },
+  section: { groups: ['align', 'colors', 'spacing', 'visibility'], colors: ['bg', 'text', 'accent'] },
+  columns: { groups: ['align', 'colors', 'spacing', 'size', 'visibility'], colors: ['bg', 'text'] },
+  card: { groups: ['align', 'colors', 'spacing', 'box', 'size', 'visibility'], colors: ['bg', 'text', 'accent'] },
+  eyebrow: { groups: ['align', 'colors', 'font', 'spacing', 'visibility'], colors: ['text', 'accent'], padding: false, font: '' },
+  heading: { groups: ['align', 'colors', 'font', 'spacing', 'size', 'visibility'], colors: ['text', 'accent'], padding: false, font: '' },
+  text: { groups: ['align', 'colors', 'font', 'spacing', 'size', 'visibility'], colors: ['text'], padding: false, font: '' },
+  image: { groups: ['align', 'spacing', 'box', 'size', 'visibility'], padding: false, font: ' .ub-image__caption', radius: ' .ub-image__frame' },
+  button: { groups: ['align', 'colors', 'font', 'spacing', 'box', 'visibility'], colors: ['bg', 'text'], font: '' },
+  list: { groups: ['colors', 'font', 'spacing', 'visibility'], colors: ['text', 'accent'], padding: false, font: '' },
+  iconbox: { groups: ['align', 'colors', 'font', 'spacing', 'box', 'visibility'], colors: ['text', 'bg', 'accent'], font: ' .ub-iconbox__title' },
+  stat: { groups: ['align', 'colors', 'font', 'spacing', 'visibility'], colors: ['text', 'accent'], font: ' .ub-stat__value' },
+  quote: { groups: ['align', 'colors', 'font', 'spacing', 'box', 'size', 'visibility'], colors: ['text', 'bg', 'accent'], font: ' .ub-quote__text' },
+  faq: { groups: ['colors', 'font', 'spacing', 'visibility'], colors: ['text', 'accent'], font: ' .ub-faq__q' },
+  gallery: { groups: ['spacing', 'box', 'size', 'visibility'], padding: false, radius: ' .ub-gallery__item' },
+  spacer: { groups: ['spacing', 'visibility'], padding: false },
+  divider: { groups: ['align', 'spacing', 'visibility'], padding: false },
+};
+
+export type DesignMode = 'tone' | 'ink' | 'shade';
+
+/**
+ * Design Hell/Dunkel je Elementtyp: Fläche (tone), Schrift (ink) oder Bild (shade).
+ * Abschnitt, Karte und Button haben dafür schon ein eigenes Feld – der Schalter setzt dann dieses Feld
+ * (`options`: Wert, Beschriftung, Farbe des Musters), sonst `style.tone`.
+ */
+export const BLOCK_DESIGN: Record<BlockType, { mode: DesignMode; key?: string; options?: [string, string, 'light' | 'gray' | 'dark'][] }> = {
+  section: { mode: 'tone', key: 'tone', options: [['hell', 'Hell', 'light'], ['grau', 'Grau', 'gray'], ['dunkel', 'Dunkel', 'dark']] },
+  card: { mode: 'tone', key: 'style', options: [['rahmen', 'Hell', 'light'], ['dunkel', 'Dunkel', 'dark']] },
+  button: { mode: 'tone', key: 'variant', options: [['secondary', 'Hell', 'light'], ['dunkel', 'Dunkel', 'dark']] },
+  columns: { mode: 'tone' },
+  spacer: { mode: 'tone' },
+  eyebrow: { mode: 'ink' },
+  heading: { mode: 'ink' },
+  text: { mode: 'ink' },
+  list: { mode: 'ink' },
+  iconbox: { mode: 'ink' },
+  stat: { mode: 'ink' },
+  quote: { mode: 'ink' },
+  faq: { mode: 'ink' },
+  divider: { mode: 'ink' },
+  image: { mode: 'shade' },
+  gallery: { mode: 'shade' },
 };
 
 type ImageResolver = (name: string) => { src: string } | undefined;
@@ -122,7 +154,10 @@ export function blockRules(block: Block, image?: ImageResolver): string {
 
   const selector = `.ub-i-${block.id}.ub-i-${block.id}`;
   const rule = (target: string, decls: string[]) => (decls.length ? `${selector}${target}{${decls.map((d) => `${d} !important`).join(';')}}` : '');
-  return rule('', root) + rule(options.font ?? '', font) + rule(options.radius ?? '', radius);
+  // Design Hell/Dunkel zuerst – eigene Farben gehen vor (Abschnitt, Karte, Button: über ihr eigenes Feld)
+  const design = BLOCK_DESIGN[block.type];
+  const tone = style.tone && !design.key ? designCss(selector, { [design.mode]: style.tone }) : '';
+  return tone + rule('', root) + rule(options.font ?? '', font) + rule(options.radius ?? '', radius);
 }
 
 /** CSS für alle Elemente eines Baums */

@@ -1,10 +1,11 @@
 /**
  * Bearbeiten-Modus – Hilfen rund um die Elemente der Seite:
  *  · pickTarget: welches Element passt am besten zur angeklickten Stelle (Text → nur der Text, freie Fläche → Karte/Abschnitt)
- *  · nameOf / iconOf: verständlicher Name und Symbol für die Seitenleiste
- *  · childItems / parentOf / chainOf: Aufbau der Seite für Ebenen, Brotkrumen und „Enthält“
+ *  · kindAt / nameOf: Elementart (Name, Symbol, sinnvolle Einstellungen – Katalog in ./kinds.ts)
+ *  · childItems / parentOf / chainOf: Aufbau der Seite für Ebenen und Brotkrumen
  *  · selectorFor: stabiler CSS-Selektor für gespeicherte Gestaltung (src/content/spacing.json)
  */
+import { kindOf } from './kinds';
 
 /** Oberfläche des Bearbeiten-Modus und Design-Vorschau – nie auswählbar */
 export const UI = '[data-edit-ui], [data-design-panel]';
@@ -179,90 +180,11 @@ export function snippetOf(el: Element): string {
   );
 }
 
+/** Elementart mit Name, Symbol und sinnvollen Einstellungen (Katalog: ./kinds.ts) */
+export const kindAt = (el: Element) => kindOf(el, isTextElement(el));
+
 /** Verständlicher Name eines Seitenelements (Elemente aus dem Baukasten benennt der Element-Editor) */
-export function nameOf(el: Element): string {
-  const tag = el.tagName.toLowerCase();
-  if (el.matches('.site-header')) return 'Kopfzeile';
-  if (el.matches('.site-footer')) return 'Fußzeile';
-  if (el.matches('[data-carousel]')) return 'Galerie';
-  if (el.matches('.service')) return 'Leistungskarte';
-  if (el.matches('.hero__bg, .page-hero__photo')) return 'Kopfbild';
-  if (el.matches('[data-hero-edit]')) return 'Seitenkopf';
-  if (el.matches('.eyebrow')) return 'Überzeile';
-  if (/^h[1-6]$/.test(tag)) return 'Überschrift';
-  if (el.matches('.accent, .marker, mark')) return 'Markierung';
-  if (el.matches('.badge')) return 'Etikett';
-  if (el.matches('.icon-badge')) return 'Symbol';
-  if (el.matches('.btn') || tag === 'button') return 'Button';
-  if (tag === 'a') return 'Link';
-  if (el.matches('.card, article')) return 'Karte';
-  if (tag === 'p') return 'Text';
-  if (tag === 'li') return 'Listenpunkt';
-  if (tag === 'ul' || tag === 'ol') return 'Liste';
-  if (tag === 'img' || tag === 'picture') return 'Bild';
-  if (tag === 'figure') return 'Bild mit Text';
-  if (tag === 'figcaption') return 'Bildunterschrift';
-  if (tag === 'blockquote') return 'Zitat';
-  if (tag === 'form') return 'Formular';
-  if (tag === 'fieldset') return 'Formular-Gruppe';
-  if (tag === 'label') return 'Beschriftung';
-  if (tag === 'input' || tag === 'textarea' || tag === 'select') return 'Eingabefeld';
-  if (tag === 'nav') return 'Navigation';
-  if (tag === 'section') return 'Abschnitt';
-  if (tag === 'header') return 'Kopfbereich';
-  if (tag === 'footer') return 'Fußbereich';
-  if (tag === 'aside') return 'Seitenbereich';
-  if (tag === 'dl') return 'Angaben';
-  if (tag === 'dt' || tag === 'dd' || tag === 'span' || tag === 'strong' || tag === 'em') return 'Textteil';
-  if (isTextElement(el)) return 'Text';
-  const d = display(el);
-  if (d.includes('grid')) return 'Raster';
-  if (d.includes('flex')) return 'Gruppe';
-  return 'Bereich';
-}
-
-/** Symbol (Lucide-Name) passend zum Namen */
-export function iconOf(name: string): string {
-  const icons: Record<string, string> = {
-    Kopfzeile: 'panel-top',
-    Fußzeile: 'panel-bottom',
-    Galerie: 'images',
-    Leistungskarte: 'square-stack',
-    Kopfbild: 'image',
-    Seitenkopf: 'panel-top',
-    Überzeile: 'minus',
-    Überschrift: 'heading',
-    Markierung: 'highlighter',
-    Etikett: 'tag',
-    Symbol: 'shapes',
-    Button: 'mouse-pointer-click',
-    Link: 'link',
-    Karte: 'square',
-    Text: 'type',
-    Textteil: 'type',
-    Listenpunkt: 'dot',
-    Liste: 'list',
-    Bild: 'image',
-    'Bild mit Text': 'image',
-    Bildunterschrift: 'type',
-    Zitat: 'quote',
-    Formular: 'text-cursor-input',
-    'Formular-Gruppe': 'text-cursor-input',
-    Beschriftung: 'type',
-    Eingabefeld: 'text-cursor-input',
-    Navigation: 'menu',
-    Abschnitt: 'layout-template',
-    Raster: 'layout-grid',
-    Gruppe: 'rows-3',
-  };
-  return icons[name] ?? 'box';
-}
-
-/** Kurzbezeichnung im Code-Stil (h2.section-header__title) */
-export function codeOf(el: Element): string {
-  const cls = [...el.classList].filter((c) => !/^(is-|ub-hover|ub-selected)/.test(c)).slice(0, 1);
-  return `${el.tagName.toLowerCase()}${cls.map((c) => `.${c}`).join('')}`;
-}
+export const nameOf = (el: Element) => kindAt(el).name;
 
 /** Eindeutiger, stabiler Selektor – Kopf- und Fußzeile gelten auf allen Seiten, sonst nur auf dieser Seite */
 export function selectorFor(el: Element): string {

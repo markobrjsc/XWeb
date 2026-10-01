@@ -2,13 +2,15 @@
  * Gestaltung aus dem Bearbeiten-Modus (src/content/spacing.json) in CSS übersetzen.
  * Läuft automatisch vor `npm run dev`, `npm run build` und `npm run check`.
  *
- * spacing.json: { "<CSS-Selektor>": { "margin-top": "24px", "color": "#ffffff", "hide": "mobile", … } }
+ * spacing.json: { "<CSS-Selektor>": { "margin-top": "24px", "color": "#ffffff", "tone": "dark", "hide": "mobile", … } }
  * Ausgabe:      src/styles/custom-spacing.css (wird von global.css eingebunden)
  *
  * Erlaubte Eigenschaften und Werte: gleiche Regeln wie worker/edit.ts (STYLE_PROPS).
+ * „tone“ / „ink“ / „shade“ (light | dark) sind das Design Hell/Dunkel – Fläche, Schrift bzw. Bild (src/lib/tone-css.mjs).
  * „hide“ blendet aus (all | mobile | desktop) – im Bearbeiten-Modus bleibt das Element abgeblendet sichtbar.
  */
 import fs from 'node:fs';
+import { designCss } from '../src/lib/tone-css.mjs';
 
 const SOURCE = 'src/content/spacing.json';
 const TARGET = 'src/styles/custom-spacing.css';
@@ -30,6 +32,7 @@ const PROPS = {
   'text-align': /^(left|center|right|justify)$/,
   'border-radius': /^\d{1,4}(px|%)$/,
   'max-width': /^(\d{1,4}px|none)$/,
+  gap: LENGTH,
 };
 const HIDE = { all: '', mobile: '(max-width: 47.99rem)', desktop: '(min-width: 48rem)' };
 const SELECTOR = /^[a-zA-Z0-9\s\-_.#[\]="/:>()*,]{1,500}$/;
@@ -38,6 +41,9 @@ const data = fs.existsSync(SOURCE) ? JSON.parse(fs.readFileSync(SOURCE, 'utf8'))
 const rules = [];
 for (const [selector, props] of Object.entries(data)) {
   if (!SELECTOR.test(selector)) continue;
+  // Design zuerst – eigene Farben (color, background-color) gehen vor
+  const design = designCss(selector, props ?? {});
+  if (design) rules.push(design);
   const lines = Object.entries(props ?? {})
     .filter(([prop, value]) => PROPS[prop]?.test(String(value)))
     .map(([prop, value]) => `  ${prop}: ${value} !important;`);

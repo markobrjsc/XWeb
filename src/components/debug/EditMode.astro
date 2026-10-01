@@ -1,9 +1,12 @@
 ---
 /**
  * EditMode – Bearbeiten-Modus der Website (Knopf „Bearbeiten“ oben rechts).
- * Seitenleiste links in Dunkelgrün – so ist alles, was zur Bearbeitung gehört, klar von der Website zu unterscheiden:
- *  · Auswahl:  Element anklicken (Text → nur der Text, freie Fläche → Karte/Abschnitt) und in der Leiste bearbeiten:
- *              Text, Kopfbild, Galerie, Referenzprojekte, Gestaltung, Abstände, Einfügen, enthaltene Elemente
+ * Seitenleiste links, schlicht in Weiß auf Schwarz; alles, was auf der Seite selbst zur Bearbeitung gehört
+ * (Markierungen, Werkzeugleiste am Element, „+“-Punkte, Einfügestellen), bleibt grün:
+ *  · Auswahl:  Element anklicken (Text → nur der Text, freie Fläche → Karte/Abschnitt). Die Leiste zeigt den Pfad und
+ *              einen Einstellungsbereich mit einklappbaren Unterabschnitten – nur mit dem, was für die Elementart
+ *              sinnvoll ist (Katalog: src/scripts/editor/kinds.ts). Aktionen (hoch/runter, verschieben, duplizieren,
+ *              löschen) stehen in der Werkzeugleiste direkt am Element.
  *  · Einfügen: Vorlagen, Basis-Elemente und Container mit Vorschau (BlockEditorUI.astro)
  *  · Ebenen:   Aufbau der Seite als Baum
  *  · Abstände: Außen-/Innenabstände sichtbar machen und einstellen
@@ -14,6 +17,7 @@ import { getImage } from 'astro:assets';
 import BlockEditorUI from './BlockEditorUI.astro';
 import Icon from '@/components/ui/Icon.astro';
 import { listImages } from '@/lib/images';
+import { KINDS } from '@/scripts/editor/kinds';
 
 // Auswahl fürs Kopfbild: alle Querformat-Fotos als kleine Vorschau (erst beim Öffnen des Dialogs geladen)
 const heroChoices = await Promise.all(
@@ -23,15 +27,14 @@ const heroChoices = await Promise.all(
     .map(async ({ name, image }) => ({ name, thumb: (await getImage({ src: image, width: 320, format: 'webp', quality: 60 })).src })),
 );
 
-// Symbole für die Seitenleiste (werden im Browser geklont – src/scripts/editor/index.ts)
+// Symbole für die Seitenleiste (werden im Browser geklont – src/scripts/editor/index.ts), dazu die der Elementarten
 const ICONS = [
-  'box', 'mouse-pointer-click', 'plus', 'layers', 'corner-left-up', 'arrow-up', 'arrow-down', 'copy', 'move', 'trash-2',
-  'play', 'blocks', 'link', 'palette', 'move-diagonal', 'list-tree', 'type', 'image', 'images', 'folder-plus',
-  'rotate-ccw', 'align-left', 'align-center', 'align-right', 'align-justify', 'arrow-up-to-line', 'panel-top-open',
-  'panel-bottom-open', 'arrow-down-to-line', 'crosshair', 'hand', 'x', 'chevron-right', 'sliders-horizontal',
-  'panel-top', 'panel-bottom', 'square-stack', 'minus', 'heading', 'highlighter', 'tag', 'shapes', 'square', 'dot',
-  'list', 'quote', 'text-cursor-input', 'menu', 'layout-template', 'layout-grid', 'rows-3',
-  'eye', 'eye-off', 'smartphone', 'monitor', 'sparkles', 'square-plus',
+  ...new Set([
+    'box', 'mouse-pointer-click', 'square-plus', 'layers', 'blocks', 'type', 'square', 'hand', 'image', 'images',
+    'rotate-ccw', 'align-left', 'align-center', 'align-right', 'align-justify', 'crosshair', 'x', 'chevron-right',
+    'sliders-horizontal', 'smartphone', 'monitor', 'eye-off',
+    ...Object.values(KINDS).map((kind) => kind.icon),
+  ]),
 ];
 ---
 
@@ -42,34 +45,28 @@ const ICONS = [
   </button>
 
   <aside class="ed-sidebar" data-ed-sidebar data-size="half" hidden aria-label="Bearbeiten">
-    <header class="ed-head">
-      <button class="ed-head__logo" type="button" data-ed-collapse title="Leiste ein- oder ausklappen">
-        <Icon name="pencil" size="1rem" class="ed-head__pen" />
-        <Icon name="panel-left-open" size="1.05rem" class="ed-head__open" />
+    <div class="ed-top">
+      <button class="ed-expand" type="button" data-ed-collapse title="Leiste ausklappen" aria-label="Leiste ausklappen">
+        <Icon name="panel-left-open" size="1.05rem" />
       </button>
-      <div class="ed-head__title">
-        <strong>Bearbeiten</strong>
-        <small data-ed-page></small>
+      <div class="ed-pill" role="group" aria-label="Leiste">
+        <button class="ed-pill__btn ed-sheet-btn" type="button" data-ed-sheet title="Leiste größer oder kleiner">
+          <Icon name="chevrons-up-down" size="0.9rem" /><span>Größe</span>
+        </button>
+        <button class="ed-pill__btn ed-collapse-btn" type="button" data-ed-collapse title="Leiste einklappen">
+          <Icon name="panel-left-close" size="0.9rem" /><span>Einklappen</span>
+        </button>
+        <button class="ed-pill__btn" type="button" data-ed-close title="Bearbeiten beenden">
+          <Icon name="x" size="0.9rem" /><span>Schließen</span>
+        </button>
       </div>
-      <button class="ed-icon-btn" type="button" data-ed-interact aria-pressed="false" title="Seite bedienen (Reiter, Galerien …) – geht auch mit Alt + Klick">
-        <Icon name="hand" size="1.05rem" />
-      </button>
-      <button class="ed-icon-btn ed-sheet-btn" type="button" data-ed-sheet title="Leiste größer oder kleiner">
-        <Icon name="chevrons-up-down" size="1.05rem" />
-      </button>
-      <button class="ed-icon-btn ed-collapse-btn" type="button" data-ed-collapse title="Leiste einklappen">
-        <Icon name="panel-left-close" size="1.05rem" />
-      </button>
-      <button class="ed-icon-btn" type="button" data-ed-close title="Bearbeiten beenden">
-        <Icon name="x" size="1.1rem" />
-      </button>
-    </header>
+    </div>
 
     <nav class="ed-tabs" role="tablist" aria-label="Werkzeuge">
-      <button type="button" role="tab" data-ed-tab="inspect" aria-selected="true"><Icon name="mouse-pointer-2" size="1.05rem" /><span>Auswahl</span></button>
-      <button type="button" role="tab" data-ed-tab="insert" aria-selected="false"><Icon name="square-plus" size="1.05rem" /><span>Einfügen</span></button>
-      <button type="button" role="tab" data-ed-tab="layers" aria-selected="false"><Icon name="layers" size="1.05rem" /><span>Ebenen</span></button>
-      <button type="button" role="tab" data-ed-tab="spacing" aria-selected="false"><Icon name="move-diagonal" size="1.05rem" /><span>Abstände</span></button>
+      <button type="button" role="tab" data-ed-tab="inspect" aria-selected="true" title="Auswahl"><Icon name="mouse-pointer-2" size="1rem" /><span>Auswahl</span></button>
+      <button type="button" role="tab" data-ed-tab="insert" aria-selected="false" title="Einfügen"><Icon name="square-plus" size="1rem" /><span>Einfügen</span></button>
+      <button type="button" role="tab" data-ed-tab="layers" aria-selected="false" title="Ebenen"><Icon name="layers" size="1rem" /><span>Ebenen</span></button>
+      <button type="button" role="tab" data-ed-tab="spacing" aria-selected="false" title="Abstände"><Icon name="move-diagonal" size="1rem" /><span>Abstände</span></button>
     </nav>
 
     <div class="ed-hint" data-ed-hint hidden>
@@ -90,6 +87,9 @@ const ICONS = [
     <footer class="ed-foot">
       <p class="ed-status" data-ed-status aria-live="polite"></p>
       <div class="ed-foot__buttons">
+        <button class="ed-btn ed-btn--icon" type="button" data-ed-interact aria-pressed="false" title="Seite bedienen (Reiter, Galerien …) – geht auch mit Alt + Klick" aria-label="Seite bedienen">
+          <Icon name="hand" size="1rem" />
+        </button>
         <button class="ed-btn" type="button" data-ed-discard disabled><Icon name="undo-2" size="1rem" /><span>Verwerfen</span></button>
         <button class="ed-btn ed-btn--primary" type="button" data-ed-save disabled><Icon name="save" size="1rem" /><span>Speichern</span></button>
       </div>
@@ -102,7 +102,11 @@ const ICONS = [
     <div class="ed-box__bar">
       <span class="ed-box__tag"></span>
       <button type="button" data-ed-quick="parent" title="Übergeordnetes Element wählen"><Icon name="corner-left-up" size="0.95rem" /></button>
+      <button type="button" data-ed-quick="up" title="Nach oben bzw. nach vorne"><Icon name="arrow-up" size="0.95rem" /></button>
+      <button type="button" data-ed-quick="down" title="Nach unten bzw. nach hinten"><Icon name="arrow-down" size="0.95rem" /></button>
+      <button type="button" class="ed-grab" data-ed-quick="move" title="Verschieben – ziehen oder anklicken und Stelle wählen"><Icon name="move" size="0.95rem" /></button>
       <button type="button" data-ed-quick="duplicate" title="Duplizieren"><Icon name="copy" size="0.95rem" /></button>
+      <button type="button" data-ed-quick="perform" title="Auf der Seite auslösen (z. B. Reiter wechseln)"><Icon name="play" size="0.95rem" /></button>
       <button type="button" data-ed-quick="delete" title="Löschen"><Icon name="trash-2" size="0.95rem" /></button>
     </div>
     <button class="ed-plus" type="button" data-ed-plus="before" title="Davor einfügen"><Icon name="plus" size="0.95rem" /></button>
@@ -184,22 +188,43 @@ const ICONS = [
 
 <style is:global>
   /* ======================================================================
-     Bearbeiten-Modus – eigenes dunkelgrünes Farbschema, klar getrennt von der Website
+     Bearbeiten-Modus
+     Grün: alles auf der Seite (Knopf „Bearbeiten“, Markierungen, Werkzeugleiste, Einfügestellen)
+     Weiß auf Schwarz: Seitenleiste und Dialoge (Variablen unten überschrieben)
      ====================================================================== */
   :root {
     --ed-w: 23rem;
-    --ed-rail: 3.75rem;
+    --ed-rail: 3.5rem;
+    --ed-font: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
     --ed-bg: #0c2b21;
     --ed-bg-2: #0f3428;
     --ed-surface: #154335;
     --ed-surface-2: #1b5341;
     --ed-line: rgb(255 255 255 / 0.1);
+    --ed-line-strong: rgb(255 255 255 / 0.2);
     --ed-text: #e9f6f0;
     --ed-muted: #9cc2b1;
     --ed-accent: #34d399;
     --ed-accent-strong: #10b981;
     --ed-accent-ink: #04271b;
     --ed-danger: #fca5a5;
+  }
+
+  .ed-sidebar,
+  .edit-ui .gallery-dialog {
+    --ed-bg: #0a0a0a;
+    --ed-bg-2: #111111;
+    --ed-surface: #1a1a1a;
+    --ed-surface-2: #242424;
+    --ed-line: rgb(255 255 255 / 0.08);
+    --ed-line-strong: rgb(255 255 255 / 0.18);
+    --ed-text: #f4f4f5;
+    --ed-muted: #a1a1aa;
+    --ed-accent: #ffffff;
+    --ed-accent-strong: #ffffff;
+    --ed-accent-ink: #0a0a0a;
+    --ed-danger: #f87171;
+    --ed-changed: #fbbf24;
   }
 
   .edit-ui[hidden],
@@ -296,12 +321,13 @@ const ICONS = [
     display: flex;
     flex-direction: column;
     width: var(--ed-w);
-    font: 400 0.875rem/1.45 var(--font-sans);
+    font: 400 0.8125rem/1.45 var(--ed-font);
     color: var(--ed-text);
     border-right: 1px solid var(--ed-line);
     background: var(--ed-bg);
-    box-shadow: 8px 0 40px -20px rgb(0 0 0 / 0.6);
+    box-shadow: 8px 0 40px -24px rgb(0 0 0 / 0.7);
     color-scheme: dark;
+    -webkit-font-smoothing: antialiased;
     animation: ed-slide-in 320ms cubic-bezier(0.2, 0.8, 0.2, 1);
     transition: width 260ms cubic-bezier(0.2, 0.8, 0.2, 1);
   }
@@ -320,7 +346,7 @@ const ICONS = [
   }
 
   .ed-body > section:not([hidden]) {
-    animation: ed-fade-up 220ms ease;
+    animation: ed-fade-up 200ms ease;
   }
 
   .ed-sidebar :is(h1, h2, h3, p, ul, ol) {
@@ -331,12 +357,67 @@ const ICONS = [
     flex: none;
   }
 
-  .ed-sheet-btn {
-    display: none !important;
+  /* Oben rechts: Einklappen / Schließen */
+  .ed-top {
+    display: flex;
+    flex: none;
+    align-items: center;
+    justify-content: flex-end;
+    padding: 0.65rem 0.65rem 0;
   }
 
-  .ed-sidebar .ed-head__logo .ed-head__open {
+  .ed-pill {
+    display: inline-flex;
+    align-items: center;
+    padding: 2px;
+    border: 1px solid var(--ed-line);
+    border-radius: 999px;
+    background: var(--ed-bg-2);
+  }
+
+  .ed-pill__btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.3rem 0.7rem;
+    font: 500 0.75rem/1.2 var(--ed-font);
+    color: var(--ed-muted);
+    border: 0;
+    border-radius: 999px;
+    background: transparent;
+    cursor: pointer;
+  }
+
+  .ed-pill__btn + .ed-pill__btn {
+    position: relative;
+  }
+
+  .ed-pill__btn + .ed-pill__btn::before {
+    content: '';
+    position: absolute;
+    left: -1px;
+    top: 25%;
+    height: 50%;
+    border-left: 1px solid var(--ed-line);
+  }
+
+  .ed-pill__btn:hover,
+  .ed-pill__btn:focus-visible {
+    color: var(--ed-text);
+    background: var(--ed-surface);
+  }
+
+  .ed-pill__btn:hover::before,
+  .ed-pill__btn:hover + .ed-pill__btn::before {
+    opacity: 0;
+  }
+
+  .ed-expand {
     display: none;
+  }
+
+  .ed-sheet-btn {
+    display: none !important;
   }
 
   /* Eingeklappt: schmale Symbolleiste – Werkzeuge bleiben mit einem Klick erreichbar */
@@ -345,35 +426,40 @@ const ICONS = [
       width: var(--ed-rail);
     }
 
-    .ed-sidebar[data-collapsed] :is(.ed-head__title, .ed-head .ed-icon-btn, .ed-hint, .ed-body, .ed-status, .ed-tabs span, .ed-foot__buttons span, [data-ed-discard]) {
+    .ed-sidebar[data-collapsed] :is(.ed-pill, .ed-hint, .ed-body, .ed-status, .ed-tabs span, .ed-foot__buttons span, [data-ed-discard]) {
       display: none !important;
     }
 
-    .ed-sidebar[data-collapsed] .ed-head {
+    .ed-sidebar[data-collapsed] .ed-top {
       justify-content: center;
       padding-inline: 0;
     }
 
-    .ed-sidebar[data-collapsed] .ed-head__logo .ed-head__pen {
-      display: none;
-    }
-
-    .ed-sidebar[data-collapsed] .ed-head__logo .ed-head__open {
-      display: block;
+    .ed-sidebar[data-collapsed] .ed-expand {
+      display: grid;
+      place-items: center;
+      width: 2.2rem;
+      height: 2.2rem;
+      color: var(--ed-text);
+      border: 1px solid var(--ed-line);
+      border-radius: 999px;
+      background: var(--ed-bg-2);
+      cursor: pointer;
     }
 
     .ed-sidebar[data-collapsed] .ed-tabs {
       grid-template-columns: 1fr;
-      border-bottom: 0;
+      margin-inline: 0.45rem;
     }
 
     .ed-sidebar[data-collapsed] .ed-tabs button {
-      padding-block: 0.7rem;
+      justify-content: center;
+      padding-block: 0.6rem;
     }
 
     .ed-sidebar[data-collapsed] .ed-foot {
       margin-top: auto;
-      padding-inline: 0.5rem;
+      padding-inline: 0.45rem;
     }
 
     .ed-sidebar[data-collapsed] .ed-foot__buttons {
@@ -390,8 +476,9 @@ const ICONS = [
       inset: auto 0 0 0;
       width: 100%;
       height: 52dvh;
+      border-top: 1px solid var(--ed-line);
       border-right: 0;
-      border-radius: 1.1rem 1.1rem 0 0;
+      border-radius: 1rem 1rem 0 0;
       box-shadow: 0 -10px 40px -16px rgb(0 0 0 / 0.6);
       transition: height 250ms ease;
     }
@@ -409,91 +496,42 @@ const ICONS = [
     }
 
     .ed-sheet-btn {
-      display: grid !important;
+      display: inline-flex !important;
     }
   }
 
-  .ed-head {
-    display: flex;
-    flex: none;
-    align-items: center;
-    gap: 0.4rem;
-    padding: 0.7rem 0.6rem 0.6rem 0.9rem;
-    border-bottom: 1px solid var(--ed-line);
-  }
-
-  .ed-head__logo {
-    display: grid;
-    flex: none;
-    place-items: center;
-    width: 2.2rem;
-    height: 2.2rem;
-    color: var(--ed-accent-ink);
-    border: 0;
-    border-radius: 0.65rem;
-    background: linear-gradient(140deg, #6ee7b7, var(--ed-accent-strong));
-    box-shadow: 0 6px 16px -8px rgb(16 185 129 / 0.8);
-    cursor: pointer;
-  }
-
-  .ed-head__title {
-    display: grid;
-    flex: 1;
-    min-width: 0;
-    line-height: 1.25;
-  }
-
-  .ed-head__title small {
-    overflow: hidden;
-    font-size: 0.75rem;
-    white-space: nowrap;
-    text-overflow: ellipsis;
-    color: var(--ed-muted);
-  }
-
-  .ed-icon-btn {
-    display: grid;
-    place-items: center;
-    width: 2.1rem;
-    height: 2.1rem;
-    color: var(--ed-muted);
-    border: 0;
-    border-radius: 0.55rem;
-    background: transparent;
-    cursor: pointer;
-  }
-
-  .ed-icon-btn:hover,
-  .ed-icon-btn:focus-visible {
-    color: var(--ed-text);
-    background: var(--ed-surface);
-  }
-
-  .ed-icon-btn[aria-pressed='true'] {
-    color: var(--ed-accent-ink);
-    background: var(--ed-accent);
-  }
-
+  /* Reiter */
   .ed-tabs {
     display: grid;
     flex: none;
     grid-template-columns: repeat(4, minmax(0, 1fr));
-    gap: 0.25rem;
-    padding: 0.5rem 0.6rem;
-    border-bottom: 1px solid var(--ed-line);
+    gap: 2px;
+    margin: 0.6rem 0.75rem 0;
+    padding: 2px;
+    border: 1px solid var(--ed-line);
+    border-radius: 0.6rem;
+    background: var(--ed-bg-2);
   }
 
   .ed-tabs button {
-    display: grid;
-    justify-items: center;
-    gap: 0.2rem;
-    padding: 0.45rem 0.2rem 0.4rem;
-    font: 600 0.72rem/1.2 var(--font-sans);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.35rem;
+    min-width: 0;
+    padding: 0.45rem 0.25rem;
+    font: 500 0.75rem/1.2 var(--ed-font);
     color: var(--ed-muted);
     border: 0;
-    border-radius: 0.6rem;
+    border-radius: 0.45rem;
     background: transparent;
     cursor: pointer;
+  }
+
+  .ed-tabs button span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
   .ed-tabs button:hover {
@@ -502,12 +540,14 @@ const ICONS = [
 
   .ed-tabs button[aria-selected='true'] {
     color: var(--ed-text);
-    background: var(--ed-surface);
-    box-shadow: inset 0 -2px 0 var(--ed-accent);
+    background: var(--ed-surface-2);
+    box-shadow: 0 1px 2px rgb(0 0 0 / 0.4);
   }
 
-  .ed-tabs button[aria-selected='true'] .icon {
-    color: var(--ed-accent);
+  @media (min-width: 48rem) and (max-width: 63.99rem) {
+    .ed-tabs button .icon {
+      display: none;
+    }
   }
 
   .ed-hint {
@@ -515,12 +555,12 @@ const ICONS = [
     flex: none;
     align-items: center;
     gap: 0.6rem;
-    margin: 0.6rem 0.6rem 0;
-    padding: 0.55rem 0.55rem 0.55rem 0.8rem;
-    font-size: 0.8rem;
-    font-weight: 600;
+    margin: 0.6rem 0.75rem 0;
+    padding: 0.5rem 0.5rem 0.5rem 0.75rem;
+    font-size: 0.78rem;
+    font-weight: 500;
     color: var(--ed-accent-ink);
-    border-radius: 0.7rem;
+    border-radius: 0.6rem;
     background: var(--ed-accent);
   }
 
@@ -529,7 +569,7 @@ const ICONS = [
   }
 
   .ed-hint button {
-    padding: 0.35rem 0.7rem;
+    padding: 0.3rem 0.7rem;
     font: inherit;
     color: var(--ed-text);
     border: 0;
@@ -541,10 +581,12 @@ const ICONS = [
   .ed-body {
     flex: 1;
     min-height: 0;
+    overflow-x: hidden;
     overflow-y: auto;
     overscroll-behavior: contain;
-    padding: 0.8rem 0.8rem 1.2rem;
+    padding: 0.85rem 0.75rem 1.2rem;
     scrollbar-color: var(--ed-surface-2) transparent;
+    scrollbar-width: thin;
   }
 
   .ed-body > section {
@@ -556,13 +598,12 @@ const ICONS = [
     display: grid;
     flex: none;
     gap: 0.5rem;
-    padding: 0.65rem 0.8rem 0.8rem;
+    padding: 0.65rem 0.75rem 0.75rem;
     border-top: 1px solid var(--ed-line);
-    background: var(--ed-bg-2);
   }
 
   .ed-status {
-    font-size: 0.76rem;
+    font-size: 0.72rem;
     color: var(--ed-muted);
   }
 
@@ -573,17 +614,17 @@ const ICONS = [
   .ed-status.is-dirty::before {
     content: '';
     display: inline-block;
-    width: 0.5rem;
-    height: 0.5rem;
+    width: 0.45rem;
+    height: 0.45rem;
     margin-right: 0.4rem;
     border-radius: 50%;
-    background: #fbbf24;
+    background: var(--ed-changed);
   }
 
   .ed-foot__buttons {
     display: grid;
-    grid-template-columns: 1fr 1.6fr;
-    gap: 0.5rem;
+    grid-template-columns: auto 1fr 1.5fr;
+    gap: 0.4rem;
   }
 
   /* ---------------- Bausteine der Seitenleiste ---------------- */
@@ -592,19 +633,22 @@ const ICONS = [
     align-items: center;
     justify-content: center;
     gap: 0.4rem;
-    min-height: 2.2rem;
+    min-height: 2.1rem;
     padding: 0.4rem 0.8rem;
-    font: 600 0.8rem/1.2 var(--font-sans);
+    font: 500 0.78rem/1.2 var(--ed-font);
     color: var(--ed-text);
     border: 1px solid var(--ed-line);
-    border-radius: 0.6rem;
+    border-radius: 0.5rem;
     background: var(--ed-surface);
     cursor: pointer;
+    transition:
+      background-color 120ms ease,
+      border-color 120ms ease;
   }
 
   .ed-btn:hover:not(:disabled),
   .ed-btn:focus-visible {
-    border-color: rgb(52 211 153 / 0.6);
+    border-color: var(--ed-line-strong);
     background: var(--ed-surface-2);
   }
 
@@ -614,6 +658,7 @@ const ICONS = [
   }
 
   .ed-btn--primary {
+    font-weight: 600;
     color: var(--ed-accent-ink);
     border-color: var(--ed-accent);
     background: var(--ed-accent);
@@ -622,7 +667,19 @@ const ICONS = [
   .ed-btn--primary:hover:not(:disabled),
   .ed-btn--primary:focus-visible {
     color: var(--ed-accent-ink);
-    background: #6ee7b7;
+    border-color: #e4e4e7;
+    background: #e4e4e7;
+  }
+
+  .ed-btn--icon {
+    width: 2.1rem;
+    padding: 0;
+  }
+
+  .ed-btn[aria-pressed='true'] {
+    color: var(--ed-accent-ink);
+    border-color: var(--ed-accent);
+    background: var(--ed-accent);
   }
 
   .ed-btn--danger:hover:not(:disabled) {
@@ -633,9 +690,14 @@ const ICONS = [
 
   .ed-btn--ghost {
     min-height: 1.9rem;
-    padding: 0.3rem;
+    padding: 0.3rem 0.4rem;
+    color: var(--ed-muted);
     border-color: transparent;
     background: transparent;
+  }
+
+  .ed-btn--ghost:hover:not(:disabled) {
+    color: var(--ed-text);
   }
 
   .ed-btn--block {
@@ -645,11 +707,12 @@ const ICONS = [
   .ed-btn--small {
     min-height: 1.8rem;
     padding: 0.25rem 0.6rem;
-    font-size: 0.75rem;
+    font-size: 0.74rem;
   }
 
   .ed-note {
-    font-size: 0.75rem;
+    display: block;
+    font-size: 0.72rem;
     line-height: 1.45;
     color: var(--ed-muted);
   }
@@ -657,8 +720,8 @@ const ICONS = [
   .ed-note--ok {
     padding: 0.5rem 0.65rem;
     color: var(--ed-text);
-    border-radius: 0.6rem;
-    background: rgb(52 211 153 / 0.15);
+    border-radius: 0.5rem;
+    background: rgb(255 255 255 / 0.06);
   }
 
   .ed-muted {
@@ -668,9 +731,11 @@ const ICONS = [
   .ed-code {
     padding: 0.4rem 0.55rem;
     overflow-wrap: anywhere;
-    font: 0.78rem/1.4 ui-monospace, 'Cascadia Code', monospace;
+    font: 0.75rem/1.4 ui-monospace, 'Cascadia Code', monospace;
+    color: var(--ed-text);
+    border: 1px solid var(--ed-line);
     border-radius: 0.45rem;
-    background: var(--ed-bg-2);
+    background: var(--ed-bg);
   }
 
   .ed-row2 {
@@ -679,243 +744,229 @@ const ICONS = [
     gap: 0.5rem;
   }
 
+  .ed-count {
+    min-width: 1.2rem;
+    padding: 0.05rem 0.35rem;
+    font-size: 0.68rem;
+    font-weight: 700;
+    color: var(--ed-accent);
+    border-radius: 999px;
+    background: var(--ed-accent-ink);
+  }
+
   /* Leerer Zustand */
   .ed-empty {
     display: grid;
-    justify-items: start;
-    gap: 0.6rem;
-    padding: 0.4rem 0.2rem;
+    gap: 0.5rem;
+    padding: 0.2rem 0.15rem;
   }
 
-  .ed-empty__art {
-    position: relative;
-    display: grid;
-    place-items: center;
-    width: 100%;
-    height: 7.5rem;
-    overflow: hidden;
-    border-radius: 1rem;
-    background:
-      radial-gradient(circle at 30% 30%, rgb(52 211 153 / 0.35), transparent 55%),
-      radial-gradient(circle at 80% 70%, rgb(16 185 129 / 0.25), transparent 50%),
-      var(--ed-surface);
+  .ed-empty > strong {
+    font-size: 0.95rem;
+    font-weight: 600;
   }
 
-  .ed-empty__art::before {
-    content: '';
-    position: absolute;
-    inset: 1.4rem 2.2rem;
-    border: 2px dashed rgb(110 231 183 / 0.7);
-    border-radius: 0.6rem;
-  }
-
-  .ed-empty__art .ed-ico {
-    position: relative;
-    display: grid;
-    place-items: center;
-    width: 3rem;
-    height: 3rem;
-    font-size: 1.4rem;
-    color: var(--ed-accent-ink);
-    border-radius: 50%;
-    background: var(--ed-accent);
-    box-shadow: 0 10px 24px -8px rgb(16 185 129 / 0.9);
-  }
-
-  .ed-empty strong {
-    font-size: 1rem;
-  }
-
-  .ed-empty p {
+  .ed-empty > p {
     color: var(--ed-muted);
   }
 
-  .ed-tips {
+  .ed-steps {
     display: grid;
-    gap: 0.35rem;
-    width: 100%;
-    padding: 0.7rem 0.8rem 0.7rem 1.6rem !important;
-    font-size: 0.8rem;
+    margin-top: 0.4rem;
+    overflow: hidden;
+    border: 1px solid var(--ed-line);
     border-radius: 0.7rem;
     background: var(--ed-bg-2);
   }
 
-  .ed-empty .ed-row2 {
-    width: 100%;
+  .ed-step {
+    display: grid;
+    grid-template-columns: 1.9rem minmax(0, 1fr);
+    align-items: center;
+    gap: 0.6rem;
+    padding: 0.6rem 0.7rem;
+    font: inherit;
+    text-align: left;
+    color: var(--ed-text);
+    border: 0;
+    background: transparent;
+    cursor: pointer;
+  }
+
+  .ed-step + .ed-step {
+    border-top: 1px solid var(--ed-line);
+  }
+
+  .ed-step:hover {
+    background: var(--ed-surface);
+  }
+
+  .ed-step > .ed-ico {
+    display: grid;
+    place-items: center;
+    width: 1.9rem;
+    height: 1.9rem;
+    color: var(--ed-muted);
+    border: 1px solid var(--ed-line);
+    border-radius: 0.5rem;
+  }
+
+  .ed-step span {
+    display: grid;
+    font-size: 0.78rem;
+    line-height: 1.35;
+  }
+
+  .ed-step strong {
+    font-weight: 500;
+  }
+
+  .ed-step small {
+    color: var(--ed-muted);
   }
 
   /* Pfad (Brotkrumen) */
+  .ed-inspect {
+    display: grid;
+    gap: 0.7rem;
+  }
+
   .ed-crumbs {
     display: flex;
     flex-wrap: wrap;
-    gap: 0.2rem;
+    align-items: center;
+    gap: 0.1rem;
   }
 
   .ed-crumb {
     min-height: 1.6rem;
-    padding: 0.15rem 0.55rem;
-    font-size: 0.72rem;
-    font-weight: 600;
+    padding: 0.15rem 0.35rem;
+    font-size: 0.75rem;
+    font-weight: 500;
     color: var(--ed-muted);
     border-color: transparent;
-    border-radius: 999px;
-    background: var(--ed-bg-2);
+    border-radius: 0.35rem;
+    background: transparent;
   }
 
   .ed-crumb + .ed-crumb::before {
-    content: '›';
-    margin-right: 0.15rem;
-    opacity: 0.6;
+    content: '/';
+    margin-right: 0.45rem;
+    color: rgb(255 255 255 / 0.25);
   }
 
-  .ed-crumb.is-current {
-    color: var(--ed-accent-ink);
-    background: var(--ed-accent);
-  }
-
-  /* Titel des gewählten Elements */
-  .ed-title {
-    display: flex;
-    align-items: center;
-    gap: 0.65rem;
-  }
-
-  .ed-title__icon {
-    display: grid;
-    place-items: center;
-    width: 2.4rem;
-    height: 2.4rem;
-    font-size: 1.15rem;
-    color: var(--ed-accent);
-    border-radius: 0.7rem;
+  .ed-crumb:hover:not(:disabled) {
+    color: var(--ed-text);
+    border-color: transparent;
     background: var(--ed-surface);
   }
 
-  .ed-title__text {
-    display: grid;
-    min-width: 0;
-    line-height: 1.3;
-  }
-
-  .ed-title__text strong {
-    font-size: 1.02rem;
-  }
-
-  .ed-title__text code {
-    overflow: hidden;
-    font: 0.72rem/1.4 ui-monospace, 'Cascadia Code', monospace;
-    white-space: nowrap;
-    text-overflow: ellipsis;
-    color: var(--ed-muted);
-  }
-
-  .ed-actions {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.3rem;
-  }
-
-  .ed-actions .ed-btn {
-    min-width: 2.2rem;
-    padding-inline: 0.5rem;
+  .ed-crumb.is-current {
+    font-weight: 600;
+    color: var(--ed-text);
   }
 
   .ed-grab {
-    cursor: grab;
+    cursor: grab !important;
     touch-action: none;
   }
 
-  /* Aufklappbare Gruppen (auch die Felder der Baukasten-Elemente) */
-  .ed-group,
-  .ed-block-fields .ub-g {
+  /* Ein Einstellungsbereich mit einklappbaren Unterabschnitten (src/scripts/editor/panel.ts) */
+  .ed-panel {
+    overflow: hidden;
     border: 1px solid var(--ed-line);
-    border-radius: 0.8rem;
+    border-radius: 0.7rem;
     background: var(--ed-bg-2);
   }
 
-  .ed-block-fields {
+  .ed-panel--plain {
     display: grid;
     gap: 0.75rem;
+    padding: 0.8rem;
   }
 
-  .ed-group > summary,
-  .ed-block-fields .ub-g > summary {
+  .ed-sub + .ed-sub,
+  .ed-panel__foot {
+    border-top: 1px solid var(--ed-line);
+  }
+
+  .ed-sub > summary {
     display: flex;
     align-items: center;
     gap: 0.5rem;
-    padding: 0.6rem 0.75rem;
-    font-size: 0.82rem;
-    font-weight: 700;
+    padding: 0.7rem 0.85rem;
+    font-size: 0.8rem;
+    font-weight: 600;
     list-style: none;
     cursor: pointer;
+    user-select: none;
   }
 
-  .ed-group > summary::-webkit-details-marker,
-  .ed-block-fields .ub-g > summary::-webkit-details-marker {
+  .ed-sub > summary::-webkit-details-marker {
     display: none;
   }
 
-  .ed-group > summary .icon {
-    color: var(--ed-accent);
+  .ed-sub > summary:hover {
+    background: rgb(255 255 255 / 0.025);
   }
 
-  .ed-group > summary::after,
-  .ed-block-fields .ub-g > summary::after {
+  .ed-sub > summary::after {
     content: '';
-    width: 0.45rem;
-    height: 0.45rem;
+    width: 0.4rem;
+    height: 0.4rem;
     margin-left: auto;
-    border-right: 2px solid var(--ed-muted);
-    border-bottom: 2px solid var(--ed-muted);
+    border-right: 1.5px solid var(--ed-muted);
+    border-bottom: 1.5px solid var(--ed-muted);
     rotate: -45deg;
     transition: rotate 150ms ease;
   }
 
-  .ed-group[open] > summary::after,
-  .ed-block-fields .ub-g[open] > summary::after {
+  .ed-sub[open] > summary::after {
     rotate: 45deg;
   }
 
-  .ed-group > :not(summary),
-  .ed-block-fields .ub-g > :not(summary) {
-    margin: 0 0.75rem 0.75rem;
+  .ed-sub__body {
+    display: grid;
+    gap: 0.8rem;
+    padding: 0.1rem 0.85rem 0.95rem;
   }
 
-  .ed-group[open] > summary,
-  .ed-block-fields .ub-g[open] > summary {
-    padding-bottom: 0.45rem;
+  .ed-panel__foot {
+    padding: 0.4rem 0.5rem;
   }
 
   /* Felder */
   .ed-field,
-  .ed-block-fields .ub-f {
+  .ed-panel .ub-f {
     display: grid;
-    gap: 0.3rem;
-    font-size: 0.75rem;
-    font-weight: 600;
+    gap: 0.35rem;
+    min-width: 0;
+    font-size: 0.72rem;
+    font-weight: 500;
     color: var(--ed-muted);
   }
 
   .ed-field.is-changed > span::after {
     content: ' · geändert';
-    color: #fbbf24;
+    color: var(--ed-changed);
   }
 
-  .ed-sidebar :is(input[type='text'], input[type='number'], textarea, select) {
+  .ed-sidebar :is(input[type='text'], input[type='number'], input:not([type]), textarea, select) {
     width: 100%;
     min-width: 0;
-    padding: 0.45rem 0.55rem;
-    font: 400 0.88rem/1.4 var(--font-sans);
+    min-height: 2rem;
+    padding: 0.35rem 0.55rem;
+    font: 400 0.8125rem/1.4 var(--ed-font);
     color: var(--ed-text);
-    border: 1px solid rgb(255 255 255 / 0.14);
-    border-radius: 0.5rem;
+    border: 1px solid rgb(255 255 255 / 0.12);
+    border-radius: 0.45rem;
     background: var(--ed-bg);
   }
 
   .ed-sidebar :is(input, textarea, select):focus {
     outline: none;
-    border-color: var(--ed-accent);
-    box-shadow: 0 0 0 3px rgb(52 211 153 / 0.25);
+    border-color: rgb(255 255 255 / 0.5);
+    box-shadow: 0 0 0 3px rgb(255 255 255 / 0.1);
   }
 
   .ed-sidebar textarea {
@@ -925,7 +976,11 @@ const ICONS = [
 
   .ed-sidebar input::placeholder,
   .ed-sidebar textarea::placeholder {
-    color: rgb(156 194 177 / 0.6);
+    color: rgb(161 161 170 / 0.55);
+  }
+
+  .ed-sidebar input[type='checkbox'] {
+    accent-color: #ffffff;
   }
 
   .ed-unit {
@@ -935,82 +990,164 @@ const ICONS = [
     font-weight: 400;
   }
 
-  .ed-color {
+  /* Hell / Dunkel */
+  .ed-design {
+    display: grid;
+    grid-auto-columns: minmax(0, 1fr);
+    grid-auto-flow: column;
+    gap: 0.4rem;
+  }
+
+  .ed-design__opt {
+    display: flex;
+    align-items: center;
+    gap: 0.55rem;
+    padding: 0.45rem 0.55rem;
+    font: 500 0.78rem/1.2 var(--ed-font);
+    color: var(--ed-text);
+    border: 1px solid var(--ed-line);
+    border-radius: 0.55rem;
+    background: var(--ed-bg);
+    cursor: pointer;
+  }
+
+  .ed-design__opt:hover {
+    border-color: var(--ed-line-strong);
+  }
+
+  .ed-design__opt[aria-pressed='true'] {
+    border-color: #ffffff;
+    box-shadow: inset 0 0 0 1px #ffffff;
+  }
+
+  .ed-design__chip {
+    display: grid;
+    flex: none;
+    place-items: center;
+    width: 1.5rem;
+    height: 1.5rem;
+    font: 700 0.62rem/1 var(--ed-font);
+    border: 1px solid rgb(255 255 255 / 0.25);
+    border-radius: 0.35rem;
+  }
+
+  .ed-design__chip--light {
+    background: #ffffff;
+  }
+
+  .ed-design__chip--gray {
+    background: #e4e4e7;
+  }
+
+  .ed-design__chip--dark {
+    background: #0b0b0c;
+  }
+
+  .ed-design[data-mode='ink'] .ed-design__chip--light {
+    color: #ffffff;
+    background: #52525b;
+  }
+
+  .ed-design[data-mode='ink'] .ed-design__chip--dark {
+    color: #0b0b0c;
+    background: #e4e4e7;
+  }
+
+  .ed-design[data-mode='shade'] .ed-design__chip--light {
+    background: linear-gradient(135deg, #ffffff, #a1a1aa);
+  }
+
+  .ed-design[data-mode='shade'] .ed-design__chip--dark {
+    background: linear-gradient(135deg, #52525b, #09090b);
+  }
+
+  /* Farben */
+  .ed-color,
+  .ed-panel .ub-color {
     display: flex;
     flex-wrap: wrap;
     align-items: center;
     gap: 0.4rem;
   }
 
-  .ed-color input[type='color'] {
-    width: 2rem;
-    height: 2rem;
+  .ed-color input[type='color'],
+  .ed-panel .ub-color input[type='color'] {
+    width: 1.9rem;
+    height: 1.9rem;
     padding: 0;
-    border: 1px solid rgb(255 255 255 / 0.25);
-    border-radius: 0.45rem;
+    border: 1px solid rgb(255 255 255 / 0.2);
+    border-radius: 0.4rem;
     background: none;
     cursor: pointer;
   }
 
-  .ed-color code {
-    min-width: 4.6rem;
-    font-size: 0.72rem;
+  .ed-color code,
+  .ed-panel .ub-color code {
+    min-width: 3.9rem;
+    font: 0.72rem/1.2 ui-monospace, 'Cascadia Code', monospace;
     color: var(--ed-text);
   }
 
-  .ed-swatches {
+  .ed-swatches,
+  .ed-panel .ub-swatches {
     display: flex;
     gap: 0.25rem;
   }
 
-  .ed-swatch {
-    width: 1.35rem;
-    min-height: 1.35rem !important;
+  .ed-swatch,
+  .ed-panel .ub-swatches button {
+    width: 1.25rem;
+    height: 1.25rem;
+    min-height: 1.25rem !important;
     padding: 0 !important;
-    border: 1px solid rgb(255 255 255 / 0.35) !important;
+    border: 1px solid rgb(255 255 255 / 0.3) !important;
     border-radius: 50% !important;
     background: var(--swatch) !important;
+    cursor: pointer;
   }
 
-  .ed-seg {
+  /* Umschalter */
+  .ed-seg,
+  .ed-panel .ub-align {
     display: grid;
     grid-auto-columns: minmax(0, 1fr);
     grid-auto-flow: column;
     gap: 2px;
     padding: 2px;
-    border-radius: 0.6rem;
+    border: 1px solid var(--ed-line);
+    border-radius: 0.5rem;
     background: var(--ed-bg);
   }
 
-  .ed-seg .ed-btn {
-    min-height: 2rem;
-    padding: 0.3rem 0.25rem;
-    font-size: 0.72rem;
-    border-color: transparent;
-    border-radius: 0.45rem;
+  .ed-seg .ed-btn,
+  .ed-panel .ub-align button {
+    display: grid;
+    place-items: center;
+    min-height: 1.8rem;
+    padding: 0.25rem;
+    font: 500 0.72rem/1.2 var(--ed-font);
+    color: var(--ed-muted);
+    border: 0;
+    border-radius: 0.38rem;
     background: transparent;
+    cursor: pointer;
   }
 
-  .ed-seg .ed-btn[aria-pressed='true'] {
+  .ed-seg .ed-btn:hover:not(:disabled),
+  .ed-panel .ub-align button:hover {
+    color: var(--ed-text);
+    background: var(--ed-surface);
+  }
+
+  .ed-seg .ed-btn[aria-pressed='true'],
+  .ed-panel .ub-align button[aria-pressed='true'] {
     color: var(--ed-accent-ink);
     background: var(--ed-accent);
   }
 
-  .ed-subhead {
-    margin-top: 0.3rem !important;
-    padding-top: 0.6rem;
-    font-size: 0.66rem;
-    font-weight: 800;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    color: var(--ed-accent);
-    border-top: 1px solid var(--ed-line);
-  }
-
-  .ed-subhead:first-of-type {
-    margin-top: 0 !important;
-    padding-top: 0;
-    border-top: 0;
+  .ed-panel .ub-align svg {
+    width: 1rem;
+    height: 1rem;
   }
 
   /* Schieberegler mit Zahlenfeld */
@@ -1023,7 +1160,7 @@ const ICONS = [
 
   .ed-range input[type='range'] {
     width: 100%;
-    accent-color: var(--ed-accent);
+    accent-color: #ffffff;
     cursor: pointer;
   }
 
@@ -1031,195 +1168,87 @@ const ICONS = [
     padding-inline: 0.4rem;
   }
 
-  /* Startbildschirm */
-  .ed-steps {
+  /* Abstände je Seite (oben, rechts, unten, links) */
+  .ed-sides {
     display: grid;
-    gap: 0.45rem;
-    width: 100%;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 0.3rem;
   }
 
-  .ed-step {
+  .ed-sides label {
     display: grid;
-    grid-template-columns: 2.1rem minmax(0, 1fr);
-    align-items: center;
-    gap: 0.65rem;
-    padding: 0.6rem 0.7rem;
-    font: inherit;
-    text-align: left;
-    color: var(--ed-text);
-    border: 1px solid var(--ed-line);
-    border-radius: 0.8rem;
-    background: var(--ed-bg-2);
-    cursor: pointer;
-    transition:
-      border-color 150ms ease,
-      transform 150ms ease;
+    gap: 0.15rem;
   }
 
-  .ed-step:hover {
-    border-color: rgb(52 211 153 / 0.6);
-    transform: translateX(2px);
-  }
-
-  .ed-step > .ed-ico {
-    display: grid;
-    place-items: center;
-    width: 2.1rem;
-    height: 2.1rem;
-    color: var(--ed-accent);
-    border-radius: 0.6rem;
-    background: var(--ed-surface);
-  }
-
-  .ed-step span {
-    display: grid;
-    font-size: 0.8rem;
-    line-height: 1.35;
-  }
-
-  .ed-step small {
-    color: var(--ed-muted);
-  }
-
-  .ed-count {
-    min-width: 1.3rem;
-    padding: 0.05rem 0.35rem;
-    font-size: 0.7rem;
-    font-weight: 800;
-    color: var(--ed-accent);
-    border-radius: 999px;
-    background: var(--ed-accent-ink);
-  }
-
-  /* Abstände als Box (wie in den Entwicklerwerkzeugen) */
-  .ed-bm,
-  .ed-bm__inner {
-    position: relative;
-    display: grid;
-    grid-template-columns: 3.6rem minmax(0, 1fr) 3.6rem;
-    grid-template-areas: '. t .' 'l c r' '. b .';
-    align-items: center;
-    justify-items: center;
-    gap: 0.35rem;
-    padding: 1.3rem 0.45rem 0.45rem;
-    border: 1px dashed rgb(251 146 60 / 0.7);
-    border-radius: 0.7rem;
-    background: rgb(251 146 60 / 0.1);
-  }
-
-  .ed-bm__inner {
-    grid-area: c;
-    width: 100%;
-    border-color: rgb(56 189 248 / 0.7);
-    background: rgb(56 189 248 / 0.1);
-  }
-
-  .ed-bm__label {
-    position: absolute;
-    top: 0.25rem;
-    left: 0.5rem;
+  .ed-sides small {
     font-size: 0.66rem;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-    color: var(--ed-muted);
+    color: rgb(161 161 170 / 0.8);
   }
 
-  .ed-bm input {
-    width: 3.4rem !important;
-    padding: 0.3rem 0.25rem !important;
-    font-size: 0.8rem !important;
+  .ed-sidebar .ed-sides input {
+    padding-inline: 0.35rem;
     text-align: center;
   }
 
-  .ed-bm__mt,
-  .ed-bm__pt {
-    grid-area: t;
-  }
-
-  .ed-bm__ml,
-  .ed-bm__pl {
-    grid-area: l;
-  }
-
-  .ed-bm__mr,
-  .ed-bm__pr {
-    grid-area: r;
-  }
-
-  .ed-bm__mb,
-  .ed-bm__pb {
-    grid-area: b;
-  }
-
-  .ed-bm__size {
-    grid-area: c;
-    font-size: 0.7rem;
-    color: var(--ed-muted);
-    white-space: nowrap;
-  }
-
-  /* Einfügen relativ zum Element */
-  .ed-insert-grid {
+  .ed-spacing {
     display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 0.35rem;
+    gap: 0.75rem;
   }
 
-  .ed-insert-grid .ed-btn {
-    justify-content: flex-start;
+  .ed-spacing__name {
+    font-weight: 600;
   }
 
+  /* Einfügen */
   .ed-target {
     display: flex;
     align-items: center;
     gap: 0.65rem;
-    padding: 0.65rem 0.7rem;
-    border: 1px dashed rgb(52 211 153 / 0.45);
-    border-radius: 0.8rem;
+    padding: 0.6rem 0.7rem;
+    border: 1px dashed var(--ed-line-strong);
+    border-radius: 0.7rem;
   }
 
   .ed-target > .ed-ico {
-    font-size: 1.2rem;
-    color: var(--ed-accent);
+    font-size: 1.1rem;
+    color: var(--ed-muted);
   }
 
   .ed-target > span {
     display: grid;
     flex: 1;
     gap: 0.1rem;
-    font-size: 0.78rem;
+    font-size: 0.76rem;
+  }
+
+  .ed-target strong {
+    font-weight: 600;
   }
 
   .ed-target small {
-    font-size: 0.74rem;
+    font-size: 0.72rem;
     color: var(--ed-muted);
   }
 
   .ed-target.is-set {
     border-style: solid;
-    border-color: var(--ed-accent);
-    background: rgb(52 211 153 / 0.12);
+    border-color: rgb(255 255 255 / 0.5);
+    background: rgb(255 255 255 / 0.05);
   }
 
-  /* Listen: enthaltene Elemente und Ebenen */
-  .ed-nodes {
-    display: grid;
-    gap: 0.15rem;
-  }
-
+  /* Ebenen */
   .ed-node {
     display: flex;
     flex: 1;
     align-items: center;
     gap: 0.45rem;
     min-width: 0;
-    padding: 0.4rem 0.5rem;
-    font: 400 0.8rem/1.3 var(--font-sans);
+    padding: 0.38rem 0.5rem;
+    font: 400 0.78rem/1.3 var(--ed-font);
     text-align: left;
     color: var(--ed-text);
     border: 0;
-    border-radius: 0.5rem;
+    border-radius: 0.4rem;
     background: transparent;
     cursor: pointer;
   }
@@ -1231,16 +1260,16 @@ const ICONS = [
 
   .ed-node.is-current {
     background: var(--ed-surface-2);
-    box-shadow: inset 2px 0 0 var(--ed-accent);
+    box-shadow: inset 2px 0 0 #ffffff;
   }
 
   .ed-node > .ed-ico {
-    color: var(--ed-accent);
+    color: var(--ed-muted);
   }
 
   .ed-node__name {
     flex: none;
-    font-weight: 600;
+    font-weight: 500;
   }
 
   .ed-node__text {
@@ -1255,11 +1284,11 @@ const ICONS = [
   .ed-badge {
     flex: none;
     padding: 0.05rem 0.4rem;
-    font-size: 0.66rem;
-    font-weight: 700;
-    color: #fde68a;
+    font-size: 0.64rem;
+    font-weight: 600;
+    color: var(--ed-muted);
+    border: 1px solid var(--ed-line-strong);
     border-radius: 999px;
-    background: rgb(251 191 36 / 0.15);
   }
 
   .ed-tree {
@@ -1279,10 +1308,6 @@ const ICONS = [
     overflow: hidden;
   }
 
-  .ed-body {
-    overflow-x: hidden;
-  }
-
   .ed-twisty {
     display: grid;
     flex: none;
@@ -1290,6 +1315,7 @@ const ICONS = [
     width: 1.5rem;
     min-height: 1.5rem !important;
     padding: 0 !important;
+    color: var(--ed-muted);
     border: 0 !important;
     background: transparent !important;
   }
@@ -1310,7 +1336,7 @@ const ICONS = [
 
   .ed-projects__list {
     display: grid;
-    gap: 0.35rem;
+    gap: 0.3rem;
     padding: 0;
     list-style: none;
   }
@@ -1320,15 +1346,17 @@ const ICONS = [
     align-items: center;
     gap: 0.5rem;
     padding: 0.45rem 0.55rem;
-    border-radius: 0.55rem;
-    background: var(--ed-surface);
+    color: var(--ed-text);
+    border: 1px solid var(--ed-line);
+    border-radius: 0.5rem;
+    background: var(--ed-bg);
   }
 
   .ed-projects__list li > span {
     display: grid;
     flex: 1;
     min-width: 0;
-    font-size: 0.8rem;
+    font-size: 0.78rem;
   }
 
   .ed-projects__list small {
@@ -1346,12 +1374,12 @@ const ICONS = [
     display: grid;
     place-items: center;
     padding: 0.9rem 0.7rem;
-    font-size: 0.78rem;
-    font-weight: 600;
+    font-size: 0.76rem;
+    font-weight: 500;
     text-align: center;
     color: var(--ed-text);
-    border: 1.5px dashed rgb(52 211 153 / 0.55);
-    border-radius: 0.7rem;
+    border: 1.5px dashed var(--ed-line-strong);
+    border-radius: 0.6rem;
     cursor: pointer;
   }
 
@@ -1380,7 +1408,7 @@ const ICONS = [
   }
 
   .ed-thumbs img:first-child {
-    outline: 2px solid var(--ed-accent);
+    outline: 2px solid #ffffff;
   }
 
   .ed-form__status:empty {
@@ -1388,65 +1416,84 @@ const ICONS = [
   }
 
   .ed-form__status {
-    font-size: 0.75rem;
+    font-size: 0.74rem;
     color: var(--ed-muted);
   }
 
-  /* Einstellungsfelder der Baukasten-Elemente (src/scripts/block-editor.ts) */
-  .ed-block-fields .ub-f small {
+  /* Felder der Baukasten-Elemente (src/scripts/block-editor.ts) */
+  .ed-panel .ub-f small {
     font-weight: 400;
     color: var(--ed-muted);
   }
 
-  .ed-block-fields .ub-f--toggle {
+  .ed-panel .ub-f--toggle {
     display: flex;
     align-items: center;
     gap: 0.5rem;
     color: var(--ed-text);
   }
 
-  .ed-block-fields .ub-f__invalid {
+  .ed-panel .ub-f__invalid {
     color: #fde68a !important;
   }
 
-  .ed-block-fields .ub-f__image {
+  .ed-panel .ub-f__image {
     display: grid;
     grid-template-columns: 5rem minmax(0, 1fr);
     align-items: center;
     gap: 0.6rem;
   }
 
-  .ed-block-fields .ub-f__thumb {
+  .ed-panel .ub-f__thumb {
     width: 5rem;
     height: 3.6rem;
     overflow: hidden;
+    border: 1px solid var(--ed-line);
     border-radius: 0.45rem;
     background: var(--ed-bg);
   }
 
-  .ed-block-fields .ub-f__thumb img {
+  .ed-panel .ub-f__thumb img {
     width: 100%;
     height: 100%;
     object-fit: cover;
   }
 
-  .ed-block-fields .ub-f__buttons {
+  .ed-panel .ub-f__buttons {
     display: flex;
     flex-wrap: wrap;
     gap: 0.35rem;
   }
 
-  .ed-block-fields :is(.ub-f__buttons button, .ub-f__mini, .ub-reset, .ub-color__reset, .ub-f__list button) {
-    padding: 0.35rem 0.7rem;
-    font: 600 0.75rem/1.2 var(--font-sans);
+  .ed-panel .ub-color__reset {
+    margin-left: auto;
+    padding: 0.2rem 0.3rem;
+    font: 500 0.7rem/1.2 var(--ed-font);
+    color: var(--ed-muted);
+    border: 0;
+    background: transparent;
+    cursor: pointer;
+  }
+
+  .ed-panel .ub-color__reset:hover {
+    color: var(--ed-text);
+  }
+
+  .ed-panel .ub-color.is-default .ub-color__reset {
+    visibility: hidden;
+  }
+
+  .ed-panel :is(.ub-f__buttons button, .ub-f__mini, .ub-f__list button) {
+    padding: 0.3rem 0.65rem;
+    font: 500 0.74rem/1.2 var(--ed-font);
     color: var(--ed-text);
     border: 1px solid var(--ed-line);
-    border-radius: 0.5rem;
+    border-radius: 0.45rem;
     background: var(--ed-surface);
     cursor: pointer;
   }
 
-  .ed-block-fields .ub-f__list {
+  .ed-panel .ub-f__list {
     display: grid;
     grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 0.35rem;
@@ -1454,7 +1501,7 @@ const ICONS = [
     list-style: none;
   }
 
-  .ed-block-fields .ub-f__list li {
+  .ed-panel .ub-f__list li {
     position: relative;
     overflow: hidden;
     aspect-ratio: 4 / 3;
@@ -1462,126 +1509,54 @@ const ICONS = [
     background: var(--ed-bg);
   }
 
-  .ed-block-fields .ub-f__list img {
+  .ed-panel .ub-f__list img {
     width: 100%;
     height: 100%;
     object-fit: cover;
   }
 
-  .ed-block-fields .ub-f__list span {
+  .ed-panel .ub-f__list span {
     position: absolute;
     inset: auto 0.2rem 0.2rem;
     display: flex;
     justify-content: space-between;
   }
 
-  .ed-block-fields .ub-f__list button {
+  .ed-panel .ub-f__list button {
     padding: 0.1rem 0.35rem;
   }
 
-  .ed-block-fields .ub-f__icons {
+  .ed-panel .ub-f__icons {
     display: grid;
     grid-template-columns: repeat(8, minmax(0, 1fr));
     gap: 0.25rem;
   }
 
-  .ed-block-fields .ub-f__icons button {
+  .ed-panel .ub-f__icons button {
     display: grid;
     place-items: center;
     aspect-ratio: 1;
     font-size: 1rem;
     color: var(--ed-text);
     border: 1px solid var(--ed-line);
-    border-radius: 0.45rem;
+    border-radius: 0.4rem;
     background: var(--ed-bg);
     cursor: pointer;
   }
 
-  .ed-block-fields .ub-f__icons button[aria-pressed='true'] {
+  .ed-panel .ub-f__icons button[aria-pressed='true'] {
     color: var(--ed-accent-ink);
     background: var(--ed-accent);
   }
 
-  .ed-block-fields .ub-num {
+  .ed-panel .ub-num {
     display: flex;
     align-items: center;
     gap: 0.35rem;
     font-weight: 400;
   }
 
-  .ed-block-fields .ub-sides {
-    display: grid;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-    gap: 0.3rem;
-  }
-
-  .ed-block-fields .ub-sides label {
-    display: grid;
-    gap: 0.15rem;
-    font-size: 0.66rem;
-  }
-
-  .ed-block-fields .ub-align {
-    display: grid;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-    gap: 0.25rem;
-  }
-
-  .ed-block-fields .ub-align button {
-    display: grid;
-    justify-items: center;
-    gap: 0.1rem;
-    padding: 0.35rem 0.2rem;
-    font: 600 0.65rem/1.2 var(--font-sans);
-    color: var(--ed-text);
-    border: 1px solid var(--ed-line);
-    border-radius: 0.5rem;
-    background: var(--ed-bg);
-    cursor: pointer;
-  }
-
-  .ed-block-fields .ub-align button[aria-pressed='true'] {
-    color: var(--ed-accent-ink);
-    background: var(--ed-accent);
-  }
-
-  .ed-block-fields .ub-color {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: 0.4rem;
-  }
-
-  .ed-block-fields .ub-color input[type='color'] {
-    width: 2rem;
-    height: 2rem;
-    padding: 0;
-    border: 1px solid rgb(255 255 255 / 0.25);
-    border-radius: 0.45rem;
-    background: none;
-  }
-
-  .ed-block-fields .ub-color code {
-    font-size: 0.72rem;
-    color: var(--ed-text);
-  }
-
-  .ed-block-fields .ub-swatches {
-    display: flex;
-    gap: 0.25rem;
-  }
-
-  .ed-block-fields .ub-swatches button {
-    width: 1.35rem;
-    height: 1.35rem;
-    padding: 0;
-    border: 1px solid rgb(255 255 255 / 0.35);
-    border-radius: 50%;
-    background: var(--swatch);
-    cursor: pointer;
-  }
-
-  /* ---------------- Markierungen auf der Seite ---------------- */
+  /* ---------------- Markierungen auf der Seite (grün) ---------------- */
   .ed-box {
     position: fixed;
     top: 0;
@@ -1629,7 +1604,7 @@ const ICONS = [
     display: none;
   }
 
-  /* Gewähltes Element: kleine Werkzeugleiste und „+“-Punkte zum Einfügen davor/dahinter */
+  /* Gewähltes Element: Werkzeugleiste (übergeordnet, hoch/runter, verschieben, duplizieren, löschen) und „+“-Punkte */
   .ed-box__bar {
     position: absolute;
     bottom: calc(100% + 6px);
@@ -1664,9 +1639,14 @@ const ICONS = [
     cursor: pointer !important;
   }
 
-  .ed-box__bar button:hover {
+  .ed-box__bar button:hover:not(:disabled) {
     color: var(--ed-accent-ink);
     background: var(--ed-accent);
+  }
+
+  .ed-box__bar button:disabled {
+    opacity: 0.35;
+    cursor: default !important;
   }
 
   .ed-box__bar button[data-ed-quick='delete']:hover {
@@ -1757,17 +1737,17 @@ const ICONS = [
     height: fit-content;
     max-height: calc(100dvh - 2rem);
     padding: 0;
-    font-family: var(--font-sans);
+    font-family: var(--ed-font);
     color: var(--ed-text);
     border: 1px solid var(--ed-line);
-    border-radius: 1.2rem;
+    border-radius: 1rem;
     background: var(--ed-bg);
     box-shadow: 0 30px 80px -20px rgb(0 0 0 / 0.7);
     color-scheme: dark;
   }
 
   .gallery-dialog::backdrop {
-    background: rgb(4 20 14 / 0.7);
+    background: rgb(0 0 0 / 0.65);
   }
 
   .gallery-dialog__inner {
@@ -1785,22 +1765,23 @@ const ICONS = [
 
   .gallery-dialog__kicker {
     font-size: 0.7rem;
-    font-weight: 700;
+    font-weight: 600;
     letter-spacing: 0.08em;
     text-transform: uppercase;
-    color: var(--ed-accent);
+    color: var(--ed-muted);
   }
 
   .gallery-dialog__title {
-    font-size: 1.2rem;
+    font-size: 1.15rem;
+    font-weight: 600;
     color: var(--ed-text);
   }
 
   .gallery-dialog__close {
     display: grid;
     place-items: center;
-    width: 2.2rem;
-    height: 2.2rem;
+    width: 2.1rem;
+    height: 2.1rem;
     color: var(--ed-text);
     border: 1px solid var(--ed-line);
     border-radius: 50%;
@@ -1827,7 +1808,7 @@ const ICONS = [
     overflow: hidden;
     aspect-ratio: 4 / 3;
     border: 2px solid transparent;
-    border-radius: 0.7rem;
+    border-radius: 0.6rem;
     background: var(--ed-surface);
     cursor: grab;
   }
@@ -1853,10 +1834,10 @@ const ICONS = [
     left: 0.35rem;
     padding: 0.05rem 0.45rem;
     font-size: 0.7rem;
-    font-weight: 700;
+    font-weight: 600;
     color: #ffffff;
     border-radius: 999px;
-    background: rgb(4 20 14 / 0.8);
+    background: rgb(0 0 0 / 0.75);
   }
 
   .gallery-dialog__grid .gallery-item__tools {
@@ -1872,10 +1853,10 @@ const ICONS = [
     width: 1.8rem;
     height: 1.8rem;
     font-size: 0.9rem;
-    color: var(--ed-accent-ink);
+    color: #0a0a0a;
     border: 0;
     border-radius: 50%;
-    background: rgb(236 253 245 / 0.92);
+    background: rgb(255 255 255 / 0.92);
     cursor: pointer;
   }
 
@@ -1887,7 +1868,7 @@ const ICONS = [
     overflow: hidden;
     aspect-ratio: 16 / 10;
     border: 2px solid transparent;
-    border-radius: 0.6rem;
+    border-radius: 0.55rem;
     background: var(--ed-surface);
     cursor: pointer;
   }
@@ -1935,9 +1916,9 @@ const ICONS = [
     gap: 0.4rem;
     padding: 0.5rem 1rem;
     font-size: 0.85rem;
-    font-weight: 600;
+    font-weight: 500;
     color: var(--ed-text);
-    border: 1px solid rgb(52 211 153 / 0.55);
+    border: 1px solid var(--ed-line-strong);
     border-radius: 999px;
     cursor: pointer;
   }

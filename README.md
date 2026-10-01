@@ -78,36 +78,81 @@ Die **Originalfotos** (ca. 1,6 GB) liegen in `fotos-original/`. Dieser Ordner wi
 
 ### Bearbeiten-Modus
 
-„Bearbeiten“ oben rechts öffnet links eine **Seitenleiste** (Dunkelgrün – alles, was zur Bearbeitung gehört, ist
-so klar von der Website zu unterscheiden; auf dem Handy als Fenster von unten). Vier Werkzeuge:
+„Bearbeiten“ oben rechts öffnet links eine **Seitenleiste**, schlicht in Weiß auf Schwarz (auf dem Handy als Fenster
+von unten); oben rechts darin „Einklappen“ und „Schließen“. Alles, was auf der Seite selbst zur Bearbeitung gehört
+(Markierungen, Werkzeugleiste am Element, „+“-Punkte, Einfügestellen), ist grün. Vier Werkzeuge:
 
 - **Auswahl** – Element auf der Seite anklicken: Text → nur dieser Text, freie Fläche einer Karte → die ganze Karte.
-  Die Leiste zeigt den Pfad (übergeordnete Elemente), das Textfeld, je nach Bereich Kopfbild, Galerie oder
-  Referenzprojekte, die **Gestaltung** (Schriftfarbe, Hintergrund, Schriftgröße/-stärke, Ausrichtung, Ecken, Breite,
-  auf Handy/Computer ausblenden), die **Abstände** (außen/innen je Seite), **Einfügen** (davor, dahinter, innen
-  oben/unten) und die **enthaltenen Elemente**, die sich ebenso auswählen und bearbeiten lassen.
-- **Einfügen** – Vorlagen, Basis-Elemente und Container mit echter Vorschau: an die gewählte Stelle, per
-  Drag & Drop auf die Seite (grüne Linie zeigt die Stelle) oder antippen und Stelle anklicken.
+  Die Leiste zeigt den Pfad und darunter **einen Einstellungsbereich** mit einklappbaren Unterabschnitten –
+  nur mit dem, was für die Elementart sinnvoll ist (Tabelle unten): **Inhalt** (Text, Kopfbild, Galerie,
+  Referenzprojekte), **Design** (Hell/Dunkel, Farben), **Schrift**, **Abstände**, **Form**, **Sichtbarkeit**.
+  Hoch/runter, verschieben, duplizieren, löschen und „übergeordnetes Element“ stehen in der Werkzeugleiste am Element.
+- **Einfügen** – Vorlagen, Basis-Elemente und Container mit echter Vorschau: an die gewählte Stelle (z. B. über die
+  „+“-Punkte am Element), per Drag & Drop auf die Seite (grüne Linie zeigt die Stelle) oder antippen und Stelle anklicken.
 - **Ebenen** – der Aufbau der ganzen Seite als Baum (Kopfzeile, Abschnitte, Inhalte, Fußzeile).
 - **Abstände** – beim Überfahren werden Außen- (orange) und Innenabstände (blau) sichtbar, Klick wählt aus.
 
-Das Hand-Symbol (oder Alt + Klick) schaltet auf „Seite bedienen“ – z. B. um Reiter zu wechseln. **Speichern** schreibt
-Texte (`src/content/edits.json`), Gestaltung (`src/content/spacing.json` → `scripts/build-spacing.mjs`) und Elemente
-(`src/content/blocks.json`) als Commit auf `main`; Kopfbilder, Galerien und neue Projekte speichern direkt.
-Code: `src/components/debug/EditMode.astro` (Leiste), `src/scripts/editor/` (Auswahl, Inspektor, Texte, Gestaltung,
-Fotos, Projekte), `src/scripts/block-editor.ts` (Elemente), Server: `worker/edit.ts`.
+Das Hand-Symbol unten (oder Alt + Klick) schaltet auf „Seite bedienen“ – z. B. um Reiter zu wechseln. **Speichern**
+schreibt Texte (`src/content/edits.json`), Gestaltung (`src/content/spacing.json` → `scripts/build-spacing.mjs`) und
+Elemente (`src/content/blocks.json`) als Commit auf `main`; Kopfbilder, Galerien und neue Projekte speichern direkt.
+Code: `src/components/debug/EditMode.astro` (Leiste), `src/scripts/editor/` (Auswahl, Inspektor, Element-Katalog
+`kinds.ts`, Texte, Gestaltung, Fotos, Projekte), `src/scripts/block-editor.ts` (Elemente), Server: `worker/edit.ts`.
+
+**Design Hell/Dunkel** hat jedes Element – je nach Art mit passender Wirkung (`src/lib/tone-css.mjs`, gleiche Regeln
+für Build, Vorschau und Baukasten): **Fläche** (Hintergrund und alle Farben darin, wie `data-tone`), **Schrift**
+(helle bzw. dunkle Schrift ohne Hintergrund) oder **Bild** (aufgehellt bzw. abgedunkelt). Den **Außenabstand** hat
+ebenfalls jedes Element; alles Weitere nur, wo es Sinn ergibt:
+
+| Elementart (Seite) | Design | Weitere Einstellungen |
+| --- | --- | --- |
+| **Basis** | | |
+| Überschrift, Text | Schrift | Schriftfarbe, Größe, Stärke, Ausrichtung, max. Breite, Ausblenden |
+| Überzeile | Schrift | Schriftfarbe, Größe, Ausblenden |
+| Markierung | Schrift | Schriftfarbe |
+| Textteil | Schrift | Schriftfarbe, Stärke |
+| Link | Schrift | Schriftfarbe, Größe, Stärke, Ausblenden (Ziel nur zur Info) |
+| Button | Fläche | Button-Fläche, Schriftfarbe, Größe, Innenabstand, Ecken, Ausblenden |
+| Etikett | Fläche | Hintergrund, Schriftfarbe, Größe, Stärke, Innenabstand, Ecken, Ausblenden |
+| Symbol | Fläche | Hintergrund, Symbolfarbe, Ecken, Ausblenden |
+| Bild, Bild mit Text | Bild | Ecken, max. Breite, Ausblenden |
+| Bildunterschrift | Schrift | Schriftfarbe, Größe, Ausrichtung |
+| Liste | Schrift | Schriftfarbe, Größe, Lücke, Ausblenden |
+| Listenpunkt | Schrift | Schriftfarbe, Größe, Ausblenden |
+| Zitat | Fläche | Hintergrund, Schriftfarbe, Größe, Ausrichtung, Innenabstand, Ecken, Ausblenden |
+| Kennzahl | Schrift | Schriftfarbe, Größe, Ausrichtung, Ausblenden |
+| Beschriftung | Schrift | Schriftfarbe, Größe, Stärke |
+| Eingabefeld | Fläche | Ecken |
+| Trennlinie | Schrift | max. Breite, Ausblenden |
+| Logo | Fläche | max. Breite |
+| **Erweitert** | | |
+| Abschnitt | Fläche | Hintergrund, Schriftfarbe, Ausrichtung, Innenabstand, Ausblenden |
+| Seitenkopf | Fläche | Kopfbild, Ausrichtung, Innenabstand |
+| Kopfbild | Bild | Kopfbild tauschen |
+| Karte | Fläche | Hintergrund, Schriftfarbe, Ausrichtung, Innenabstand, Ecken, max. Breite, Ausblenden |
+| Leistungskarte | Fläche | Referenzprojekte, Hintergrund, Innenabstand, Ecken, Ausblenden |
+| Galerie | Bild | Fotos bearbeiten, Ecken, max. Breite, Ausblenden |
+| Raster | Fläche | Hintergrund, Innenabstand, Lücke, max. Breite, Ausblenden |
+| Gruppe | Fläche | Hintergrund, Ausrichtung, Innenabstand, Lücke, Ausblenden |
+| Bereich (auch Kopf-/Fuß-/Seitenbereich) | Fläche | Hintergrund, Schriftfarbe, Ausrichtung, Innenabstand, Ecken, max. Breite, Ausblenden |
+| Angaben | Schrift | Schriftfarbe, Größe, Lücke, Ausblenden |
+| Formular | Fläche | Hintergrund, Innenabstand, Ecken, Lücke, max. Breite |
+| Formular-Gruppe | Fläche | Innenabstand, Ecken, Lücke |
+| Navigation | Schrift | Größe, Lücke, Ausblenden |
+| Kopfzeile, Fußzeile (gelten auf allen Seiten) | Fläche | Hintergrund (Fußzeile auch Innenabstand) |
 
 ### Elemente aus dem Baukasten
 
 Zur Auswahl stehen **Vorlagen** (Text mit Bild, Drei Vorteile, Karten, Kennzahlen, Aufruf, Galerie, FAQ, Kundenstimme,
 Ansprechpartner, Kontakt-Kasten …), **Basis-Elemente** (Überschrift, Text, Bild, Button, Liste, Icon mit Text, Zitat …)
 und **Container** (Abschnitt, Spalten, Karte), die weitere Elemente aufnehmen – auch ineinander verschachtelt.
-In der Seitenleiste: hoch/runter, duplizieren, verschieben (Knopf ziehen oder klicken), löschen.
-Jedes Element hat neben seinen eigenen Optionen eine **Gestaltung**: Ausrichtung,
-Farben (Schrift, Hintergrund, Akzent), Schrift (Größe, Stärke, kursiv, Großbuchstaben), Außen-/Innenabstände je Seite,
-Rahmen, Ecken, Schatten, maximale Breite und „nur auf Handy/Computer anzeigen“. Große Schriften und Abstände
-werden auf kleinen Bildschirmen automatisch verkleinert. Daraus entsteht beim Build CSS je Element
-(`src/lib/blocks/style.ts`), das mit Hash in die Content-Security-Policy eingetragen wird.
+In der Werkzeugleiste am Element: hoch/runter, duplizieren, verschieben (Knopf ziehen oder klicken), löschen.
+In der Seitenleiste stehen nur die für den Typ sinnvollen Einstellungen (`STYLE_OPTIONS` und `BLOCK_DESIGN` in
+`src/lib/blocks/style.ts`): immer Design Hell/Dunkel und Außenabstand – bei Abschnitt (Hell/Grau/Dunkel), Karte und
+Button steuert der Schalter deren eigenes Aussehen –, je nach Typ Farben (Schrift, Hintergrund, Akzent), Schrift
+(Größe, Stärke, Ausrichtung, kursiv, Großbuchstaben), Innenabstand, Rahmen, Ecken, Schatten, maximale Breite und
+„nur auf Handy/Computer anzeigen“. Große Schriften und Abstände werden auf kleinen Bildschirmen automatisch
+verkleinert. Daraus entsteht beim Build CSS je Element (`src/lib/blocks/style.ts`), das mit Hash in die
+Content-Security-Policy eingetragen wird.
 
 - Gespeichert in `src/content/blocks.json` (je Seite und Position), eingesetzt beim Build von `src/middleware.ts`
 - Elementtypen und Felder: `src/lib/blocks/schema.ts` · Vorlagen: `src/lib/blocks/presets.ts` ·

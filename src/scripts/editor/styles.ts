@@ -1,8 +1,10 @@
 /**
- * Bearbeiten-Modus – Gestaltung einzelner Seitenelemente: Abstände, Farben, Schrift, Ecken, Breite, Ausblenden.
- * Vorschau sofort per Inline-Style; gespeichert je CSS-Selektor (POST /api/edit/abstaende/ → src/content/spacing.json,
- * beim Build zu src/styles/custom-spacing.css, siehe scripts/build-spacing.mjs – dort auch die erlaubten Werte).
+ * Bearbeiten-Modus – Gestaltung einzelner Seitenelemente: Design Hell/Dunkel, Abstände, Farben, Schrift, Ecken,
+ * Breite, Lücke, Ausblenden. Vorschau sofort (Inline-Style bzw. für das Design dieselben Regeln wie beim Build);
+ * gespeichert je CSS-Selektor (POST /api/edit/abstaende/ → src/content/spacing.json, beim Build zu
+ * src/styles/custom-spacing.css, siehe scripts/build-spacing.mjs – dort auch die erlaubten Werte).
  */
+import { designCss } from '@/lib/tone-css.mjs';
 import { selectorFor } from './dom';
 
 export type StyleProp =
@@ -21,9 +23,16 @@ export type StyleProp =
   | 'text-align'
   | 'border-radius'
   | 'max-width'
+  | 'gap'
+  | 'tone'
+  | 'ink'
+  | 'shade'
   | 'hide';
 
 type Rules = Record<string, Record<string, string>>;
+
+/** Design Hell/Dunkel – kein CSS-Wert, sondern ein Satz Regeln (src/lib/tone-css.mjs) */
+const DESIGN = new Set(['tone', 'ink', 'shade']);
 
 export function createStyles() {
   let saved: Rules = {};
@@ -31,10 +40,31 @@ export function createStyles() {
   const pending = new Map<string, Record<string, string | null> | null>();
   /** Für „Verwerfen“: Elemente mit Vorschau-Styles */
   const touched = new Map<Element, Set<string>>();
+  /** Vorschau des Designs: gleiche Regeln wie beim Build, als CSSOM-Stylesheet (von der CSP erlaubt) */
+  const sheet = new CSSStyleSheet();
+  document.adoptedStyleSheets = [...document.adoptedStyleSheets, sheet];
+
+  /** Stand je Selektor: gespeichert + ungespeicherte Änderungen */
+  const merged = (key: string): Record<string, string> => {
+    const change = pending.get(key);
+    if (change === null) return {};
+    const next = { ...(saved[key] ?? {}) };
+    for (const [prop, value] of Object.entries(change ?? {})) {
+      if (value) next[prop] = value;
+      else delete next[prop];
+    }
+    return next;
+  };
+
+  const updateDesign = () => {
+    const keys = new Set([...Object.keys(saved), ...pending.keys()]);
+    sheet.replaceSync([...keys].map((key) => designCss(key, merged(key))).join('\n'));
+  };
 
   const preview = (el: Element, prop: string, value: string | null) => {
     const target = el as HTMLElement;
-    if (prop === 'hide') {
+    if (DESIGN.has(prop)) updateDesign();
+    else if (prop === 'hide') {
       if (value) target.dataset.edHide = value;
       else delete target.dataset.edHide;
     } else if (value) target.style.setProperty(prop, value, 'important');
@@ -51,6 +81,7 @@ export function createStyles() {
       } catch {
         /* ohne gespeicherte Werte weiterarbeiten */
       }
+      updateDesign();
     },
     /** Eigener Wert (geändert oder gespeichert) – leer = Standard der Seite */
     value(el: Element, prop: StyleProp): string {
@@ -72,6 +103,7 @@ export function createStyles() {
       pending.set(key, null);
       for (const prop of touched.get(el) ?? []) preview(el, prop, null);
       for (const prop of Object.keys(saved[key] ?? {})) preview(el, prop, null);
+      updateDesign();
     },
     hasOwn(el: Element) {
       const key = selectorFor(el);
@@ -81,9 +113,10 @@ export function createStyles() {
     },
     count: () => pending.size,
     discard() {
-      for (const [el, props] of touched) for (const prop of props) preview(el, prop, null);
+      for (const [el, props] of touched) for (const prop of props) if (!DESIGN.has(prop)) preview(el, prop, null);
       touched.clear();
       pending.clear();
+      updateDesign();
     },
     async save() {
       if (!pending.size) return 0;
@@ -96,16 +129,8 @@ export function createStyles() {
       const result = await response.json();
       if (!response.ok || !result.ok) throw new Error(result.error || 'Gestaltung konnte nicht gespeichert werden.');
       // Gespeicherten Stand übernehmen (gleiche Logik wie im Worker)
-      for (const [key, change] of pending) {
-        if (change === null) {
-          delete saved[key];
-          continue;
-        }
-        const next = { ...(saved[key] ?? {}) };
-        for (const [prop, value] of Object.entries(change)) {
-          if (value) next[prop] = value;
-          else delete next[prop];
-        }
+      for (const key of pending.keys()) {
+        const next = merged(key);
         if (Object.keys(next).length) saved[key] = next;
         else delete saved[key];
       }
@@ -113,6 +138,7 @@ export function createStyles() {
       pending.clear();
       // Vorschau bleibt stehen, bis der Build die Werte ins CSS übernommen hat
       touched.clear();
+      updateDesign();
       return count;
     },
   };

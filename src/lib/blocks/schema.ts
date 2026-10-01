@@ -31,6 +31,8 @@ export type Sides = Partial<Record<'top' | 'right' | 'bottom' | 'left', number>>
  * Ausrichtung, Schatten und Sichtbarkeit als Klassen (src/styles/blocks.css).
  */
 export type BlockStyle = {
+  /** Design Hell/Dunkel – je nach Element Fläche, Schrift oder Bild (src/lib/blocks/style.ts → BLOCK_DESIGN) */
+  tone?: 'light' | 'dark';
   align?: 'left' | 'center' | 'right' | 'justify';
   textColor?: string;
   bgColor?: string;
@@ -571,6 +573,7 @@ export function sanitizeStyle(input: unknown): BlockStyle | undefined {
   if (!input || typeof input !== 'object') return undefined;
   const raw = input as Record<string, unknown>;
   const style: BlockStyle = {
+    tone: oneOf(raw.tone, ['light', 'dark'] as const),
     align: oneOf(raw.align, ['left', 'center', 'right', 'justify'] as const),
     textColor: cleanColor(raw.textColor),
     bgColor: cleanColor(raw.bgColor),

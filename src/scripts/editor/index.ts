@@ -2,20 +2,24 @@
  * Bearbeiten-Modus der Website – Seitenleiste links (Markup und Stile: src/components/debug/EditMode.astro).
  *
  *  Auswahl   Element auf der Seite anklicken: Text → nur der Text, freie Fläche → Karte/Abschnitt.
- *            Die Seitenleiste zeigt Pfad (übergeordnete Elemente), Text, Bilder/Galerie/Projekte, Gestaltung,
- *            Abstände, „Einfügen“ (davor, dahinter, innen oben/unten) und die enthaltenen Elemente.
+ *            Die Seitenleiste zeigt den Pfad und darunter einen Einstellungsbereich mit einklappbaren
+ *            Unterabschnitten – nur mit den Einstellungen, die für die Elementart sinnvoll sind (./kinds.ts):
+ *            Inhalt (Text, Kopfbild, Galerie, Projekte), Design (Hell/Dunkel, Farben), Schrift, Abstände, Form, Sichtbarkeit.
+ *            Hoch/runter, verschieben, duplizieren, löschen: Werkzeugleiste direkt am Element.
  *  Einfügen  Vorlagen, Basis-Elemente und Container mit Vorschau – an die gewählte Stelle, per Drag & Drop
  *            auf die Seite oder antippen und Stelle anklicken (src/scripts/block-editor.ts).
  *  Ebenen    Aufbau der ganzen Seite als Baum.
  *  Abstände  Außen-/Innenabstände sichtbar machen und einstellen.
- *  „Seite bedienen“ (Hand-Symbol oder Alt + Klick): Reiter, Galerien usw. normal benutzen.
+ *  „Seite bedienen“ (Hand-Symbol unten oder Alt + Klick): Reiter, Galerien usw. normal benutzen.
  *
  * Speichern schreibt Texte (edits.json), Gestaltung (spacing.json) und Elemente (blocks.json) als Commit auf main;
  * Kopfbilder, Galerien und neue Projekte speichern direkt in ihren Dialogen. Server-Teil: worker/edit.ts.
  */
-import { createBlockEditor, type InsertPosition, type InsertTarget } from '@/scripts/block-editor';
-import { axisOf, chainOf, childItems, codeOf, h, iconOf, isGlobal, isTextElement, isUi, nameOf, parentOf, pickTarget, snippetOf, textNodes } from './dom';
+import { createBlockEditor, type InsertTarget } from '@/scripts/block-editor';
+import { axisOf, chainOf, childItems, h, isGlobal, isTextElement, isUi, kindAt, nameOf, parentOf, pickTarget, snippetOf, textNodes } from './dom';
+import type { Control, Kind } from './kinds';
 import { createMedia, shrink } from './media';
+import { designToggle, subsection } from './panel';
 import { projectsPanel } from './projects';
 import { type StyleProp, createStyles } from './styles';
 import { createTexts } from './texts';
@@ -24,6 +28,7 @@ type Tab = 'inspect' | 'insert' | 'layers' | 'spacing';
 
 const SAVED = 'Gespeichert – nach dem automatischen Build in ca. 2 Minuten live.';
 const SIDES = ['top', 'right', 'bottom', 'left'] as const;
+const SIDE_LABELS = { top: 'Oben', right: 'Rechts', bottom: 'Unten', left: 'Links' } as const;
 
 export async function initEditor() {
   const ui = document.querySelector<HTMLElement>('[data-edit-ui]');
@@ -40,7 +45,6 @@ export async function initEditor() {
   const $ = <T extends Element = HTMLElement>(selector: string) => ui.querySelector<T>(selector)!;
   const toggle = $<HTMLButtonElement>('[data-ed-toggle]');
   const sidebar = $('[data-ed-sidebar]');
-  const pageLabel = $('[data-ed-page]');
   const interactButton = $<HTMLButtonElement>('[data-ed-interact]');
   const tabs = [...ui.querySelectorAll<HTMLButtonElement>('[data-ed-tab]')];
   const panels = [...ui.querySelectorAll<HTMLElement>('[data-ed-panel]')];
@@ -72,7 +76,6 @@ export async function initEditor() {
   let insertTarget: InsertTarget | null = null;
   let interact = false;
   let note = '';
-  const openGroups = new Set(['Text', 'Inhalt', 'Kopfbild', 'Galerie', 'Referenzprojekte', 'Einfügen', 'Enthält']);
   const expanded = new Set<Element>();
   const mobile = () => matchMedia('(max-width: 47.99rem)').matches;
 
@@ -115,7 +118,7 @@ export async function initEditor() {
   const current = (): Element | null => (selectedBlock ? blocks.element(selectedBlock) : selected?.isConnected ? selected : null);
 
   const button = (label: string, onClick: () => void, opts: { icon?: string; title?: string; cls?: string; disabled?: boolean } = {}) => {
-    const b = h('button', { type: 'button', class: `ed-btn ${opts.cls ?? ''}`, title: opts.title ?? (opts.icon && !label ? undefined : undefined), disabled: opts.disabled });
+    const b = h('button', { type: 'button', class: `ed-btn ${opts.cls ?? ''}`, title: opts.title, disabled: opts.disabled });
     if (opts.title) b.setAttribute('aria-label', opts.title);
     if (opts.icon) b.append(icon(opts.icon));
     if (label) b.append(h('span', {}, label));
@@ -124,13 +127,6 @@ export async function initEditor() {
       onClick();
     });
     return b;
-  };
-
-  const group = (title: string, iconName: string, ...children: (Node | null | false)[]) => {
-    const details = h('details', { class: 'ed-group', open: openGroups.has(title) });
-    details.append(h('summary', {}, icon(iconName), h('span', {}, title)), ...children.filter((c): c is Node => Boolean(c)));
-    details.addEventListener('toggle', () => (details.open ? openGroups.add(title) : openGroups.delete(title)));
-    return details;
   };
 
   const setNote = (message: string) => {
@@ -283,9 +279,8 @@ export async function initEditor() {
     return h(
       'div',
       { class: 'ed-empty' },
-      h('div', { class: 'ed-empty__art' }, icon('mouse-pointer-click')),
       h('strong', {}, 'Element auf der Seite anklicken'),
-      h('p', {}, 'Texte, Bilder, Karten, Abschnitte – alles ist auswählbar. Hier erscheinen dann alle Einstellungen und enthaltenen Elemente.'),
+      h('p', {}, 'Texte, Bilder, Karten, Abschnitte – alles ist auswählbar. Hier erscheinen dann die passenden Einstellungen.'),
       h(
         'div',
         { class: 'ed-steps' },
@@ -293,7 +288,7 @@ export async function initEditor() {
         step('square', 'Freie Fläche einer Karte', 'die ganze Karte mit allem darin'),
         step('square-plus', 'Einfügen', 'neue Elemente an jede Stelle, auch per Ziehen', () => showTab('insert')),
         step('layers', 'Ebenen', 'Aufbau der ganzen Seite', () => showTab('layers')),
-        step('hand', 'Seite bedienen', 'Hand-Symbol oder Alt + Klick – z. B. Reiter wechseln'),
+        step('hand', 'Seite bedienen', 'Hand-Symbol unten oder Alt + Klick – z. B. Reiter wechseln'),
       ),
     );
   }
@@ -313,91 +308,28 @@ export async function initEditor() {
     return nav;
   }
 
+  /** Pfad und ein Einstellungsbereich – Inhalt und Gestaltung je nach Elementart */
   function inspect(el: Element): HTMLElement {
-    const wrap = h('div', { class: 'ed-inspect' });
-    const id = blockId(el);
-    const info = id ? blocks.info(id) : null;
-    const name = labelFor(el);
-    const parent = parentOf(el);
-
-    // Kopf: Name, Kurzcode, Aktionen
-    const actions = h('div', { class: 'ed-actions' });
-    if (parent) actions.append(button('', () => select(parent, { reveal: true }), { icon: 'corner-left-up', title: 'Übergeordnetes Element' }));
-    if (info && id) {
-      actions.append(
-        button('', () => blocks.moveBy(id, -1), { icon: 'arrow-up', title: 'Nach oben', disabled: !info.canUp }),
-        button('', () => blocks.moveBy(id, 1), { icon: 'arrow-down', title: 'Nach unten', disabled: !info.canDown }),
-        button('', () => blocks.duplicate(id), { icon: 'copy', title: 'Duplizieren' }),
-      );
-      const move = button('', () => blocks.startMove(id), { icon: 'move', title: 'Verschieben – ziehen oder klicken und Stelle wählen', cls: 'ed-grab' });
-      move.addEventListener('pointerdown', (event) => blocks.startMove(id, event));
-      actions.append(
-        move,
-        button(
-          '',
-          () => {
-            const next = blocks.remove(id);
-            if (next === id) return;
-            const target = next ? blocks.element(next) : null;
-            select(target);
-          },
-          { icon: 'trash-2', title: 'Löschen', cls: 'ed-btn--danger' },
-        ),
-      );
-    }
-    if (!info && el.matches('button, summary, [role="tab"]')) {
-      actions.append(button('Klicken', () => perform(el), { icon: 'play', title: 'Auf der Seite auslösen (z. B. Reiter wechseln)' }));
-    }
-    wrap.append(
-      crumbs(el),
-      h(
-        'div',
-        { class: 'ed-title' },
-        h('span', { class: 'ed-title__icon' }, icon(info ? 'blocks' : iconOf(name))),
-        h('span', { class: 'ed-title__text' }, h('strong', {}, name), h('code', {}, info ? 'Element aus dem Baukasten' : codeOf(el))),
-      ),
-      actions,
-    );
+    const wrap = h('div', { class: 'ed-inspect' }, crumbs(el));
     if (isGlobal(el)) wrap.append(h('p', { class: 'ed-note' }, 'Kopf- und Fußzeile: Änderungen gelten auf allen Seiten.'));
-
-    if (info && id) {
-      const box = h('div', { class: 'ed-block-fields' });
-      blocks.renderInspector(id, box);
-      wrap.append(box);
-    } else {
-      const text = textGroup(el);
-      if (text) wrap.append(text);
-      if (el.matches('a[href]')) {
-        const href = el.getAttribute('href') ?? '';
-        wrap.append(
-          group(
-            'Link',
-            'link',
-            h('p', { class: 'ed-code' }, href),
-            h('p', { class: 'ed-note' }, 'Link-Ziele sind fest eingebaut. Den Text ändern Sie oben.'),
-          ),
-        );
-      }
+    const panel = h('div', { class: 'ed-panel' });
+    const id = blockId(el);
+    if (id && blocks.info(id)) blocks.renderInspector(id, panel);
+    else {
+      const content = [...textFields(el), ...contextTools(el)];
+      if (content.length) panel.append(subsection('Inhalt', ...content));
+      panel.append(...designSections(el, kindAt(el)));
     }
-    for (const tool of contextTools(el)) wrap.append(tool);
-    if (!info) {
-      wrap.append(group('Gestaltung', 'palette', ...designControls(el)));
-      wrap.append(group('Abstände', 'move-diagonal', boxModel(el), h('p', { class: 'ed-note' }, 'Werte in Pixel – leer = Standard der Seite.')));
-    }
-    wrap.append(insertGroup(el));
-    const children = childItems(el);
-    if (children.length) wrap.append(group('Enthält', 'list-tree', nodeList(children)));
+    wrap.append(panel);
     return wrap;
   }
 
   /** Texte eines Textelements – ein Feld je Teil (z. B. Text und gelbe Markierung) */
-  function textGroup(el: Element) {
-    if (!isTextElement(el)) return null;
+  function textFields(el: Element): HTMLElement[] {
+    if (!isTextElement(el)) return [];
     const nodes = textNodes(el).filter((node) => texts.has(node));
-    if (!nodes.length) {
-      return group('Text', 'type', h('p', { class: 'ed-note' }, 'Dieser Text wird automatisch erzeugt (z. B. Zähler) und lässt sich hier nicht ändern.'));
-    }
-    const fields = nodes.map((node) => {
+    if (!nodes.length) return [h('p', { class: 'ed-note' }, 'Dieser Text wird automatisch erzeugt (z. B. Zähler) und lässt sich hier nicht ändern.')];
+    const fields: HTMLElement[] = nodes.map((node) => {
       const owner = node.parentElement!;
       const label = owner === el ? 'Text' : nameOf(owner);
       const area = h('textarea', { rows: '1', spellcheck: 'true' });
@@ -417,45 +349,130 @@ export async function initEditor() {
       const field = h('label', { class: `ed-field${texts.changed(node) ? ' is-changed' : ''}` }, h('span', {}, label), area);
       return field;
     });
-    const hintText = nodes.length > 1 ? h('p', { class: 'ed-note' }, 'Teile mit eigener Formatierung (z. B. gelbe Markierung) haben ein eigenes Feld.') : null;
-    const groupEl = group('Text', 'type', ...fields, hintText);
+    if (nodes.length > 1) fields.push(h('p', { class: 'ed-note' }, 'Teile mit eigener Formatierung (z. B. gelbe Markierung) haben ein eigenes Feld.'));
     // Erstes Feld direkt bereit zum Tippen
     requestAnimationFrame(() => {
-      if (tab === 'inspect' && !mobile()) groupEl.querySelector('textarea')?.focus({ preventScroll: true });
+      if (tab === 'inspect' && !mobile()) inspector.querySelector('textarea')?.focus({ preventScroll: true });
     });
-    return groupEl;
+    return fields;
   }
 
-  /** Werkzeuge je nach Bereich: Kopfbild, Galerie, Referenzprojekte, feste Bilder */
+  /** Inhalte je nach Bereich: Link-Ziel, Kopfbild, Galerie, Referenzprojekte, feste Bilder */
   function contextTools(el: Element): HTMLElement[] {
     const tools: HTMLElement[] = [];
+    if (el.matches('a[href]')) {
+      tools.push(
+        h('div', { class: 'ed-field' }, h('span', {}, 'Link-Ziel'), h('p', { class: 'ed-code' }, el.getAttribute('href') ?? '')),
+        h('p', { class: 'ed-note' }, 'Link-Ziele sind fest eingebaut.'),
+      );
+    }
     const hero = el.closest<HTMLElement>('[data-hero-edit]');
     if (hero && (el === hero || el.closest('.hero__bg, .page-hero__photo'))) {
-      tools.push(group('Kopfbild', 'image', button('Kopfbild ändern', () => media.openHero(hero), { icon: 'image', cls: 'ed-btn--primary ed-btn--block' })));
+      tools.push(button('Kopfbild ändern', () => media.openHero(hero), { icon: 'image', cls: 'ed-btn--primary ed-btn--block' }));
     }
     if (el.matches('[data-carousel][data-gallery]')) {
       const carousel = el as HTMLElement;
       tools.push(
-        group(
-          'Galerie',
-          'images',
-          h('p', { class: 'ed-note' }, `${carousel.dataset.count ?? 0} Fotos · hinzufügen, sortieren, ausblenden`),
-          button('Fotos bearbeiten', () => media.openGallery(carousel), { icon: 'images', cls: 'ed-btn--primary ed-btn--block' }),
-        ),
+        h('p', { class: 'ed-note' }, `${carousel.dataset.count ?? 0} Fotos · hinzufügen, sortieren, ausblenden`),
+        button('Fotos bearbeiten', () => media.openGallery(carousel), { icon: 'images', cls: 'ed-btn--primary ed-btn--block' }),
       );
     }
     const card = el.closest<HTMLElement>('.service[data-service]');
     if (card && (el === card || el.closest('.service__projects'))) {
-      tools.push(group('Referenzprojekte', 'folder-plus', projectsPanel(card, media.openGallery)));
+      tools.push(h('div', { class: 'ed-field' }, h('span', {}, 'Referenzprojekte'), projectsPanel(card, media.openGallery)));
     }
     if (!tools.length && el.matches('img, picture, figure') && !el.closest('[data-ub]')) {
-      tools.push(group('Bild', 'image', h('p', { class: 'ed-note' }, 'Dieses Foto ist fest eingebaut. Kopfbilder und Galerien lassen sich hier tauschen.')));
+      tools.push(h('p', { class: 'ed-note' }, 'Dieses Foto ist fest eingebaut. Kopfbilder und Galerien lassen sich hier tauschen.'));
     }
     return tools;
   }
 
   /* ---------------- Gestaltung ---------------- */
   const px = (value: string) => Math.round(parseFloat(value) || 0);
+
+  /** Design, Schrift, Abstände, Form, Sichtbarkeit – nur die Einstellungen, die zur Elementart passen */
+  function designSections(el: Element, kind: Kind): HTMLElement[] {
+    const has = (control: Control) => kind.controls.includes(control);
+    const sections: HTMLElement[] = [
+      subsection(
+        'Design',
+        designToggle({
+          mode: kind.design,
+          value: styles.value(el, kind.design),
+          onChange: (value) => {
+            styles.set(el, kind.design, value || null);
+            updateStatus();
+          },
+        }),
+        has('bgColor') && colorControl(el, 'background-color', kind.name === 'Button' ? 'Button-Fläche' : 'Hintergrundfarbe'),
+        has('textColor') && colorControl(el, 'color', kind.name === 'Symbol' ? 'Symbolfarbe' : 'Schriftfarbe'),
+      ),
+    ];
+    if (has('fontSize') || has('fontWeight') || has('align')) {
+      sections.push(
+        subsection(
+          'Schrift',
+          has('fontSize') && sizeControl(el),
+          has('fontWeight') &&
+            segControl(el, 'font-weight', 'Stärke', [
+              ['400', 'Normal'],
+              ['600', 'Halbfett'],
+              ['700', 'Fett'],
+              ['800', 'Extra'],
+            ]),
+          has('align') && alignControl(el),
+        ),
+      );
+    }
+    sections.push(
+      subsection(
+        'Abstände',
+        sidesControl(el, 'margin', 'Außen'),
+        has('padding') && sidesControl(el, 'padding', 'Innen'),
+        h('p', { class: 'ed-note' }, 'Werte in Pixel – leer = Standard der Seite.'),
+      ),
+    );
+    if (has('radius') || has('maxWidth') || has('gap')) {
+      sections.push(
+        subsection(
+          'Form',
+          h(
+            'div',
+            { class: 'ed-row2' },
+            has('radius') && numberControl(el, 'border-radius', 'Ecken'),
+            has('maxWidth') && numberControl(el, 'max-width', 'Max. Breite'),
+            has('gap') && numberControl(el, 'gap', 'Lücke'),
+          ),
+        ),
+      );
+    }
+    if (has('hide')) {
+      sections.push(
+        subsection(
+          'Sichtbarkeit',
+          segControl(el, 'hide', 'Ausblenden', [
+            ['mobile', 'Auf dem Handy ausblenden', 'smartphone'],
+            ['desktop', 'Am Computer ausblenden', 'monitor'],
+            ['all', 'Überall ausblenden', 'eye-off'],
+          ]),
+        ),
+      );
+    }
+    if (styles.hasOwn(el)) {
+      sections.push(
+        h(
+          'div',
+          { class: 'ed-panel__foot' },
+          button('Eigene Gestaltung entfernen', () => {
+            styles.reset(el);
+            updateStatus();
+            renderPanels();
+          }, { icon: 'rotate-ccw', cls: 'ed-btn--ghost ed-btn--block' }),
+        ),
+      );
+    }
+    return sections;
+  }
 
   function colorControl(el: Element, prop: StyleProp, label: string) {
     const own = styles.value(el, prop);
@@ -563,112 +580,28 @@ export async function initEditor() {
       if (number.value !== '') range.value = number.value;
       apply(number.value);
     });
-    return h('div', { class: 'ed-field' }, h('span', {}, 'Schriftgröße'), h('div', { class: 'ed-range' }, range, h('span', { class: 'ed-unit' }, number, 'px')));
+    return h('div', { class: 'ed-field' }, h('span', {}, 'Größe'), h('div', { class: 'ed-range' }, range, h('span', { class: 'ed-unit' }, number, 'px')));
   }
 
-  function designControls(el: Element): HTMLElement[] {
-    const controls: HTMLElement[] = [
-      h('p', { class: 'ed-subhead' }, 'Farben'),
-      colorControl(el, 'color', 'Schriftfarbe'),
-      colorControl(el, 'background-color', 'Hintergrund'),
-      h('p', { class: 'ed-subhead' }, 'Schrift'),
-      sizeControl(el),
-      segControl(el, 'font-weight', 'Stärke', [
-        ['400', 'Normal'],
-        ['600', 'Halbfett'],
-        ['700', 'Fett'],
-        ['800', 'Extra'],
-      ]),
-      alignControl(el),
-      h('p', { class: 'ed-subhead' }, 'Form'),
-      h('div', { class: 'ed-row2' }, numberControl(el, 'border-radius', 'Ecken'), numberControl(el, 'max-width', 'Max. Breite')),
-      h('p', { class: 'ed-subhead' }, 'Sichtbarkeit'),
-      segControl(el, 'hide', 'Ausblenden', [
-        ['mobile', 'Auf dem Handy ausblenden', 'smartphone'],
-        ['desktop', 'Am Computer ausblenden', 'monitor'],
-        ['all', 'Überall ausblenden', 'eye-off'],
-      ]),
-    ];
-    if (styles.hasOwn(el)) {
-      controls.push(
-        button('Eigene Gestaltung entfernen', () => {
-          styles.reset(el);
-          updateStatus();
-          renderPanels();
-        }, { icon: 'rotate-ccw', cls: 'ed-btn--block' }),
-      );
-    }
-    return controls;
-  }
-
-  /** Abstände als Box: außen (margin) und innen (padding), Platzhalter = aktuelle Werte */
-  function boxModel(el: Element) {
+  /** Abstände je Seite (oben, rechts, unten, links) – Platzhalter zeigen die aktuellen Werte */
+  function sidesControl(el: Element, kind: 'margin' | 'padding', label: string) {
     const cs = getComputedStyle(el);
-    const field = (kind: 'margin' | 'padding', side: (typeof SIDES)[number]) => {
+    const grid = h('div', { class: 'ed-sides' });
+    for (const side of SIDES) {
       const prop = `${kind}-${side}` as StyleProp;
       const own = styles.value(el, prop);
-      const input = h('input', { type: 'number', step: '1', min: kind === 'padding' ? '0' : undefined, placeholder: String(px(cs.getPropertyValue(prop))), title: `${kind === 'margin' ? 'Außen' : 'Innen'} ${side}`, class: `ed-bm__${kind[0]}${side[0]}` });
+      const input = h('input', { type: 'number', step: '1', min: kind === 'padding' ? '0' : undefined, placeholder: String(px(cs.getPropertyValue(prop))), 'aria-label': `${label} ${SIDE_LABELS[side]}` });
       input.value = own ? String(parseFloat(own)) : '';
       input.addEventListener('input', () => {
         styles.set(el, prop, input.value === '' ? null : `${Math.round(Number(input.value))}px`);
         updateStatus();
       });
-      return input;
-    };
-    const r = el.getBoundingClientRect();
-    return h(
-      'div',
-      { class: 'ed-bm' },
-      h('span', { class: 'ed-bm__label' }, 'Außen'),
-      field('margin', 'top'),
-      field('margin', 'left'),
-      h(
-        'div',
-        { class: 'ed-bm__inner' },
-        h('span', { class: 'ed-bm__label' }, 'Innen'),
-        field('padding', 'top'),
-        field('padding', 'left'),
-        h('span', { class: 'ed-bm__size' }, `${Math.round(r.width)} × ${Math.round(r.height)}`),
-        field('padding', 'right'),
-        field('padding', 'bottom'),
-      ),
-      field('margin', 'right'),
-      field('margin', 'bottom'),
-    );
+      grid.append(h('label', {}, h('small', {}, SIDE_LABELS[side]), input));
+    }
+    return h('div', { class: 'ed-field' }, h('span', {}, label), grid);
   }
 
   /* ---------------- Einfügen ---------------- */
-  function insertGroup(el: Element) {
-    const positions: [InsertPosition, string, string][] = [
-      ['before', 'Davor', 'arrow-up-to-line'],
-      ['start', 'Innen oben', 'panel-top-open'],
-      ['end', 'Innen unten', 'panel-bottom-open'],
-      ['after', 'Dahinter', 'arrow-down-to-line'],
-    ];
-    const name = labelFor(el);
-    const grid = h('div', { class: 'ed-insert-grid' });
-    let any = false;
-    for (const [position, label, iconName] of positions) {
-      const target = blocks.isReady() ? blocks.targetFor(el, position) : null;
-      any ||= Boolean(target);
-      grid.append(
-        button(label, () => {
-          if (!target) return;
-          insertTarget = { ...target, label: `${label.toLowerCase()} – „${name}“` };
-          showTab('insert');
-        }, { icon: iconName, disabled: !target }),
-      );
-    }
-    const note = !blocks.isReady()
-      ? 'Elemente werden noch geladen …'
-      : any
-        ? 'Stelle wählen, dann das Element aussuchen.'
-        : el.closest('.site-header, .site-footer')
-          ? 'In Kopf- und Fußzeile lassen sich keine Elemente einfügen.'
-          : 'Hier lässt sich nichts einfügen (z. B. mitten in einem Text) – übergeordnetes Element wählen.';
-    return group('Einfügen', 'plus', grid, h('p', { class: 'ed-note' }, note));
-  }
-
   function renderTarget() {
     targetBox.replaceChildren();
     if (insertTarget) {
@@ -685,38 +618,27 @@ export async function initEditor() {
           'div',
           { class: 'ed-target' },
           icon('hand'),
-          h('span', {}, h('strong', {}, 'Auf die Seite ziehen'), h('small', {}, 'oder antippen und dann die Stelle anklicken. Genaue Stelle: Element auswählen → „Einfügen“.')),
+          h('span', {}, h('strong', {}, 'Auf die Seite ziehen'), h('small', {}, 'oder antippen und dann die Stelle anklicken. Genaue Stelle: Element auswählen → „+“ davor oder dahinter.')),
         ),
       );
     }
   }
 
-  /* ---------------- Listen (Enthält, Ebenen) ---------------- */
-  function nodeRow(el: Element, extra?: HTMLElement | null) {
+  /* ---------------- Ebenen ---------------- */
+  function nodeRow(el: Element) {
     const name = labelFor(el);
     const hidden = (el as HTMLElement).dataset?.edHide || styles.value(el, 'hide');
     const row = h(
       'button',
       { type: 'button', class: `ed-node${el === current() ? ' is-current' : ''}` },
-      icon(blockId(el) ? 'blocks' : iconOf(name)),
+      icon(blockId(el) ? 'blocks' : kindAt(el).icon),
       h('span', { class: 'ed-node__name' }, name),
       h('span', { class: 'ed-node__text' }, snippetOf(el)),
       hidden ? h('span', { class: 'ed-badge' }, 'ausgeblendet') : null,
-      extra ?? null,
     );
     row.addEventListener('pointerenter', () => setHover(el));
     row.addEventListener('pointerleave', () => setHover(null));
     return row;
-  }
-
-  function nodeList(items: Element[]) {
-    const list = h('div', { class: 'ed-nodes' });
-    for (const el of items.slice(0, 60)) {
-      const row = nodeRow(el);
-      row.addEventListener('click', () => select(el, { reveal: true }));
-      list.append(row);
-    }
-    return list;
   }
 
   function renderTree() {
@@ -762,21 +684,19 @@ export async function initEditor() {
       h('p', { class: 'ed-note' }, 'Fahren Sie über die Seite: Außenabstand orange, Innenabstand blau. Klick wählt das Element.'),
     );
     if (!el) return;
-    const id = blockId(el);
-    spacingPanel.append(h('div', { class: 'ed-title' }, h('span', { class: 'ed-title__icon' }, icon(iconOf(labelFor(el)))), h('span', { class: 'ed-title__text' }, h('strong', {}, labelFor(el)), h('code', {}, codeOf(el)))));
-    if (id) {
+    spacingPanel.append(h('p', { class: 'ed-spacing__name' }, labelFor(el)));
+    if (blockId(el)) {
       spacingPanel.append(
         h('p', { class: 'ed-note' }, 'Abstände von Elementen aus dem Baukasten stehen in deren Einstellungen unter „Abstände“.'),
         button('Zu den Einstellungen', () => showTab('inspect'), { icon: 'sliders-horizontal', cls: 'ed-btn--block' }),
       );
       return;
     }
-    spacingPanel.append(boxModel(el), h('p', { class: 'ed-note' }, 'Werte in Pixel – leer = Standard der Seite.'));
-    if (styles.hasOwn(el)) spacingPanel.append(button('Eigene Gestaltung entfernen', () => {
-      styles.reset(el);
-      updateStatus();
-      renderSpacing();
-    }, { icon: 'rotate-ccw', cls: 'ed-btn--block' }));
+    const panel = h('div', { class: 'ed-panel ed-panel--plain' });
+    panel.append(sidesControl(el, 'margin', 'Außen'));
+    if (kindAt(el).controls.includes('padding')) panel.append(sidesControl(el, 'padding', 'Innen'));
+    panel.append(h('p', { class: 'ed-note' }, 'Werte in Pixel – leer = Standard der Seite.'));
+    spacingPanel.append(panel);
   }
 
   /* ---------------- Markierungen auf der Seite ---------------- */
@@ -825,9 +745,12 @@ export async function initEditor() {
     plusTargets = {};
     if (!el) return;
     const id = blockId(el);
+    const info = id ? blocks.info(id) : null;
     quick('parent').hidden = !parentOf(el);
-    quick('duplicate').hidden = !id;
-    quick('delete').hidden = !id;
+    for (const name of ['up', 'down', 'move', 'duplicate', 'delete']) quick(name).hidden = !info;
+    quick('up').disabled = !info?.canUp;
+    quick('down').disabled = !info?.canDown;
+    quick('perform').hidden = Boolean(info) || !el.matches('button, summary, [role="tab"]');
     const name = labelFor(el);
     for (const position of ['before', 'after'] as const) {
       const target = blocks.isReady() ? blocks.targetFor(el, position) : null;
@@ -842,7 +765,16 @@ export async function initEditor() {
     const parent = el && parentOf(el);
     if (parent) select(parent);
   });
+  quick('up').addEventListener('click', () => selectedBlock && blocks.moveBy(selectedBlock, -1));
+  quick('down').addEventListener('click', () => selectedBlock && blocks.moveBy(selectedBlock, 1));
+  // Verschieben: Knopf ziehen (Maus) oder anklicken und danach die Stelle wählen
+  quick('move').addEventListener('pointerdown', (event) => selectedBlock && blocks.startMove(selectedBlock, event));
+  quick('move').addEventListener('click', () => selectedBlock && blocks.startMove(selectedBlock));
   quick('duplicate').addEventListener('click', () => selectedBlock && blocks.duplicate(selectedBlock));
+  quick('perform').addEventListener('click', () => {
+    const el = current();
+    if (el) perform(el);
+  });
   quick('delete').addEventListener('click', () => {
     if (!selectedBlock) return;
     const next = blocks.remove(selectedBlock);
@@ -972,7 +904,6 @@ export async function initEditor() {
     sidebar.hidden = false;
     sidebar.dataset.size = 'half';
     fitPage();
-    pageLabel.textContent = document.title.split('|')[0].trim() || location.pathname;
     note = '';
     selected = null;
     selectedBlock = null;

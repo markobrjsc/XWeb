@@ -66,6 +66,11 @@ const STYLE_PROPS: Record<string, RegExp> = {
   'text-align': /^(left|center|right|justify)$/,
   'border-radius': /^\d{1,4}(px|%)$/,
   'max-width': /^(\d{1,4}px|none)$/,
+  gap: LENGTH,
+  /** Design Hell/Dunkel: Fläche, Schrift bzw. Bild (src/lib/tone-css.mjs) */
+  tone: /^(light|dark)$/,
+  ink: /^(light|dark)$/,
+  shade: /^(light|dark)$/,
   /** Ausblenden: all | mobile | desktop (wird zu display: none, im Bearbeiten-Modus nur abgeblendet) */
   hide: /^(all|mobile|desktop)$/,
 };

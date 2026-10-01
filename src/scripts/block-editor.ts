@@ -17,7 +17,8 @@
  */
 import { PRESETS } from '@/lib/blocks/presets';
 import { renderZone, type RenderContext } from '@/lib/blocks/render';
-import { STYLE_OPTIONS, blocksCss } from '@/lib/blocks/style';
+import { BLOCK_DESIGN, STYLE_OPTIONS, blocksCss } from '@/lib/blocks/style';
+import { designToggle, subsection } from '@/scripts/editor/panel';
 import {
   type Block,
   type BlockStyle,
@@ -656,8 +657,11 @@ export function createBlockEditor(ui: HTMLElement, hooks: BlockEditorHooks) {
     const def = blockDef(block.type);
     if (!def || !panelFields) return;
     panelFor = block.id;
+    // Felder, die das Design steuern (Farbwelt, Aussehen), stehen unter „Design“
+    const designKey = BLOCK_DESIGN[block.type].key;
+    const content = def.fields.filter((field) => field.key !== designKey);
     panelFields.replaceChildren(
-      ...(def.fields.length ? [group('Inhalt', def.fields.map((field) => fieldControl(block, field)))] : []),
+      ...(content.length ? [subsection('Inhalt', ...content.map((field) => fieldControl(block, field)))] : []),
       ...styleGroups(block),
     );
   }
@@ -802,20 +806,6 @@ export function createBlockEditor(ui: HTMLElement, hooks: BlockEditorHooks) {
   }
 
   /* ---------------- Gestaltung (für jedes Element) ---------------- */
-  /** Geöffnete Gruppen bleiben beim Wechsel zwischen Elementen offen */
-  const openGroups = new Set<string>(['Inhalt']);
-
-  function group(title: string, children: HTMLElement[]) {
-    const details = document.createElement('details');
-    details.className = 'ub-g';
-    details.open = openGroups.has(title);
-    const summary = document.createElement('summary');
-    summary.textContent = title;
-    details.append(summary, ...children);
-    details.addEventListener('toggle', () => (details.open ? openGroups.add(title) : openGroups.delete(title)));
-    return details;
-  }
-
   const setStyle = (block: Block, patch: Partial<BlockStyle>) => {
     const style = sanitizeStyle({ ...block.style, ...patch });
     if (style) block.style = style;
@@ -847,7 +837,7 @@ export function createBlockEditor(ui: HTMLElement, hooks: BlockEditorHooks) {
     return row(title, line);
   }
 
-  function selectRow(title: string, options: [string, string][], value: string, onChange: (value: string) => void) {
+  function selectRow(title: string, options: readonly (readonly [string, string])[], value: string, onChange: (value: string) => void) {
     const select = document.createElement('select');
     select.append(...options.map(([v, text]) => Object.assign(document.createElement('option'), { value: v, textContent: text, selected: v === value })));
     select.addEventListener('change', () => onChange(select.value));
@@ -917,7 +907,7 @@ export function createBlockEditor(ui: HTMLElement, hooks: BlockEditorHooks) {
     const el = blockEl(block.id);
     const computed = el ? getComputedStyle(el) : null;
     const grid = document.createElement('span');
-    grid.className = 'ub-sides';
+    grid.className = 'ed-sides';
     for (const [side, label] of [['top', 'Oben'], ['right', 'Rechts'], ['bottom', 'Unten'], ['left', 'Links']] as const) {
       const input = document.createElement('input');
       input.type = 'number';
@@ -930,12 +920,59 @@ export function createBlockEditor(ui: HTMLElement, hooks: BlockEditorHooks) {
         setStyle(block, { [key]: { ...block.style?.[key], [side]: input.value === '' ? undefined : Number(input.value) } }),
       );
       const cell = document.createElement('label');
-      cell.append(label, input);
+      const small = document.createElement('small');
+      small.textContent = label;
+      cell.append(small, input);
       grid.append(cell);
     }
-    return row(`${title} in px`, grid);
+    return row(title, grid);
   }
 
+  /** Ausrichtung als Symbolknöpfe */
+  function alignRow(block: Block, withJustify: boolean) {
+    const style = block.style ?? {};
+    const choices: [BlockStyle['align'], string, string][] = [
+      ['left', 'align-left', 'Links'],
+      ['center', 'align-center', 'Mitte'],
+      ['right', 'align-right', 'Rechts'],
+      ...(withJustify ? ([['justify', 'align-justify', 'Blocksatz']] as [BlockStyle['align'], string, string][]) : []),
+    ];
+    const bar = document.createElement('span');
+    bar.className = 'ub-align';
+    for (const [value, icon, label] of choices) {
+      const b = button('', () => setStyle(block, { align: style.align === value ? undefined : value }), label);
+      b.innerHTML = data.icons[icon] ?? '';
+      b.setAttribute('aria-pressed', String(style.align === value));
+      bar.append(b);
+    }
+    return row('Ausrichtung', bar);
+  }
+
+  /** Design Hell/Dunkel – bei Abschnitt, Karte und Button über deren eigenes Feld, sonst style.tone */
+  function designRows(block: Block): HTMLElement[] {
+    const spec = BLOCK_DESIGN[block.type];
+    if (!spec.key || !spec.options) {
+      return [designToggle({ mode: spec.mode, value: block.style?.tone ?? '', onChange: (value) => setStyle(block, { tone: (value || undefined) as BlockStyle['tone'] }) })];
+    }
+    const key = spec.key;
+    // Schalter und Auswahl steuern dasselbe Feld – danach neu aufbauen, damit beide übereinstimmen
+    const apply = (value: string) => {
+      setProp(block, key, value);
+      buildPanel(block);
+    };
+    const rows: HTMLElement[] = [designToggle({ mode: spec.mode, value: String(block.props[key] ?? ''), options: spec.options, onChange: apply })];
+    // Mehr Varianten als Hell/Dunkel (z. B. Karte mit Schatten, gelber Button): zusätzlich als Auswahl
+    const field = blockDef(block.type)?.fields.find((f) => f.key === key);
+    if (field?.kind === 'select' && field.options.length > spec.options.length) {
+      rows.push(selectRow(field.label, field.options, String(block.props[key] ?? ''), apply));
+    }
+    return rows;
+  }
+
+  /**
+   * Gestaltung in Unterabschnitten – nur, was für den Elementtyp sinnvoll ist (src/lib/blocks/style.ts → STYLE_OPTIONS):
+   * Design (Hell/Dunkel, Farben), Schrift, Abstände, Form, Sichtbarkeit
+   */
   function styleGroups(block: Block): HTMLElement[] {
     const options = STYLE_OPTIONS[block.type];
     const style = block.style ?? {};
@@ -943,40 +980,23 @@ export function createBlockEditor(ui: HTMLElement, hooks: BlockEditorHooks) {
     const fontEl = el && options.font !== undefined ? ((options.font ? el.querySelector<HTMLElement>(options.font.trim()) : el) ?? el) : null;
     const groups: HTMLElement[] = [];
     const has = (name: (typeof options.groups)[number]) => options.groups.includes(name);
+    const colors = has('colors') ? (options.colors ?? ['text', 'bg', 'accent']) : [];
+    const colorLabels = { text: 'Schriftfarbe', bg: block.type === 'button' ? 'Button-Fläche' : 'Hintergrundfarbe', accent: 'Akzentfarbe (Marker, Icons, Linien)' };
+    const colorKeys = { text: 'textColor', bg: 'bgColor', accent: 'accentColor' } as const;
 
-    if (has('align')) {
-      const choices: [BlockStyle['align'], string, string][] = [
-        ['left', 'align-left', 'Links'],
-        ['center', 'align-center', 'Mitte'],
-        ['right', 'align-right', 'Rechts'],
-        ...(has('font') ? ([['justify', 'align-justify', 'Blocksatz']] as [BlockStyle['align'], string, string][]) : []),
-      ];
-      const bar = document.createElement('span');
-      bar.className = 'ub-align';
-      for (const [value, icon, label] of choices) {
-        const b = button('', () => setStyle(block, { align: style.align === value ? undefined : value }), label);
-        b.innerHTML = `${data.icons[icon] ?? ''}<span>${label}</span>`;
-        b.setAttribute('aria-pressed', String(style.align === value));
-        bar.append(b);
-      }
-      groups.push(group('Ausrichtung', [bar]));
-    }
-
-    if (has('colors')) {
-      const isButton = block.type === 'button';
-      groups.push(
-        group('Farben', [
-          colorRow('Schrift', style.textColor ?? '', (c) => setStyle(block, { textColor: c })),
-          colorRow(isButton ? 'Button-Fläche' : 'Hintergrund', style.bgColor ?? '', (c) => setStyle(block, { bgColor: c })),
-          ...(isButton ? [] : [colorRow('Akzent (Marker, Buttons, Icons, Linien)', style.accentColor ?? '', (c) => setStyle(block, { accentColor: c }))]),
-        ]),
-      );
-    }
+    groups.push(
+      subsection(
+        'Design',
+        ...designRows(block),
+        ...colors.map((color) => colorRow(colorLabels[color], style[colorKeys[color]] ?? '', (c) => setStyle(block, { [colorKeys[color]]: c }))),
+      ),
+    );
 
     if (has('font')) {
       const current = fontEl ? getComputedStyle(fontEl) : null;
       groups.push(
-        group('Schrift', [
+        subsection(
+          'Schrift',
           numberRow('Größe', style.fontSize, 'px', 8, 160, (v) => setStyle(block, { fontSize: v }), current ? String(Math.round(parseFloat(current.fontSize))) : ''),
           selectRow(
             'Stärke',
@@ -991,43 +1011,52 @@ export function createBlockEditor(ui: HTMLElement, hooks: BlockEditorHooks) {
             style.fontWeight ?? '',
             (v) => setStyle(block, { fontWeight: (v || undefined) as BlockStyle['fontWeight'] }),
           ),
+          has('align') && alignRow(block, true),
           toggleRow('Kursiv', Boolean(style.italic), (v) => setStyle(block, { italic: v || undefined })),
           toggleRow('Großbuchstaben', Boolean(style.uppercase), (v) => setStyle(block, { uppercase: v || undefined })),
-        ]),
+        ),
       );
     }
 
     if (has('spacing')) {
-      groups.push(group('Abstände', [sidesRow(block, 'margin', 'Außen (margin)'), ...(block.type === 'spacer' ? [] : [sidesRow(block, 'padding', 'Innen (padding)')])]));
-    }
-
-    if (has('box')) {
       groups.push(
-        group('Rahmen & Ecken', [
-          numberRow('Ecken abrunden', style.radius, 'px', 0, 200, (v) => setStyle(block, { radius: v })),
-          numberRow('Rahmenstärke', style.borderWidth, 'px', 0, 20, (v) => setStyle(block, { borderWidth: v })),
-          colorRow('Rahmenfarbe', style.borderColor ?? '', (c) => setStyle(block, { borderColor: c })),
-          selectRow(
-            'Schatten',
-            [
-              ['', 'Ohne / Standard'],
-              ['klein', 'Leicht'],
-              ['gross', 'Stark'],
-            ],
-            style.shadow ?? '',
-            (v) => setStyle(block, { shadow: (v || undefined) as BlockStyle['shadow'] }),
-          ),
-        ]),
+        subsection(
+          'Abstände',
+          sidesRow(block, 'margin', 'Außen'),
+          options.padding !== false && sidesRow(block, 'padding', 'Innen'),
+          hint('Werte in Pixel – leer = Standard. Große Werte werden auf dem Handy kleiner.'),
+        ),
       );
     }
 
-    if (has('size')) {
-      groups.push(group('Breite', [numberRow('Maximale Breite', style.maxWidth, 'px', 40, 2400, (v) => setStyle(block, { maxWidth: v }), 'volle Breite')]));
+    if ((has('align') && !has('font')) || has('box') || has('size')) {
+      groups.push(
+        subsection(
+          'Form',
+          has('align') && !has('font') && alignRow(block, false),
+          has('box') && numberRow('Ecken abrunden', style.radius, 'px', 0, 200, (v) => setStyle(block, { radius: v })),
+          has('box') && numberRow('Rahmenstärke', style.borderWidth, 'px', 0, 20, (v) => setStyle(block, { borderWidth: v })),
+          has('box') && colorRow('Rahmenfarbe', style.borderColor ?? '', (c) => setStyle(block, { borderColor: c })),
+          has('box') &&
+            selectRow(
+              'Schatten',
+              [
+                ['', 'Ohne / Standard'],
+                ['klein', 'Leicht'],
+                ['gross', 'Stark'],
+              ],
+              style.shadow ?? '',
+              (v) => setStyle(block, { shadow: (v || undefined) as BlockStyle['shadow'] }),
+            ),
+          has('size') && numberRow('Maximale Breite', style.maxWidth, 'px', 40, 2400, (v) => setStyle(block, { maxWidth: v }), 'volle Breite'),
+        ),
+      );
     }
 
     if (has('visibility')) {
       groups.push(
-        group('Sichtbarkeit', [
+        subsection(
+          'Sichtbarkeit',
           selectRow(
             'Anzeigen auf',
             [
@@ -1038,7 +1067,7 @@ export function createBlockEditor(ui: HTMLElement, hooks: BlockEditorHooks) {
             style.hide ?? '',
             (v) => setStyle(block, { hide: (v || undefined) as BlockStyle['hide'] }),
           ),
-        ]),
+        ),
       );
     }
 
@@ -1048,10 +1077,20 @@ export function createBlockEditor(ui: HTMLElement, hooks: BlockEditorHooks) {
         changed();
         buildPanel(block);
       });
-      reset.className = 'ub-f__mini ub-reset';
-      groups.push(reset);
+      reset.className = 'ed-btn ed-btn--ghost ed-btn--block';
+      const foot = document.createElement('div');
+      foot.className = 'ed-panel__foot';
+      foot.append(reset);
+      groups.push(foot);
     }
     return groups;
+  }
+
+  function hint(text: string) {
+    const small = document.createElement('small');
+    small.className = 'ed-note';
+    small.textContent = text;
+    return small;
   }
 
   function button(text: string, onClick: () => void, title?: string) {
