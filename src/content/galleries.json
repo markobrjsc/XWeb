@@ -1,1 +1,13 @@
-{}
+{
+  "referenzen/leitungsbau-hausanschluss": {
+    "order": [
+      "01",
+      "02",
+      "neu-muqiqn7l-0"
+    ],
+    "hidden": [
+      "01",
+      "02"
+    ]
+  }
+}
