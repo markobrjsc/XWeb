@@ -42,12 +42,14 @@
   },
   "referenzen/erdbau-baugrube": {
     "order": [
+      "neu-muqjkb02-0",
       "01",
       "02",
       "03",
-      "neu-muqjkb02-0"
+      "neu-murkabwh-0"
     ],
     "hidden": [
+      "neu-muqjkb02-0",
       "01",
       "02",
       "03"
