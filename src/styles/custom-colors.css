@@ -1,4 +1,18 @@
 /* Farbänderungen aus dem Bearbeiten-Modus der Website (Stift oben rechts → Farben).
    Diese Datei wird beim Speichern automatisch überschrieben; Standardwerte stehen in tokens.css. */
 :root {
+  --yellow-500: #faca30;
+  --onyx-950: #0b0b0c;
+  --onyx-800: #19191a;
+  --onyx-600: #2c2c2d;
+  --gray-50: #f7f7f6;
+  --yellow-50: #fffaea;
+  --yellow-100: #fef2cb;
+  --yellow-300: #fcdd78;
+  --yellow-600: #e1b62b;
+  --yellow-700: #8a6f1a;
+  --onyx-900: #121213;
+  --ink: 11 11 12;
+  --color-cta-fg: #0b0b0c;
+  --color-highlight: #0b0b0c;
 }
