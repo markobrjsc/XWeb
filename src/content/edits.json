@@ -1,4 +1,8 @@
 {
   "global": {},
-  "pages": {}
+  "pages": {
+    "/leistungen/": {
+      "Leitungsgraben und Hausanschluss": "Einbau einer Schwerlastabdeckung für ein Bestands Bauwerk in Singen"
+    }
+  }
 }
