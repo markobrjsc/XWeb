@@ -205,6 +205,26 @@ b {
   background-color: var(--color-bg-muted);
 }
 
+/* Helle Farbwelten setzen die Schriftfarben zurück – so bleibt z. B. eine hellgraue Karte in einem dunklen
+   Abschnitt lesbar (gleiche Werte wie LIGHT in src/lib/tone-css.mjs) */
+[data-tone='subtle'],
+[data-tone='muted'] {
+  --color-heading: var(--onyx-950);
+  --color-text: var(--gray-800);
+  --color-text-muted: var(--gray-600);
+  --color-text-subtle: var(--gray-500);
+  --color-border: var(--gray-200);
+  --color-border-strong: var(--gray-300);
+  --color-link: var(--onyx-800);
+  --color-link-hover: var(--onyx-950);
+  --color-focus: var(--onyx-950);
+  --color-surface: var(--gray-0);
+  --color-surface-raised: var(--gray-0);
+  --color-primary-soft: var(--onyx-100);
+  --color-primary-softer: var(--onyx-50);
+  color: var(--color-text);
+}
+
 /* ---------------------------------------------------------------------------
    Fokus – gut sichtbar für Tastaturnutzer, unsichtbar für Mausklicks
    --------------------------------------------------------------------------- */
@@ -299,6 +319,17 @@ b {
 [data-tone='dark'] .accent::before,
 [data-tone='brand'] .accent::before {
   content: none;
+}
+
+/* Heller Bereich (z. B. hellgraue Karte) in einem dunklen: wieder Textmarker – außer in einem dunklen Bereich darin */
+:is([data-tone='subtle'], [data-tone='muted']) .accent:not(:is([data-tone='subtle'], [data-tone='muted']) :is([data-tone='dark'], [data-tone='brand']) .accent) {
+  display: inline-block;
+  padding-inline: 0.08em;
+  color: var(--color-highlight);
+}
+
+:is([data-tone='subtle'], [data-tone='muted']) .accent:not(:is([data-tone='subtle'], [data-tone='muted']) :is([data-tone='dark'], [data-tone='brand']) .accent)::before {
+  content: '';
 }
 
 /* Fließtext-Bereich, z. B. für Impressum & Datenschutz */

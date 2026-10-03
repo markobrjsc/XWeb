@@ -60,3 +60,7 @@ body[data-page="/stellenangebote/"] section#stellen {
 body[data-page="/leistungen/"] article#gartenbau {
   text-align: center !important;
 }
+
+body[data-page="/"] main#main > section.hero > div.hero__content:nth-of-type(2) > div.hero__card > div.hero__actions > a.btn.btn--primary.btn--lg:nth-of-type(1) {
+  background-color: #faca30 !important;
+}

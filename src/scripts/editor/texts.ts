@@ -27,8 +27,11 @@ export function createTexts() {
   const changes = (): TextChange[] => {
     const list: TextChange[] = [];
     for (const { node, original, scope } of tracked.values()) {
+      // Nicht mehr auf der Seite (z. B. durch eine Vorschau ersetzt): keine Änderung – sonst würde der Text beim
+      // Speichern überall durch „leer“ ersetzt
+      if (!node.isConnected) continue;
       const from = normalize(original);
-      const to = normalize(node.isConnected ? (node.textContent ?? '') : '');
+      const to = normalize(node.textContent ?? '');
       if (from !== to) list.push({ scope, from, to });
     }
     return list;

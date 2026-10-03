@@ -73,8 +73,9 @@ Die **Originalfotos** (ca. 1,6 GB) liegen in `fotos-original/`. Dieser Ordner wi
   anklicken → „Neues Projekt mit Galerie anlegen“ – oder von Hand: Markdown-Datei in `src/content/referenzen/`,
   Fotos in `src/assets/images/referenzen/<dateiname>/`.
 - **Zertifikate:** PDF in `src/assets/zertifikate/` legen, Titel/Aussteller/Jahr in
-  `src/assets/zertifikate/zertifikate.json` eintragen. Vorschaubilder erzeugt `scripts/build-zertifikate.mjs`
-  automatisch vor `npm run dev` und `npm run build`.
+  `src/assets/zertifikate/zertifikate.json` eintragen (Reihenfolge der Einträge = Reihenfolge auf der Seite,
+  `"hidden": true` blendet aus) – oder im Bearbeiten-Modus hochladen. Vorschaubilder erzeugt
+  `scripts/build-zertifikate.mjs` automatisch vor `npm run dev` und `npm run build`.
 
 ### Bearbeiten-Modus
 
@@ -85,7 +86,7 @@ Passwort festlegen oder ändern: `npm run edit-password` (meldet alle bisherigen
 
 „Bearbeiten“ oben rechts öffnet links eine **Seitenleiste**, schlicht in Weiß auf Schwarz (auf dem Handy als Fenster
 von unten); oben rechts darin „Einklappen“ und „Schließen“. Alles, was auf der Seite selbst zur Bearbeitung gehört
-(Markierungen, Werkzeugleiste am Element, „+“-Punkte, Einfügestellen), ist grün. Vier Werkzeuge:
+(Markierungen, Werkzeugleiste am Element, „+“-Punkte, Einfügestellen), ist grün. Fünf Werkzeuge:
 
 - **Auswahl** – Element auf der Seite anklicken: Text → nur dieser Text, freie Fläche einer Karte → die ganze Karte.
   Die Leiste zeigt den Pfad und darunter **einen Einstellungsbereich** mit einklappbaren Unterabschnitten –
@@ -96,12 +97,32 @@ von unten); oben rechts darin „Einklappen“ und „Schließen“. Alles, was 
   „+“-Punkte am Element), per Drag & Drop auf die Seite (grüne Linie zeigt die Stelle) oder antippen und Stelle anklicken.
 - **Ebenen** – der Aufbau der ganzen Seite als Baum (Kopfzeile, Abschnitte, Inhalte, Fußzeile).
 - **Abstände** – beim Überfahren werden Außen- (orange) und Innenabstände (blau) sichtbar, Klick wählt aus.
+- **Farben** – die Grundfarben der ganzen Website: Akzentfarbe (mit Vorschlägen), Dunkel, Dunkel 2, Grundton und
+  heller Hintergrund. Alle abhängigen Töne (Akzent-Abstufungen, Schrift auf dem Akzent – dunkel oder weiß je nach
+  Helligkeit) werden berechnet, die Vorschau gilt sofort für alle Elemente, die die Farben nutzen
+  (`src/scripts/editor/colors.ts` → `src/styles/custom-colors.css`).
 
-Das Hand-Symbol unten (oder Alt + Klick) schaltet auf „Seite bedienen“ – z. B. um Reiter zu wechseln. **Speichern**
-schreibt Texte (`src/content/edits.json`), Gestaltung (`src/content/spacing.json` → `scripts/build-spacing.mjs`) und
-Elemente (`src/content/blocks.json`) als Commit auf `main`; Kopfbilder, Galerien und neue Projekte speichern direkt.
+**Seiten wechseln:** Strg + Klick (Mac: ⌘ + Klick) auf einen Link oder „Seite öffnen“ bei einem ausgewählten Link –
+der Bearbeiten-Modus bleibt offen (Reiter und eingeklappte Leiste werden übernommen). Ungespeicherte Änderungen
+werden vorher gespeichert (Rückfrage). Das Hand-Symbol unten (oder Alt + Klick) schaltet auf „Seite bedienen“ –
+z. B. um Reiter zu wechseln.
+
+**Logo in der Kopfzeile** anklicken → Inhalt: sechs Designs mit Vorschau (Standard, Schriftband – das längliche Logo
+mit Band in der Akzentfarbe –, Namens-Label, Schriftzug, Monogramm, Maskottchen) oder ein eigenes Bild hochladen
+(PNG mit transparentem Hintergrund, wahlweise auf weißem Label). Jedes Design hat eine kompakte Handy-Fassung.
+Gespeichert in `src/content/brand.json`, eigene Bilder in `src/assets/brand/eigene/`, Aussehen:
+`src/components/layout/HeaderLogo.astro`.
+
+**Zertifikate** (Leistungen) anklicken → „Zertifikate bearbeiten“: PDFs hinzufügen, sortieren, aus-/einblenden,
+Titel/Aussteller/Jahr ändern. Gespeichert direkt im Dialog: PDFs nach `src/assets/zertifikate/`, Reihenfolge und
+Angaben in `zertifikate.json` (`"hidden": true` blendet aus); die Seitenbilder erzeugt der Build.
+
+**Speichern** schreibt Texte (`src/content/edits.json`), Gestaltung (`src/content/spacing.json` →
+`scripts/build-spacing.mjs`), Elemente (`src/content/blocks.json`), Farben und Logo als Commit auf `main`; Kopfbilder,
+Galerien, Zertifikate und neue Projekte speichern direkt in ihren Dialogen.
 Code: `src/components/debug/EditMode.astro` (Leiste), `src/scripts/editor/` (Auswahl, Inspektor, Element-Katalog
-`kinds.ts`, Texte, Gestaltung, Fotos, Projekte), `src/scripts/block-editor.ts` (Elemente), Server: `worker/edit.ts`.
+`kinds.ts`, Texte, Gestaltung, Farben, Logo, Zertifikate, Fotos, Projekte), `src/scripts/block-editor.ts` (Elemente),
+Server: `worker/edit.ts`.
 
 **Design Hell/Dunkel** hat jedes Element – je nach Art mit passender Wirkung (`src/lib/tone-css.mjs`, gleiche Regeln
 für Build, Vorschau und Baukasten): **Fläche** (Hintergrund und alle Farben darin, wie `data-tone`), **Schrift**
@@ -128,7 +149,7 @@ ebenfalls jedes Element; alles Weitere nur, wo es Sinn ergibt:
 | Beschriftung | Schrift | Schriftfarbe, Größe, Stärke |
 | Eingabefeld | Fläche | Ecken |
 | Trennlinie | Schrift | max. Breite, Ausblenden |
-| Logo | Fläche | max. Breite |
+| Logo (Kopfzeile) | Fläche (helles/dunkles Label) | Logo-Design wählen, eigenes Bild hochladen |
 | **Erweitert** | | |
 | Abschnitt | Fläche | Hintergrund, Schriftfarbe, Ausrichtung, Innenabstand, Ausblenden |
 | Seitenkopf | Fläche | Kopfbild, Ausrichtung, Innenabstand |
@@ -139,7 +160,7 @@ ebenfalls jedes Element; alles Weitere nur, wo es Sinn ergibt:
 | Raster | Fläche | Hintergrund, Innenabstand, Lücke, max. Breite, Ausblenden |
 | Gruppe | Fläche | Hintergrund, Ausrichtung, Innenabstand, Lücke, Ausblenden |
 | Bereich (auch Kopf-/Fuß-/Seitenbereich) | Fläche | Hintergrund, Schriftfarbe, Ausrichtung, Innenabstand, Ecken, max. Breite, Ausblenden |
-| Angaben | Schrift | Schriftfarbe, Größe, Lücke, Ausblenden |
+| Angaben (Kasten mit Eckdaten) | Fläche | Hintergrund, Schriftfarbe, Größe, Innenabstand, Ecken, Lücke, Ausblenden |
 | Formular | Fläche | Hintergrund, Innenabstand, Ecken, Lücke, max. Breite |
 | Formular-Gruppe | Fläche | Innenabstand, Ecken, Lücke |
 | Navigation | Schrift | Größe, Lücke, Ausblenden |

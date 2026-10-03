@@ -9,7 +9,7 @@ export type DesignMode = 'tone' | 'ink' | 'shade';
 type Swatch = 'light' | 'gray' | 'dark';
 
 /** Geöffnete Unterabschnitte bleiben beim Wechsel zwischen Elementen offen */
-const open = new Set(['Inhalt', 'Design']);
+const open = new Set(['Inhalt', 'Design', 'Grundfarben', 'Akzentfarbe – Vorschläge']);
 
 export function subsection(title: string, ...children: (Node | null | false | undefined)[]): HTMLDetailsElement {
   const details = document.createElement('details');

@@ -57,7 +57,7 @@ export const KINDS = {
   label: kind('Basis', 'Beschriftung', 'type', 'ink', ['textColor', 'fontSize', 'fontWeight']),
   input: kind('Basis', 'Eingabefeld', 'text-cursor-input', 'tone', ['radius']),
   divider: kind('Basis', 'Trennlinie', 'minus', 'ink', ['maxWidth', 'hide']),
-  logo: kind('Basis', 'Logo', 'badge', 'tone', ['maxWidth']),
+  logo: kind('Basis', 'Logo', 'badge', 'tone', []),
 
   /* ---------------- Erweitert ---------------- */
   section: kind('Erweitert', 'Abschnitt', 'layout-template', 'tone', ['bgColor', 'textColor', 'align', 'padding', 'hide']),
@@ -69,7 +69,7 @@ export const KINDS = {
   grid: kind('Erweitert', 'Raster', 'layout-grid', 'tone', ['bgColor', 'padding', 'gap', 'maxWidth', 'hide']),
   group: kind('Erweitert', 'Gruppe', 'rows-3', 'tone', ['bgColor', 'align', 'padding', 'gap', 'hide']),
   area: kind('Erweitert', 'Bereich', 'box', 'tone', ['bgColor', 'textColor', 'align', 'padding', 'radius', 'maxWidth', 'hide']),
-  facts: kind('Erweitert', 'Angaben', 'list', 'ink', ['textColor', 'fontSize', 'gap', 'hide']),
+  facts: kind('Erweitert', 'Angaben', 'list', 'tone', ['bgColor', 'textColor', 'fontSize', 'padding', 'radius', 'gap', 'hide']),
   form: kind('Erweitert', 'Formular', 'text-cursor-input', 'tone', ['bgColor', 'padding', 'radius', 'gap', 'maxWidth']),
   fieldset: kind('Erweitert', 'Formular-Gruppe', 'text-cursor-input', 'tone', ['padding', 'radius', 'gap']),
   nav: kind('Erweitert', 'Navigation', 'menu', 'ink', ['fontSize', 'gap', 'hide']),
@@ -99,7 +99,7 @@ const MATCH: [selector: string, kind: KindId][] = [
   ['.icon-badge, .service__icon, .feature__icon, .contact-list__icon', 'icon'],
   ['.stat, .stats__item', 'stat'],
   ['.btn, .copy-btn, button', 'button'],
-  ['.logo', 'logo'],
+  ['.site-header__brand, .logo', 'logo'],
   ['a', 'link'],
   ['.card, .feature, .job-card, article', 'card'],
   ['p', 'text'],
@@ -117,7 +117,6 @@ const MATCH: [selector: string, kind: KindId][] = [
   ['nav', 'nav'],
   ['dl, .facts', 'facts'],
   ['section', 'section'],
-  ['dt, dd, span, strong, em, b, i, small, time', 'textPart'],
 ];
 
 /** Elementart eines Seitenelements (Elemente aus dem Baukasten benennt der Element-Editor) */

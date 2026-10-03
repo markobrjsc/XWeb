@@ -13,7 +13,7 @@ export const isUi = (el: Element | null) => Boolean(el?.closest(UI));
 
 /** Texte darin werden nicht bearbeitet (Skripte, Formularfelder, Zähler, Galerien, Elemente aus dem Baukasten …) */
 export const TEXT_SKIP =
-  'script, style, noscript, template, svg, textarea, select, option, input, [data-edit-ui], [data-design-panel], ub-zone, [data-count-to], [data-carousel], .visually-hidden, [aria-hidden="true"]';
+  'script, style, noscript, template, svg, textarea, select, option, input, [data-edit-ui], [data-design-panel], ub-zone, [data-count-to], [data-carousel], .visually-hidden, [aria-hidden="true"], .hlogo';
 
 const NO_LIST = new Set(['SCRIPT', 'STYLE', 'NOSCRIPT', 'TEMPLATE', 'LINK', 'META', 'SOURCE', 'TRACK', 'BR', 'svg']);
 
@@ -92,6 +92,9 @@ export function pickTarget(hit: Element | null): Element | null {
   if (hit.closest('ub-zone')) return null;
   const carousel = hit.closest('[data-carousel]');
   if (carousel) return carousel;
+  // Logo in der Kopfzeile immer als Ganzes (Design wählen, eigenes Bild)
+  const brand = hit.closest('.site-header__brand');
+  if (brand) return brand;
   let el: Element = hit.closest('svg')?.parentElement ?? hit;
   const media = el.closest('img, picture, video');
   if (media) return media.closest('figure, .hero__bg, .page-hero__photo') ?? media.closest('picture') ?? media;

@@ -3,6 +3,8 @@
  *
  * Neues Zertifikat: PDF in src/assets/zertifikate/ legen (Dateiname = Kennung, z. B. zertifikat-3.pdf),
  * optional Titel/Aussteller/Jahr in src/assets/zertifikate/zertifikate.json eintragen. Fertig.
+ * Im Bearbeiten-Modus lassen sich PDFs hochladen, sortieren und ausblenden (Zertifikate anklicken):
+ * Reihenfolge der Einträge in zertifikate.json = Reihenfolge auf der Seite, "hidden": true blendet aus.
  *
  * Erzeugt (nicht eingecheckt):
  *  · src/assets/zertifikate/_seiten/<name>-<seite>.png  – jede PDF-Seite als Bild (Vorschau + Großansicht)
@@ -59,9 +61,15 @@ for (const file of pdfs) {
     issuer: meta.issuer ?? '',
     year: meta.year ?? '',
     pdf: `/zertifikate/${name}.pdf`,
+    hidden: meta.hidden === true,
     pages,
   });
 }
+
+// Reihenfolge wie in zertifikate.json, neue (dort noch nicht eingetragene) PDFs danach
+const order = Object.keys(info);
+const rank = (name) => (order.includes(name) ? order.indexOf(name) : Number.MAX_SAFE_INTEGER);
+manifest.sort((a, b) => rank(a.name) - rank(b.name) || a.name.localeCompare(b.name, 'de', { numeric: true }));
 
 fs.writeFileSync(path.join(OUT, 'manifest.json'), `${JSON.stringify(manifest, null, 2)}\n`);
 console.log(`Zertifikate: ${manifest.length} vorbereitet (${manifest.map((m) => m.name).join(', ') || '–'})`);

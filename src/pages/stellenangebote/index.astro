@@ -155,7 +155,7 @@ const highlights = [
     font-weight: var(--weight-semibold);
     letter-spacing: var(--tracking-wider);
     text-transform: uppercase;
-    color: var(--blue-200);
+    color: color-mix(in srgb, var(--color-heading) 85%, transparent);
   }
 
   .jump__list {
@@ -202,7 +202,7 @@ const highlights = [
   .jobs__item:target > :global(.card) {
     border-color: var(--color-accent);
     box-shadow:
-      0 0 0 4px rgb(243 165 5 / 0.25),
+      0 0 0 4px color-mix(in srgb, var(--color-accent) 25%, transparent),
       var(--shadow-md);
     transition:
       border-color var(--duration-slow) ease,

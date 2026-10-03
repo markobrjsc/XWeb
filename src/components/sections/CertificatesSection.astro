@@ -15,6 +15,7 @@ import SectionHeader from '@/components/ui/SectionHeader.astro';
 
 type Certificate = {
   name: string;
+  hidden?: boolean;
   title: string;
   issuer: string;
   year: string;
@@ -26,23 +27,32 @@ const manifests = import.meta.glob<Certificate[]>('/src/assets/zertifikate/_seit
 const images = import.meta.glob<ImageMetadata>('/src/assets/zertifikate/_seiten/*.png', { eager: true, import: 'default' });
 const imageFor = (file: string) => images[`/src/assets/zertifikate/_seiten/${file}`];
 
-const certificates = await Promise.all(
+// Reihenfolge wie im Manifest (= zertifikate.json); ausgeblendete nur für den Bearbeiten-Modus
+const all = await Promise.all(
   (Object.values(manifests)[0] ?? [])
     .filter((cert) => cert.pages.length && imageFor(cert.pages[0].image))
-    .sort((a, b) => String(b.year).localeCompare(String(a.year)))
     .map(async (cert) => ({
       ...cert,
       thumb: await getImage({ src: imageFor(cert.pages[0].image), width: 520, format: 'webp', quality: 75 }),
+    })),
+);
+const certificates = await Promise.all(
+  all
+    .filter((cert) => !cert.hidden)
+    .map(async (cert) => ({
+      ...cert,
       full: await Promise.all(
         cert.pages.map((page) => getImage({ src: imageFor(page.image), width: 1600, format: 'webp', quality: 82 })),
       ),
     })),
 );
+// Für den Bearbeiten-Modus (src/scripts/editor/certificates.ts): alle Zertifikate mit Vorschau
+const editData = JSON.stringify(all.map(({ name, title, issuer, year, hidden, thumb }) => ({ name, title, issuer, year, hidden: Boolean(hidden), thumb: thumb.src })));
 ---
 
 {
-  certificates.length > 0 && (
-    <Section id="zertifikate" labelledby="zertifikate-titel" class="certs">
+  all.length > 0 && (
+    <Section id="zertifikate" labelledby="zertifikate-titel" class={certificates.length ? 'certs' : 'certs certs--empty'}>
       <SectionHeader
         align="center"
         id="zertifikate-titel"
@@ -51,9 +61,9 @@ const certificates = await Promise.all(
         lead="Regelmäßige Schulungen sorgen dafür, dass wir sicher und nach aktuellem Stand arbeiten. Zum Vergrößern anklicken."
       />
 
-      <ul class="certs__list" role="list">
+      <ul class="certs__list" role="list" data-certs-all={editData}>
         {certificates.map((cert) => (
-          <li class="certs__item">
+          <li class="certs__item" data-cert-item={cert.name}>
             <button class="cert" type="button" data-cert={cert.name} aria-haspopup="dialog">
               <span class="cert__paper">
                 <img
@@ -193,6 +203,11 @@ const certificates = await Promise.all(
 </script>
 
 <style>
+  /* Alle Zertifikate ausgeblendet: Abschnitt nur im Bearbeiten-Modus sichtbar (zum Wieder-Einblenden) */
+  :global(html:not(.is-editing) .certs--empty) {
+    display: none;
+  }
+
   .certs__list {
     display: flex;
     /* mittig – bei vielen Zertifikaten trotzdem vollständig wischbar */

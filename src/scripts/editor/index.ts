@@ -16,15 +16,18 @@
  * Kopfbilder, Galerien und neue Projekte speichern direkt in ihren Dialogen. Server-Teil: worker/edit.ts.
  */
 import { createBlockEditor, type InsertTarget } from '@/scripts/block-editor';
+import { createCertificates } from './certificates';
+import { ACCENT_PRESETS, BASE_COLORS, contrast, createColors } from './colors';
 import { axisOf, chainOf, childItems, h, isGlobal, isTextElement, isUi, kindAt, nameOf, parentOf, pickTarget, snippetOf, textNodes } from './dom';
 import type { Control, Kind } from './kinds';
+import { createLogo } from './logo';
 import { createMedia, shrink } from './media';
 import { designToggle, subsection } from './panel';
 import { projectsPanel } from './projects';
 import { type StyleProp, createStyles } from './styles';
 import { createTexts } from './texts';
 
-type Tab = 'inspect' | 'insert' | 'layers' | 'spacing';
+type Tab = 'inspect' | 'insert' | 'layers' | 'spacing' | 'colors';
 
 const SAVED = 'Gespeichert – nach dem automatischen Build in ca. 2 Minuten live.';
 const SIDES = ['top', 'right', 'bottom', 'left'] as const;
@@ -174,6 +177,7 @@ export async function initEditor() {
   const targetBox = $('[data-ed-target]');
   const tree = $('[data-ed-tree]');
   const spacingPanel = $('[data-ed-spacing]');
+  const colorsPanel = $('[data-ed-colors]');
   const hint = $('[data-ed-hint]');
   const hintText = $('[data-ed-hint-text]');
   const statusEl = $('[data-ed-status]');
@@ -188,7 +192,10 @@ export async function initEditor() {
 
   const texts = createTexts();
   const styles = createStyles();
-  const media = createMedia(ui);
+  const colors = createColors();
+  const logo = createLogo(ui);
+  const media = createMedia(ui, { onChange: () => updateStatus() });
+  const certificates = createCertificates(ui);
 
   let editing = false;
   let tab: Tab = 'inspect';
@@ -264,6 +271,9 @@ export async function initEditor() {
       ...(textCount ? [`${textCount} ${textCount === 1 ? 'Text' : 'Texte'}`] : []),
       ...(styleCount ? [`${styleCount} ${styleCount === 1 ? 'Gestaltung' : 'Gestaltungen'}`] : []),
       ...(blocks.dirty() ? ['Elemente'] : []),
+      ...(colors.dirty() ? ['Farben'] : []),
+      ...(logo.dirty() ? ['Logo'] : []),
+      ...(media.hero.dirty() ? ['Kopfbild'] : []),
     ];
   };
   const unsaved = () => pendingParts().length > 0;
@@ -273,7 +283,7 @@ export async function initEditor() {
     statusEl.textContent = parts.length ? `Geändert: ${parts.join(' · ')} – noch nicht gespeichert` : note || 'Alles gespeichert.';
     statusEl.classList.toggle('is-dirty', parts.length > 0);
     // Anzahl der Änderungen am Speichern-Knopf
-    const count = texts.changes().length + styles.count() + (blocks.dirty() ? 1 : 0);
+    const count = texts.changes().length + styles.count() + (blocks.dirty() ? 1 : 0) + (colors.dirty() ? 1 : 0) + (logo.dirty() ? 1 : 0) + (media.hero.dirty() ? 1 : 0);
     saveButton.querySelector('.ed-count')?.remove();
     if (count) saveButton.append(h('span', { class: 'ed-count' }, String(count)));
     saveButton.disabled = parts.length === 0;
@@ -289,6 +299,9 @@ export async function initEditor() {
       await texts.save();
       await styles.save();
       if (blocks.dirty()) await blocks.save();
+      await colors.save();
+      await logo.save();
+      await media.hero.save();
       note = SAVED;
     } catch (error) {
       note = error instanceof Error ? error.message : 'Speichern fehlgeschlagen.';
@@ -302,6 +315,9 @@ export async function initEditor() {
     texts.discard();
     styles.discard();
     blocks.discard();
+    colors.discard();
+    logo.discard();
+    media.hero.discard();
     note = 'Änderungen verworfen.';
     if (selectedBlock && !blocks.element(selectedBlock)) selectedBlock = null;
     updateStatus();
@@ -313,6 +329,7 @@ export async function initEditor() {
     tab = next;
     tabs.forEach((t) => t.setAttribute('aria-selected', String(t.dataset.edTab === next)));
     panels.forEach((p) => (p.hidden = p.dataset.edPanel !== next));
+    remember();
     if (mobile() && sidebar.dataset.size === 'min') sidebar.dataset.size = 'half';
     renderPanels();
   }
@@ -328,6 +345,7 @@ export async function initEditor() {
     if (on && mobile()) return;
     sidebar.toggleAttribute('data-collapsed', on);
     document.documentElement.classList.toggle('ed-collapsed', on);
+    remember();
     fitPage();
   }
 
@@ -351,6 +369,7 @@ export async function initEditor() {
     if (tab === 'insert') renderTarget();
     if (tab === 'layers') renderTree();
     if (tab === 'spacing') renderSpacing();
+    if (tab === 'colors') renderColors();
   }
 
   /* ---------------- Auswahl ---------------- */
@@ -358,7 +377,7 @@ export async function initEditor() {
     const id = el ? blockId(el) : null;
     selectedBlock = id;
     selected = id ? null : el;
-    if (tab === 'insert') showTab('inspect');
+    if (tab === 'insert' || tab === 'colors') showTab('inspect');
     else renderPanels();
     if (el && mobile() && sidebar.dataset.size === 'min') sidebar.dataset.size = 'half';
     if (el && reveal) el.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
@@ -367,7 +386,7 @@ export async function initEditor() {
   function selectBlock(id: string) {
     selectedBlock = id;
     selected = null;
-    if (tab === 'insert') showTab('inspect');
+    if (tab === 'insert' || tab === 'colors') showTab('inspect');
     else renderPanels();
   }
 
@@ -411,6 +430,7 @@ export async function initEditor() {
         step('square-plus', 'Einfügen', 'neue Elemente an jede Stelle, auch per Ziehen', () => showTab('insert')),
         step('layers', 'Ebenen', 'Aufbau der ganzen Seite', () => showTab('layers')),
         step('hand', 'Seite bedienen', 'Hand-Symbol unten oder Alt + Klick – z. B. Reiter wechseln'),
+        step('link', 'Seite wechseln', 'Strg + Klick (Mac: ⌘ + Klick) auf einen Link – der Bearbeiten-Modus bleibt offen'),
       ),
     );
   }
@@ -499,13 +519,84 @@ export async function initEditor() {
     return fields;
   }
 
+  /** Logo in der Kopfzeile: Design wählen oder eigenes Bild hochladen (gilt auf allen Seiten) */
+  function logoChooser(): HTMLElement[] {
+    const state = logo.state();
+    const grid = h('div', { class: 'ed-logos' });
+    const tile = (id: Parameters<typeof logo.choose>[0], label: string, hint: string) => {
+      const preview = logo.render(id);
+      const b = h(
+        'button',
+        { type: 'button', class: 'ed-logo', 'aria-pressed': String(state.logo === id) },
+        h('span', { class: 'ed-logo__stage' }, preview),
+        h('strong', {}, label),
+        h('small', {}, hint),
+      );
+      b.addEventListener('click', () => {
+        logo.choose(id);
+        updateStatus();
+        renderPanels();
+      });
+      return b;
+    };
+    for (const [id, label, hint] of logo.designs) grid.append(tile(id, label, hint));
+    if (logo.hasCustom()) grid.append(tile('eigenes', 'Eigenes Bild', 'Ihr hochgeladenes Logo'));
+
+    const input = h('input', { type: 'file', accept: 'image/png,image/jpeg,image/webp' });
+    input.addEventListener('change', () => {
+      const file = input.files?.[0];
+      if (!file) return;
+      logo.upload(file);
+      updateStatus();
+      renderPanels();
+    });
+    const upload = h('label', { class: 'ed-upload' }, input, 'Eigenes Logo hochladen – am besten PNG mit transparentem Hintergrund');
+
+    const background =
+      state.logo === 'eigenes'
+        ? (() => {
+            const bar = h('div', { class: 'ed-seg' });
+            for (const [value, text] of [
+              ['hell', 'Weißes Label'],
+              ['ohne', 'Ohne Hintergrund'],
+            ] as const) {
+              const b = button(text, () => {
+                logo.setBackground(value);
+                updateStatus();
+                renderPanels();
+              });
+              b.setAttribute('aria-pressed', String(state.background === value));
+              bar.append(b);
+            }
+            return h('div', { class: 'ed-field' }, h('span', {}, 'Hintergrund des eigenen Logos'), bar);
+          })()
+        : null;
+
+    const items: (HTMLElement | null)[] = [
+      h('div', { class: 'ed-field' }, h('span', {}, 'Logo-Design'), grid),
+      background,
+      upload,
+      h('p', { class: 'ed-note' }, 'Gilt auf allen Seiten, auch auf dem Handy (dort in kompakter Form). Gespeichert wird mit „Speichern“.'),
+    ];
+    return items.filter((node): node is HTMLElement => Boolean(node));
+  }
+
   /** Inhalte je nach Bereich: Link-Ziel, Kopfbild, Galerie, Referenzprojekte, feste Bilder */
   function contextTools(el: Element): HTMLElement[] {
     const tools: HTMLElement[] = [];
+    if (el.matches('.site-header__brand')) return logoChooser();
     if (el.matches('a[href]')) {
       tools.push(
         h('div', { class: 'ed-field' }, h('span', {}, 'Link-Ziel'), h('p', { class: 'ed-code' }, el.getAttribute('href') ?? '')),
-        h('p', { class: 'ed-note' }, 'Link-Ziele sind fest eingebaut.'),
+        h('p', { class: 'ed-note' }, 'Link-Ziele sind fest eingebaut. Seite wechseln: Strg + Klick auf den Link oder hier öffnen.'),
+        button('Seite öffnen', () => void navigate((el as HTMLAnchorElement).href), { icon: 'link', cls: 'ed-btn--block' }),
+      );
+    }
+    const certs = el.closest<HTMLElement>('#zertifikate');
+    if (certs && (el === certs || el.closest('.certs__list'))) {
+      tools.push(
+        h('p', { class: 'ed-note' }, 'PDFs hinzufügen, sortieren, ausblenden und Angaben ändern.'),
+        button('Zertifikate bearbeiten', () => certificates.open(certs), { icon: 'file-plus', cls: 'ed-btn--primary ed-btn--block' }),
       );
     }
     const hero = el.closest<HTMLElement>('[data-hero-edit]');
@@ -820,6 +911,77 @@ export async function initEditor() {
   }
 
   /* ---------------- Abstände ---------------- */
+  /* ---------------- Farben der Website ---------------- */
+  function renderColors() {
+    const rows = BASE_COLORS.map((base) => {
+      const input = h('input', { type: 'color', 'aria-label': base.label });
+      input.value = colors.value(base.name);
+      const code = h('code', {}, input.value.toUpperCase());
+      const changed = () => colors.value(base.name) !== base.fallback;
+      const reset = button('', () => update(base.fallback), { icon: 'rotate-ccw', title: 'Standardfarbe', cls: 'ed-btn--ghost', disabled: !changed() });
+      const update = (value: string) => {
+        input.value = value;
+        colors.set(base.name, value);
+        code.textContent = value.toUpperCase();
+        reset.disabled = !changed();
+        updateStatus();
+        if (base.name === '--yellow-500') renderWarnings();
+      };
+      input.addEventListener('input', () => update(input.value));
+      return h('div', { class: 'ed-basecolor' }, input, h('span', { class: 'ed-basecolor__text' }, h('strong', {}, base.label), h('small', {}, base.hint), code), reset);
+    });
+
+    const presets = h('div', { class: 'ed-presets' });
+    for (const [name, hex] of ACCENT_PRESETS) {
+      const b = h('button', { type: 'button', class: 'ed-preset', 'aria-pressed': String(colors.value('--yellow-500') === hex) }, name);
+      b.style.setProperty('--swatch', hex);
+      b.addEventListener('click', () => {
+        colors.set('--yellow-500', hex);
+        updateStatus();
+        renderColors();
+      });
+      presets.append(b);
+    }
+
+    const warnings = h('div', { class: 'ed-colors' });
+    const renderWarnings = () => {
+      const accent = colors.value('--yellow-500');
+      const notes: string[] = [];
+      if (contrast(accent, '#ffffff') < 1.5) notes.push('Die Akzentfarbe ist sehr hell – Linien und Symbole sind auf Weiß kaum zu sehen.');
+      if (contrast(accent, colors.value('--onyx-950')) < 2.2) notes.push('Die Akzentfarbe ist sehr dunkel – Hervorhebungen in dunklen Abschnitten sind kaum zu sehen.');
+      warnings.replaceChildren(...notes.map((text) => h('p', { class: 'ed-warn' }, text)));
+    };
+    renderWarnings();
+
+    const logo = document.querySelector('.site-header .site-header__logo-desktop, .site-header .logo');
+    colorsPanel.replaceChildren(
+      h('p', { class: 'ed-note' }, 'Grundfarben der ganzen Website. Alle Elemente, die sie verwenden – Buttons, Markierungen, dunkle Abschnitte, Symbole –, passen sich sofort an. Gespeichert wird mit „Speichern“.'),
+      h(
+        'div',
+        { class: 'ed-panel' },
+        subsection('Grundfarben', ...rows),
+        subsection('Akzentfarbe – Vorschläge', presets, warnings),
+        h(
+          'div',
+          { class: 'ed-panel__foot' },
+          button('Alle Farben auf Standard', () => {
+            colors.resetToDefaults();
+            updateStatus();
+            renderColors();
+          }, { icon: 'rotate-ccw', cls: 'ed-btn--ghost ed-btn--block', disabled: colors.isDefault() }),
+        ),
+      ),
+    );
+    if (logo) {
+      colorsPanel.append(
+        button('Logo im Kopf ändern', () => {
+          showTab('inspect');
+          select(logo, { reveal: true });
+        }, { icon: 'image', cls: 'ed-btn--block' }),
+      );
+    }
+  }
+
   function renderSpacing() {
     const el = current();
     spacingPanel.replaceChildren(
@@ -958,13 +1120,21 @@ export async function initEditor() {
   );
   document.documentElement.addEventListener('pointerleave', () => setHover(null));
 
-  // Klick wählt aus (Links, Buttons, Formulare lösen nicht aus) – außer beim Bedienen der Seite
+  // Klick wählt aus (Links, Buttons, Formulare lösen nicht aus) – außer beim Bedienen der Seite.
+  // Strg/⌘ + Klick auf einen Link wechselt die Seite, der Bearbeiten-Modus bleibt dabei offen.
   document.addEventListener(
     'click',
     (event) => {
       if (!editing) return;
       const target = event.target as Element;
       if (isUi(target) || passThrough(event) || performing) return;
+      const link = target.closest<HTMLAnchorElement>('a[href]');
+      if (link && (event.ctrlKey || event.metaKey)) {
+        event.preventDefault();
+        event.stopPropagation();
+        void navigate(link.href);
+        return;
+      }
       event.preventDefault();
       event.stopPropagation();
       select(pickTarget(target));
@@ -1017,6 +1187,53 @@ export async function initEditor() {
     if (editing && unsaved()) event.preventDefault();
   });
 
+  /** Zu einer anderen Seite wechseln – ungespeicherte Änderungen vorher speichern (oder bleiben) */
+  async function navigate(href: string) {
+    const url = new URL(href, location.href);
+    if (url.origin !== location.origin) {
+      window.open(url.href, '_blank', 'noopener');
+      return;
+    }
+    if (url.pathname === location.pathname && url.hash) {
+      location.hash = url.hash;
+      return;
+    }
+    if (unsaved()) {
+      if (!confirm('Es gibt ungespeicherte Änderungen. Jetzt speichern und dann die Seite wechseln?')) return;
+      await saveAll();
+      if (unsaved()) return;
+    }
+    remember();
+    location.href = url.href;
+  }
+
+  /* Bearbeiten-Modus über Seitenwechsel hinweg offen halten (gleicher Tab) */
+  const SESSION_KEY = 'ed-session';
+  type Resume = { tab: Tab; collapsed: boolean };
+  function remember() {
+    if (!editing) return;
+    try {
+      sessionStorage.setItem(SESSION_KEY, JSON.stringify({ tab, collapsed: sidebar.hasAttribute('data-collapsed') }));
+    } catch {
+      /* ohne Speicher: nach dem Seitenwechsel wieder „Bearbeiten“ anklicken */
+    }
+  }
+  function forget() {
+    try {
+      sessionStorage.removeItem(SESSION_KEY);
+    } catch {
+      /* nichts zu tun */
+    }
+  }
+  function resumeState(): Resume | null {
+    try {
+      const value = JSON.parse(sessionStorage.getItem(SESSION_KEY) ?? 'null');
+      return value && typeof value === 'object' ? (value as Resume) : null;
+    } catch {
+      return null;
+    }
+  }
+
   interactButton.addEventListener('click', () => {
     interact = !interact;
     interactButton.setAttribute('aria-pressed', String(interact));
@@ -1031,7 +1248,7 @@ export async function initEditor() {
   $('[data-ed-hint-cancel]').addEventListener('click', () => blocks.cancelPlacing());
 
   /* ---------------- Start & Ende ---------------- */
-  async function start() {
+  async function start(resume: Resume | null = null) {
     editing = true;
     document.documentElement.classList.add('is-editing');
     document.querySelectorAll('[data-reveal]').forEach((el) => el.classList.add('is-revealed'));
@@ -1043,9 +1260,12 @@ export async function initEditor() {
     note = '';
     selected = null;
     selectedBlock = null;
-    showTab('inspect');
+    if (resume?.collapsed) setCollapsed(true);
+    showTab(resume?.tab && resume.tab !== 'insert' ? resume.tab : 'inspect');
+    remember();
     updateStatus();
     requestAnimationFrame(frame);
+    colors.load();
     await Promise.all([styles.load(), blocks.start()]);
     if (!note.includes('nicht')) note = '';
     updateStatus();
@@ -1055,6 +1275,7 @@ export async function initEditor() {
   function stop() {
     if (unsaved() && !confirm('Es gibt ungespeicherte Änderungen. Trotzdem beenden (sie bleiben nur bis zum Neuladen sichtbar)?')) return false;
     editing = false;
+    forget();
     blocks.stop();
     if (interact) interactButton.click();
     document.documentElement.classList.remove('is-editing');
@@ -1069,6 +1290,7 @@ export async function initEditor() {
   }
 
   toggle.addEventListener('click', () => void start());
+  window.addEventListener('pagehide', () => remember());
   // X: beenden und abmelden – erneut öffnen nur wieder mit Tastenfolge und Passwort
   $('[data-ed-close]').addEventListener('click', async () => {
     if (!stop()) return;
@@ -1077,6 +1299,10 @@ export async function initEditor() {
     await unlock();
     ui.hidden = false;
   });
+
+  // Nach einem Seitenwechsel im Bearbeiten-Modus direkt weiterbearbeiten
+  const resume = resumeState();
+  if (resume) void start(resume);
 }
 
 /** Farbe aus getComputedStyle → #rrggbb */

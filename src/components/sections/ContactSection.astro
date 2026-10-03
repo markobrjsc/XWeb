@@ -162,7 +162,7 @@ import { ACCEPT_IMAGES, contactAreas, contactChannels, contactTimeframes, contac
     font-weight: var(--weight-bold);
     letter-spacing: var(--tracking-wider);
     text-transform: uppercase;
-    color: var(--blue-200);
+    color: color-mix(in srgb, var(--color-heading) 85%, transparent);
   }
 
   .contact__places {
@@ -177,9 +177,9 @@ import { ACCEPT_IMAGES, contactAreas, contactChannels, contactTimeframes, contac
     padding: 0.2em 0.7em;
     font-size: var(--text-2xs);
     font-weight: var(--weight-medium);
-    color: #ffffff;
+    color: var(--color-heading);
     border-radius: var(--radius-full);
-    background: rgb(255 255 255 / 0.08);
+    background: color-mix(in srgb, var(--color-heading) 8%, transparent);
   }
 
   .contact__places .contact__places-more {

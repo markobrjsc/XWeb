@@ -17,6 +17,8 @@ import { getImage } from 'astro:assets';
 import BlockEditorUI from './BlockEditorUI.astro';
 import Icon from '@/components/ui/Icon.astro';
 import { listImages } from '@/lib/images';
+import HeaderLogo from '@/components/layout/HeaderLogo.astro';
+import { LOGO_DESIGNS } from '@/lib/logo';
 import { KINDS } from '@/scripts/editor/kinds';
 
 // Auswahl fürs Kopfbild: alle Querformat-Fotos als kleine Vorschau (erst beim Öffnen des Dialogs geladen)
@@ -32,7 +34,7 @@ const ICONS = [
   ...new Set([
     'box', 'mouse-pointer-click', 'square-plus', 'layers', 'blocks', 'type', 'square', 'hand', 'image', 'images',
     'rotate-ccw', 'align-left', 'align-center', 'align-right', 'align-justify', 'crosshair', 'x', 'chevron-right',
-    'sliders-horizontal', 'smartphone', 'monitor', 'eye-off', 'corner-left-up', 'corner-right-down',
+    'sliders-horizontal', 'smartphone', 'monitor', 'eye-off', 'corner-left-up', 'corner-right-down', 'file-plus', 'link',
     ...Object.values(KINDS).map((kind) => kind.icon),
   ]),
 ];
@@ -67,6 +69,7 @@ const ICONS = [
       <button type="button" role="tab" data-ed-tab="insert" aria-selected="false" title="Einfügen"><Icon name="square-plus" size="1rem" /><span>Einfügen</span></button>
       <button type="button" role="tab" data-ed-tab="layers" aria-selected="false" title="Ebenen"><Icon name="layers" size="1rem" /><span>Ebenen</span></button>
       <button type="button" role="tab" data-ed-tab="spacing" aria-selected="false" title="Abstände"><Icon name="move-diagonal" size="1rem" /><span>Abstände</span></button>
+      <button type="button" role="tab" data-ed-tab="colors" aria-selected="false" title="Farben der Website"><Icon name="palette" size="1rem" /><span>Farben</span></button>
     </nav>
 
     <div class="ed-hint" data-ed-hint hidden>
@@ -82,6 +85,7 @@ const ICONS = [
       </section>
       <section data-ed-panel="layers" hidden><div class="ed-tree" data-ed-tree></div></section>
       <section data-ed-panel="spacing" hidden><div class="ed-spacing" data-ed-spacing></div></section>
+      <section data-ed-panel="colors" hidden><div class="ed-colors" data-ed-colors></div></section>
     </div>
 
     <footer class="ed-foot">
@@ -115,6 +119,9 @@ const ICONS = [
     <div class="ed-spacing-overlay__margin" data-ed-margin></div>
     <div class="ed-spacing-overlay__padding" data-ed-padding></div>
   </div>
+
+  <!-- Logo-Designs für die Auswahl (src/scripts/editor/logo.ts) -->
+  {LOGO_DESIGNS.map(([id]) => <template data-ed-logo={id}><HeaderLogo design={id} /></template>)}
 
   <template data-ed-icons>
     {ICONS.map((name) => <span class="ed-ico" data-icon={name}><Icon name={name} size="1rem" /></span>)}
@@ -172,6 +179,30 @@ const ICONS = [
         </label>
         <p class="gallery-dialog__status" data-gallery-status aria-live="polite"></p>
         <button class="ed-btn ed-btn--primary" type="button" data-gallery-save>Galerie speichern</button>
+      </footer>
+    </form>
+  </dialog>
+
+  <dialog class="gallery-dialog" data-certs-dialog aria-labelledby="certs-dialog-title">
+    <form method="dialog" class="gallery-dialog__inner">
+      <header class="gallery-dialog__head">
+        <div>
+          <p class="gallery-dialog__kicker">Zertifikate bearbeiten</p>
+          <h2 class="gallery-dialog__title" id="certs-dialog-title">Reihenfolge, Angaben und Sichtbarkeit</h2>
+        </div>
+        <button class="gallery-dialog__close" type="button" aria-label="Schließen">
+          <Icon name="x" size="1.1rem" />
+        </button>
+      </header>
+      <p class="gallery-dialog__hint">Ziehen oder Pfeile zum Sortieren · Auge zum Aus-/Einblenden · neue PDFs bekommen ihre Vorschau beim nächsten Build.</p>
+      <ol class="certs-edit" data-certs-list></ol>
+      <footer class="gallery-dialog__foot">
+        <label class="gallery-dialog__add">
+          <input type="file" accept="application/pdf,.pdf" multiple data-certs-add />
+          <Icon name="file-plus" size="1rem" /> PDF hinzufügen
+        </label>
+        <p class="gallery-dialog__status" data-certs-status aria-live="polite"></p>
+        <button class="ed-btn ed-btn--primary" type="button" data-certs-save>Zertifikate speichern</button>
       </footer>
     </form>
   </dialog>
@@ -503,7 +534,7 @@ const ICONS = [
   .ed-tabs {
     display: grid;
     flex: none;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
+    grid-template-columns: repeat(5, minmax(0, 1fr));
     gap: 2px;
     margin: 0.6rem 0.75rem 0;
     padding: 2px;
@@ -512,14 +543,16 @@ const ICONS = [
     background: var(--ed-bg-2);
   }
 
+  /* Symbol über der Beschriftung – fünf Reiter passen so nebeneinander */
   .ed-tabs button {
     display: flex;
+    flex-direction: column;
     align-items: center;
     justify-content: center;
-    gap: 0.35rem;
+    gap: 0.2rem;
     min-width: 0;
-    padding: 0.45rem 0.25rem;
-    font: 500 0.75rem/1.2 var(--ed-font);
+    padding: 0.4rem 0.15rem 0.35rem;
+    font: 500 0.68rem/1.2 var(--ed-font);
     color: var(--ed-muted);
     border: 0;
     border-radius: 0.45rem;
@@ -541,12 +574,6 @@ const ICONS = [
     color: var(--ed-text);
     background: var(--ed-surface-2);
     box-shadow: 0 1px 2px rgb(0 0 0 / 0.4);
-  }
-
-  @media (min-width: 48rem) and (max-width: 63.99rem) {
-    .ed-tabs button .icon {
-      display: none;
-    }
   }
 
   .ed-hint {
@@ -1202,6 +1229,176 @@ const ICONS = [
 
   .ed-spacing__name {
     font-weight: 600;
+  }
+
+  /* Logo-Auswahl: Kacheln mit echter Vorschau auf dunklem Grund (wie die Kopfzeile) */
+  .ed-logos {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.45rem;
+  }
+
+  .ed-logo {
+    display: grid;
+    gap: 0.4rem;
+    min-width: 0;
+    padding: 0.4rem 0.4rem 0.5rem;
+    font: inherit;
+    text-align: left;
+    color: var(--ed-text);
+    border: 1px solid var(--ed-line);
+    border-radius: 0.6rem;
+    background: var(--ed-bg);
+    cursor: pointer;
+  }
+
+  .ed-logo:hover {
+    border-color: var(--ed-line-strong);
+  }
+
+  .ed-logo[aria-pressed='true'] {
+    border-color: #ffffff;
+    box-shadow: inset 0 0 0 1px #ffffff;
+  }
+
+  .ed-logo__stage {
+    --header-item-h: 2.1rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 3.4rem;
+    overflow: hidden;
+    border-radius: 0.45rem;
+    background: rgb(28 28 30);
+    font-family: var(--font-sans);
+  }
+
+  .ed-logo__stage .hlogo {
+    max-width: 100%;
+  }
+
+  .ed-logo__stage .hlogo--band {
+    height: 2rem;
+  }
+
+  .ed-logo__stage .hlogo--standard .hlogo__name,
+  .ed-logo__stage .hlogo--monogramm .hlogo__name {
+    font-size: 0.78rem;
+  }
+
+  .ed-logo__stage .hlogo--schrift .hlogo__name {
+    font-size: 0.95rem;
+  }
+
+  .ed-logo__stage .hlogo__sub {
+    font-size: 0.42rem;
+  }
+
+  .ed-logo__stage .hlogo--standard {
+    padding: 0 0.7rem 0 0.5rem;
+  }
+
+  .ed-logo strong {
+    font-size: 0.74rem;
+    font-weight: 600;
+  }
+
+  .ed-logo small {
+    font-size: 0.66rem;
+    line-height: 1.3;
+    color: var(--ed-muted);
+  }
+
+  .ed-logo--empty .ed-logo__stage {
+    font-size: 0.7rem;
+    color: var(--ed-muted);
+  }
+
+  /* Farben der Website */
+  .ed-colors {
+    display: grid;
+    gap: 0.75rem;
+  }
+
+  .ed-basecolor {
+    display: grid;
+    grid-template-columns: 2.3rem minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 0.65rem;
+  }
+
+  .ed-basecolor input[type='color'] {
+    width: 2.3rem;
+    height: 2.3rem;
+    padding: 0;
+    border: 1px solid rgb(255 255 255 / 0.2);
+    border-radius: 0.5rem;
+    background: none;
+    cursor: pointer;
+  }
+
+  .ed-basecolor__text {
+    display: grid;
+    gap: 0.05rem;
+    min-width: 0;
+  }
+
+  .ed-basecolor__text strong {
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--ed-text);
+  }
+
+  .ed-basecolor__text small {
+    font-size: 0.7rem;
+    color: var(--ed-muted);
+  }
+
+  .ed-basecolor__text code {
+    font: 0.7rem/1.3 ui-monospace, 'Cascadia Code', monospace;
+    color: var(--ed-muted);
+  }
+
+  .ed-presets {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+  }
+
+  .ed-preset {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.25rem 0.55rem 0.25rem 0.3rem;
+    font: 500 0.7rem/1.2 var(--ed-font);
+    color: var(--ed-text);
+    border: 1px solid var(--ed-line);
+    border-radius: 999px;
+    background: var(--ed-bg);
+    cursor: pointer;
+  }
+
+  .ed-preset:hover,
+  .ed-preset[aria-pressed='true'] {
+    border-color: rgb(255 255 255 / 0.6);
+  }
+
+  .ed-preset::before {
+    content: '';
+    width: 1rem;
+    height: 1rem;
+    border-radius: 50%;
+    background: var(--swatch);
+    box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.25);
+  }
+
+  .ed-warn {
+    padding: 0.45rem 0.6rem;
+    font-size: 0.72rem;
+    color: #fde68a;
+    border: 1px solid rgb(251 191 36 / 0.35);
+    border-radius: 0.5rem;
+    background: rgb(251 191 36 / 0.08);
   }
 
   /* Einfügen */
@@ -1903,6 +2100,130 @@ const ICONS = [
     width: 100%;
     height: 100%;
     object-fit: cover;
+  }
+
+  /* Zertifikate: Liste mit Vorschau, Feldern und Werkzeugen */
+  .certs-edit {
+    display: grid;
+    gap: 0.5rem;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .certs-edit__item {
+    display: grid;
+    grid-template-columns: 4.5rem minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 0.85rem;
+    padding: 0.55rem;
+    border: 1px solid var(--ed-line);
+    border-radius: 0.6rem;
+    background: var(--ed-bg-2);
+    cursor: grab;
+  }
+
+  .certs-edit__item[data-hidden] .certs-edit__thumb,
+  .certs-edit__item[data-hidden] .certs-edit__fields input {
+    opacity: 0.45;
+  }
+
+  .certs-edit__item[data-new] {
+    border-color: rgb(255 255 255 / 0.5);
+  }
+
+  .certs-edit__thumb {
+    display: grid;
+    place-items: center;
+    overflow: hidden;
+    aspect-ratio: 1 / 1.41;
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: var(--ed-muted);
+    border-radius: 0.3rem;
+    background: var(--ed-surface);
+  }
+
+  .certs-edit__thumb img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: top;
+  }
+
+  .certs-edit__fields {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 5.5rem;
+    gap: 0.4rem;
+    font-family: var(--ed-font);
+  }
+
+  .certs-edit__badge {
+    grid-column: 1 / -1;
+    font-size: 0.68rem;
+    font-weight: 600;
+    color: var(--ed-muted);
+  }
+
+  .certs-edit__field {
+    display: grid;
+    gap: 0.15rem;
+    min-width: 0;
+    font-size: 0.68rem;
+    color: var(--ed-muted);
+  }
+
+  .certs-edit__field--wide {
+    grid-column: 1 / -1;
+  }
+
+  .certs-edit__field input {
+    width: 100%;
+    min-width: 0;
+    padding: 0.35rem 0.5rem;
+    font: 400 0.8rem/1.4 var(--ed-font);
+    color: var(--ed-text);
+    border: 1px solid rgb(255 255 255 / 0.12);
+    border-radius: 0.4rem;
+    background: var(--ed-bg);
+  }
+
+  .certs-edit__field input:focus {
+    outline: none;
+    border-color: rgb(255 255 255 / 0.5);
+  }
+
+  .certs-edit__tools {
+    display: grid;
+    gap: 0.25rem;
+  }
+
+  .certs-edit__tools button {
+    width: 1.9rem;
+    height: 1.9rem;
+    font-size: 0.9rem;
+    color: #0a0a0a;
+    border: 0;
+    border-radius: 50%;
+    background: rgb(255 255 255 / 0.92);
+    cursor: pointer;
+  }
+
+  .certs-edit__tools button:disabled {
+    opacity: 0.3;
+    cursor: default;
+  }
+
+  @media (max-width: 40rem) {
+    .certs-edit__item {
+      grid-template-columns: 3.2rem minmax(0, 1fr);
+    }
+
+    .certs-edit__tools {
+      grid-column: 1 / -1;
+      grid-auto-flow: column;
+      justify-content: end;
+    }
   }
 
   .gallery-dialog__foot {

@@ -79,4 +79,13 @@ const { items, columns = 1, size = 'md', class: className } = Astro.props;
   :global([data-tone='brand']) .checklist__item::after {
     background: var(--blue-200);
   }
+
+  /* Heller Bereich in einem dunklen: wieder wie auf hellem Grund */
+  :global(:is([data-tone='subtle'], [data-tone='muted']) .checklist__item:not(:is([data-tone='subtle'], [data-tone='muted']) :is([data-tone='dark'], [data-tone='brand']) .checklist__item)::before) {
+    background: var(--blue-50);
+  }
+
+  :global(:is([data-tone='subtle'], [data-tone='muted']) .checklist__item:not(:is([data-tone='subtle'], [data-tone='muted']) :is([data-tone='dark'], [data-tone='brand']) .checklist__item)::after) {
+    background: var(--blue-600);
+  }
 </style>

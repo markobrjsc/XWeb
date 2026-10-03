@@ -1,0 +1,392 @@
+---
+/**
+ * HeaderLogo – Logo links in der Kopfzeile, Design wählbar im Bearbeiten-Modus (Logo anklicken → Inhalt).
+ * Gespeichert in src/content/brand.json: { "logo": "<Design>", "image": "<eigenes Bild>", "background": "hell" | "ohne" }
+ *
+ *  standard     Maskottchen und Schriftzug im weißen, runden Label
+ *  band         das längliche Logo: Maskottchen mit Schriftband – das Band in der Akzentfarbe
+ *  badge        Maskottchen vor einem Namens-Label in der Akzentfarbe, weiß gerahmt
+ *  schrift      nur Schriftzug, hell auf der dunklen Leiste, mit Akzentstrich
+ *  monogramm    „H“ im Feld in der Akzentfarbe plus Schriftzug
+ *  maskottchen  nur das Maskottchen im weißen Kreis
+ *  eigenes      hochgeladenes Bild (src/assets/brand/eigene/), wahlweise auf hellem Label
+ * Auf dem Handy (bis 40 rem) zeigt jedes Design eine kompakte Fassung.
+ * Alle Designs liegen zusätzlich als Vorlage im Bearbeiten-Modus (EditMode.astro) – für die Vorschau beim Wählen.
+ */
+import type { ImageMetadata } from 'astro';
+import { Image } from 'astro:assets';
+import band from '@/assets/brand/hildebrand-logo-ohne-band.svg';
+import mascot from '@/assets/brand/hildebrand-maskottchen.svg';
+import brand from '@/content/brand.json';
+import { type BrandConfig, LOGO_DESIGNS } from '@/lib/logo';
+
+interface Props {
+  /** Ohne Angabe: das gespeicherte Design aus brand.json */
+  design?: string;
+}
+
+const config = brand as BrandConfig;
+const uploads = import.meta.glob<ImageMetadata>('/src/assets/brand/eigene/*.{png,jpg,jpeg,webp}', { eager: true, import: 'default' });
+const custom = config.image ? uploads[`/src/assets/brand/eigene/${config.image}`] : undefined;
+
+const known = [...LOGO_DESIGNS.map(([id]) => id), 'eigenes'] as string[];
+let design = Astro.props.design ?? config.logo ?? 'standard';
+if (!known.includes(design) || (design === 'eigenes' && !custom)) design = 'standard';
+const name = 'Pflasterarbeiten Hildebrand GmbH';
+---
+
+{
+  design === 'band' ? (
+    <span class="hlogo hlogo--band">
+      <Image src={band} alt="" class="hlogo__band" loading="eager" decoding="async" />
+      <span class="visually-hidden">{name}</span>
+    </span>
+  ) : design === 'badge' ? (
+    <span class="hlogo hlogo--badge">
+      <Image src={mascot} alt="" class="hlogo__mascot" loading="eager" decoding="async" />
+      <span class="hlogo__label">Hildebrand</span>
+      <span class="visually-hidden">Pflasterarbeiten GmbH</span>
+    </span>
+  ) : design === 'schrift' ? (
+    <span class="hlogo hlogo--schrift">
+      <span class="hlogo__name">Hildebrand</span>
+      <span class="hlogo__sub">Pflasterarbeiten GmbH</span>
+    </span>
+  ) : design === 'monogramm' ? (
+    <span class="hlogo hlogo--monogramm">
+      <span class="hlogo__h" aria-hidden="true">H</span>
+      <span class="hlogo__text">
+        <span class="hlogo__name">Hildebrand</span>
+        <span class="hlogo__sub">Pflasterarbeiten GmbH</span>
+      </span>
+    </span>
+  ) : design === 'maskottchen' ? (
+    <span class="hlogo hlogo--maskottchen">
+      <Image src={mascot} alt="" class="hlogo__mascot" loading="eager" decoding="async" />
+      <span class="visually-hidden">{name}</span>
+    </span>
+  ) : design === 'eigenes' && custom ? (
+    <span class="hlogo hlogo--eigenes" data-bg={config.background === 'ohne' ? 'ohne' : 'hell'}>
+      <Image src={custom} alt={name} class="hlogo__image" height={128} loading="eager" decoding="async" />
+    </span>
+  ) : (
+    <span class="hlogo hlogo--standard">
+      <Image src={mascot} alt="" class="hlogo__mascot" loading="eager" decoding="async" />
+      <span class="hlogo__text">
+        <span class="hlogo__name">Hildebrand</span>
+        <span class="hlogo__sub">Pflasterarbeiten GmbH</span>
+      </span>
+    </span>
+  )
+}
+
+<style is:global>
+  /* Gemeinsam: Höhe der Kopfzeilen-Elemente (--header-item-h aus Header.astro, Rückfall für die Vorschau) */
+  .hlogo {
+    --hl-h: var(--header-item-h, 2.95rem);
+    display: inline-flex;
+    flex-shrink: 0;
+    align-items: center;
+    height: var(--hl-h);
+    line-height: 1;
+    text-decoration: none;
+    transition:
+      background-color var(--duration-base, 200ms) ease,
+      transform var(--duration-base, 200ms) ease;
+  }
+
+  .hlogo img {
+    display: block;
+    width: auto;
+  }
+
+  .hlogo__name {
+    font-weight: var(--weight-bold, 700);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    line-height: 1;
+  }
+
+  .hlogo__sub {
+    font-size: 0.56rem;
+    font-weight: var(--weight-medium, 500);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    line-height: 1;
+  }
+
+  /* ---------- Standard: weißes Label mit Maskottchen und Schriftzug ---------- */
+  /* Farben über Variablen – „Design: Hell/Dunkel“ im Bearbeiten-Modus schaltet sie um (src/lib/tone-css.mjs) */
+  .hlogo--standard {
+    gap: 0.6rem;
+    padding: 0 1.1rem 0 0.75rem;
+    color: var(--hl-ink, var(--onyx-950));
+    border-radius: 999px;
+    background: var(--hl-label, #ffffff);
+  }
+
+  .hlogo--standard .hlogo__mascot {
+    height: calc(var(--hl-h) - 0.75rem);
+  }
+
+  .hlogo--standard .hlogo__text,
+  .hlogo--monogramm .hlogo__text {
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
+    padding-left: 0.6rem;
+    border-left: 1px solid color-mix(in srgb, currentColor 28%, transparent);
+  }
+
+  .hlogo--standard .hlogo__name {
+    font-size: 1.05rem;
+  }
+
+  .hlogo--standard .hlogo__sub {
+    color: color-mix(in srgb, currentColor 72%, transparent);
+  }
+
+  :is(a:hover, a:focus-visible) > .hlogo--standard,
+  :is(a:hover, a:focus-visible) > .hlogo--maskottchen,
+  :is(a:hover, a:focus-visible) > .hlogo--eigenes[data-bg='hell'] {
+    background: var(--hl-label-hover, var(--gray-100));
+  }
+
+  /* ---------- Schriftband: das längliche Logo, Band in der Akzentfarbe ---------- */
+  .hlogo--band {
+    position: relative;
+    height: calc(var(--hl-h) + 0.2rem);
+    aspect-ratio: 1031.3 / 288.8;
+    margin: -0.1rem 0 -0.1rem 0.45rem;
+  }
+
+  /* Lage des Bands wie in hildebrand-logo.svg (x 111 · y 90.6 · bis zum rechten/unteren Rand) */
+  .hlogo--band::before {
+    content: '';
+    position: absolute;
+    inset: 31.37% 0 2.29% 10.76%;
+    border-radius: 0 0.3rem 0.3rem 0;
+    background: var(--color-cta);
+  }
+
+  .hlogo--band .hlogo__band {
+    position: relative;
+    height: 100%;
+  }
+
+  :is(a:hover, a:focus-visible) > .hlogo--band {
+    transform: translateY(-1px);
+  }
+
+  /* ---------- Namens-Label: Maskottchen vor einem Label in der Akzentfarbe ---------- */
+  .hlogo--badge {
+    --mark-h: calc(var(--hl-h) - 0.5rem);
+    --mark-w: calc(var(--mark-h) * 0.77);
+    padding: 0.2rem 0.2rem 0.2rem 0.45rem;
+    border: 2px solid #ffffff;
+    border-radius: 999px;
+  }
+
+  .hlogo--badge .hlogo__mascot {
+    position: relative;
+    z-index: 1;
+    width: var(--mark-w);
+    height: var(--mark-h);
+    filter: drop-shadow(1px 0 0 rgb(0 0 0 / 0.25));
+  }
+
+  .hlogo--badge .hlogo__label {
+    display: inline-flex;
+    align-items: center;
+    height: calc(var(--mark-h) * 0.74);
+    margin-left: calc(var(--mark-w) * -0.5);
+    padding: 0 0.95rem 0 calc(var(--mark-w) * 0.5 + 0.55rem);
+    font-size: calc(var(--mark-h) * 0.42);
+    font-weight: var(--weight-extrabold, 800);
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: #ffffff;
+    -webkit-text-stroke: 1.5px var(--onyx-950);
+    paint-order: stroke fill;
+    text-shadow: 0 1px 0 var(--onyx-950);
+    border-radius: 999px;
+    background: var(--color-cta);
+  }
+
+  :is(a:hover, a:focus-visible) > .hlogo--badge {
+    border-color: var(--color-cta);
+  }
+
+  /* ---------- Schriftzug: hell auf der dunklen Leiste, Akzentstrich davor ---------- */
+  .hlogo--schrift {
+    flex-direction: column;
+    align-items: flex-start;
+    justify-content: center;
+    gap: 0.32rem;
+    margin-left: 0.4rem;
+    padding: 0 0.4rem 0 0.85rem;
+    color: var(--hl-text, #ffffff);
+    border-left: 4px solid var(--color-cta);
+  }
+
+  .hlogo--schrift .hlogo__name {
+    font-size: 1.32rem;
+    font-weight: var(--weight-extrabold, 800);
+    letter-spacing: 0.1em;
+  }
+
+  .hlogo--schrift .hlogo__sub,
+  .hlogo--monogramm .hlogo__sub {
+    color: color-mix(in srgb, currentColor 70%, transparent);
+  }
+
+  :is(a:hover, a:focus-visible) > .hlogo--schrift .hlogo__name {
+    color: var(--color-cta);
+  }
+
+  /* ---------- Monogramm: „H“ im Feld in der Akzentfarbe plus Schriftzug ---------- */
+  .hlogo--monogramm {
+    gap: 0.7rem;
+    color: var(--hl-text, #ffffff);
+  }
+
+  .hlogo--monogramm .hlogo__h {
+    display: grid;
+    place-items: center;
+    width: var(--hl-h);
+    height: var(--hl-h);
+    font-size: calc(var(--hl-h) * 0.58);
+    font-weight: 900;
+    font-stretch: 112%;
+    color: var(--color-cta-fg);
+    border-radius: 0.7rem;
+    background: var(--color-cta);
+    box-shadow: inset 0 -3px 0 rgb(0 0 0 / 0.18);
+  }
+
+  .hlogo--monogramm .hlogo__text {
+    padding-left: 0;
+    border-left: 0;
+  }
+
+  .hlogo--monogramm .hlogo__name {
+    font-size: 1.08rem;
+  }
+
+  :is(a:hover, a:focus-visible) > .hlogo--monogramm .hlogo__h {
+    transform: rotate(-4deg);
+  }
+
+  .hlogo--monogramm .hlogo__h {
+    transition: transform var(--duration-base, 200ms) ease;
+  }
+
+  /* ---------- Maskottchen: nur die Figur im weißen Kreis ---------- */
+  .hlogo--maskottchen {
+    justify-content: center;
+    width: calc(var(--hl-h) + 0.15rem);
+    height: calc(var(--hl-h) + 0.15rem);
+    margin-block: -0.075rem;
+    border-radius: 50%;
+    background: var(--hl-label, #ffffff);
+    box-shadow: 0 0 0 2px var(--color-cta);
+  }
+
+  .hlogo--maskottchen .hlogo__mascot {
+    height: calc(var(--hl-h) - 0.5rem);
+  }
+
+  /* ---------- Eigenes Bild ---------- */
+  .hlogo--eigenes {
+    max-width: 15rem;
+  }
+
+  .hlogo--eigenes .hlogo__image {
+    max-width: 100%;
+    height: calc(var(--hl-h) - 0.6rem);
+    object-fit: contain;
+  }
+
+  .hlogo--eigenes[data-bg='hell'] {
+    padding: 0 0.9rem;
+    border-radius: 999px;
+    background: var(--hl-label, #ffffff);
+  }
+
+  .hlogo--eigenes[data-bg='ohne'] .hlogo__image {
+    height: var(--hl-h);
+  }
+
+  /* ---------- Handy: kompakte Fassungen ---------- */
+  @media (max-width: 40rem) {
+    .hlogo--standard {
+      justify-content: center;
+      width: var(--hl-h);
+      padding: 0;
+      border: 2px solid var(--onyx-950);
+      border-radius: 50%;
+    }
+
+    .hlogo--standard .hlogo__mascot {
+      height: calc(var(--hl-h) - 0.45rem);
+    }
+
+    .hlogo--standard .hlogo__text {
+      display: none;
+    }
+
+    .hlogo--band {
+      height: var(--hl-h);
+      margin-left: 0.3rem;
+    }
+
+    .hlogo--maskottchen {
+      width: var(--hl-h);
+      height: var(--hl-h);
+      margin-block: 0;
+    }
+
+    .hlogo--maskottchen .hlogo__mascot {
+      height: calc(var(--hl-h) - 0.55rem);
+    }
+
+    .hlogo--badge {
+      --mark-h: calc(var(--hl-h) - 0.45rem);
+      padding-left: 0.3rem;
+    }
+
+    .hlogo--badge .hlogo__label {
+      padding-right: 0.7rem;
+    }
+
+    .hlogo--schrift {
+      padding-left: 0.6rem;
+      border-left-width: 3px;
+    }
+
+    .hlogo--schrift .hlogo__name {
+      font-size: 1.05rem;
+      letter-spacing: 0.08em;
+    }
+
+    .hlogo--schrift .hlogo__sub {
+      font-size: 0.5rem;
+    }
+
+    .hlogo--monogramm {
+      gap: 0.55rem;
+    }
+
+    .hlogo--monogramm .hlogo__name {
+      font-size: 1rem;
+    }
+
+    .hlogo--monogramm .hlogo__sub {
+      display: none;
+    }
+
+    .hlogo--eigenes {
+      max-width: 9.5rem;
+    }
+  }
+</style>

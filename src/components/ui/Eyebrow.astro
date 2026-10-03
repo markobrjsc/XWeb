@@ -40,6 +40,11 @@ const { as: Tag = 'p', icon, class: className } = Astro.props;
     --eyebrow-mark: var(--color-accent);
   }
 
+  /* Heller Bereich in einem dunklen: wieder wie auf hellem Grund */
+  :global(:is([data-tone='subtle'], [data-tone='muted']) .eyebrow:not(:is([data-tone='subtle'], [data-tone='muted']) :is([data-tone='dark'], [data-tone='brand']) .eyebrow)) {
+    --eyebrow-color: var(--blue-600);
+  }
+
   .eyebrow__line {
     display: inline-block;
     width: 1.5rem;

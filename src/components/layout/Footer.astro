@@ -210,7 +210,7 @@ const companyLinks = mainNav.filter((item) => item.href !== '/' && !item.href.in
     font-weight: var(--weight-semibold);
     letter-spacing: var(--tracking-wider);
     text-transform: uppercase;
-    color: var(--blue-200);
+    color: color-mix(in srgb, var(--color-heading) 85%, transparent);
   }
 
   .site-footer__links {
@@ -228,7 +228,7 @@ const companyLinks = mainNav.filter((item) => item.href !== '/' && !item.href.in
   .site-footer__links a {
     font-size: var(--text-sm);
     font-weight: var(--weight-semibold);
-    color: #ffffff;
+    color: var(--color-heading);
     text-decoration: none;
   }
 
@@ -238,7 +238,7 @@ const companyLinks = mainNav.filter((item) => item.href !== '/' && !item.href.in
   }
 
   .site-footer__links a:hover {
-    color: var(--blue-200);
+    color: color-mix(in srgb, var(--color-heading) 85%, transparent);
     text-decoration: underline;
   }
 
@@ -259,17 +259,17 @@ const companyLinks = mainNav.filter((item) => item.href !== '/' && !item.href.in
 
   .site-footer__contact > li > :global(.icon) {
     flex: none;
-    color: var(--blue-200);
+    color: color-mix(in srgb, var(--color-heading) 85%, transparent);
   }
 
   .site-footer__contact a {
     overflow-wrap: anywhere;
-    color: #ffffff;
+    color: var(--color-heading);
     text-decoration: none;
   }
 
   .site-footer__contact a:hover {
-    color: var(--blue-200);
+    color: color-mix(in srgb, var(--color-heading) 85%, transparent);
     text-decoration: underline;
   }
 
@@ -298,7 +298,7 @@ const companyLinks = mainNav.filter((item) => item.href !== '/' && !item.href.in
 
   .site-footer__legal a:hover,
   .site-footer__top-link:hover {
-    color: #ffffff;
+    color: var(--color-heading);
     text-decoration: underline;
   }
 

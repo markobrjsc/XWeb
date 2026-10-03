@@ -240,6 +240,10 @@ ub-zone {
   color: var(--blue-200);
 }
 
+:is([data-tone='subtle'], [data-tone='muted']) .ub-eyebrow:not(:is([data-tone='subtle'], [data-tone='muted']) :is([data-tone='dark'], [data-tone='brand']) .ub-eyebrow) {
+  color: var(--blue-600);
+}
+
 .ub-eyebrow__line {
   flex-shrink: 0;
   width: 1.5rem;
@@ -459,6 +463,22 @@ ub-zone {
   --btn-bg-hover: var(--onyx-100);
 }
 
+/* Heller Bereich (z. B. hellgraue Karte) in einem dunklen Abschnitt: Buttons wieder wie auf hellem Grund –
+   außer in einem dunklen Bereich darin */
+:is([data-tone='subtle'], [data-tone='muted']) .ub-button--secondary:not(:is([data-tone='subtle'], [data-tone='muted']) :is([data-tone='dark'], [data-tone='brand']) .ub-button--secondary) {
+  --btn-bg: #ffffff;
+  --btn-fg: var(--onyx-800);
+  --btn-border: var(--gray-300);
+  --btn-bg-hover: var(--onyx-50);
+  --btn-border-hover: var(--onyx-400);
+}
+
+:is([data-tone='subtle'], [data-tone='muted']) .ub-button--dunkel:not(:is([data-tone='subtle'], [data-tone='muted']) :is([data-tone='dark'], [data-tone='brand']) .ub-button--dunkel) {
+  --btn-bg: var(--onyx-950);
+  --btn-fg: #ffffff;
+  --btn-bg-hover: var(--onyx-700);
+}
+
 /* Handy: Buttons über die ganze Breite – leichter zu treffen */
 @media (max-width: 30rem) {
   .ub-contain > .ub-button,
@@ -535,6 +555,10 @@ ub-zone {
 
 [data-tone='dark'] .ub-iconbox__icon {
   background: rgb(255 255 255 / 0.08);
+}
+
+:is([data-tone='subtle'], [data-tone='muted']) .ub-iconbox__icon:not(:is([data-tone='subtle'], [data-tone='muted']) :is([data-tone='dark'], [data-tone='brand']) .ub-iconbox__icon) {
+  background: var(--onyx-950);
 }
 
 .ub-iconbox__body {

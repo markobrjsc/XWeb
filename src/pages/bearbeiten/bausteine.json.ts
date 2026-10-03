@@ -1,6 +1,7 @@
 /**
  * Daten für den Element-Editor im Bearbeiten-Modus (src/scripts/block-editor.ts), erst beim Öffnen geladen:
- *  · images: alle Fotos mit kleiner Vorschau (Auswahl) und mittlerer Größe (Vorschau auf der Seite)
+ *  · images: alle Fotos mit kleiner Vorschau (Auswahl) und großer Fassung (1600 px, Vorschau auf der Seite –
+ *            auch für Kopfbilder und Hintergründe über die ganze Breite)
  *  · icons:  SVG der Symbole, die Elemente verwenden
  */
 import type { APIRoute } from 'astro';
@@ -20,7 +21,7 @@ export const GET: APIRoute = async () => {
       .map(async ({ name, image }) => {
         const [thumb, preview] = await Promise.all([
           getImage({ src: image, width: Math.min(320, image.width), format: 'webp', quality: 60 }),
-          getImage({ src: image, width: Math.min(1200, image.width), format: 'webp', quality: 72 }),
+          getImage({ src: image, width: Math.min(1600, image.width), format: 'webp', quality: 72 }),
         ]);
         return { name, thumb: thumb.src, src: preview.src, width: image.width, height: image.height };
       }),

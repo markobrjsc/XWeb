@@ -13,6 +13,11 @@
  *  GET  /api/edit/bausteine/?page=   aktueller Stand der Elemente einer Seite (direkt aus GitHub, auch vor dem Build)
  *  POST /api/edit/bausteine/        { page, zones: { "2": [Block, …] } } – Elemente einer Seite             → src/content/blocks.json
  *  PUT  /api/edit/bild/?folder=&name=  Bild als Base64-Text (vom Browser verkleinert)             → src/assets/images/<folder>/<name>
+ *  PUT  /api/edit/logo-bild/?name=     eigenes Logo als Base64-Text (PNG)                          → src/assets/brand/eigene/<name>
+ *  POST /api/edit/logo/             { logo, image?, background? } – Logo in der Kopfzeile            → src/content/brand.json
+ *  PUT  /api/edit/zertifikat/?name=    neues Zertifikat (PDF) als Base64-Text                        → src/assets/zertifikate/<name>
+ *  POST /api/edit/zertifikate/      { items: [{ name, title, issuer, year, hidden }] } – Reihenfolge,
+ *                                   Angaben, Ausblenden                                → src/assets/zertifikate/zertifikate.json
  *  POST /api/edit/projekt/          { slug, service, pillar, title, summary, location?, year? } – neues Referenzprojekt
  *                                   in einer Leistungskarte (Fotos vorher per /bild/ nach referenzen/<slug>/) → src/content/referenzen/<slug>.md
  *
@@ -49,6 +54,10 @@ const HEROES_PATH = 'src/content/heroes.json';
 const COLORS_PATH = 'src/styles/custom-colors.css';
 const SPACING_PATH = 'src/content/spacing.json';
 const BLOCKS_PATH = 'src/content/blocks.json';
+const BRAND_PATH = 'src/content/brand.json';
+const LOGO_DIR = 'src/assets/brand/eigene';
+const CERTS_DIR = 'src/assets/zertifikate';
+const CERTS_INFO_PATH = `${CERTS_DIR}/zertifikate.json`;
 const PAGE_PATTERN = /^\/[a-z0-9/_-]*$/i;
 
 /** Gestaltung je Element: erlaubte Eigenschaften und Werte (gleiche Regeln wie scripts/build-spacing.mjs) */
@@ -97,11 +106,18 @@ const COLOR_VARIABLES = new Set([
   '--onyx-950',
   '--gray-50',
   '--ink',
+  /** Schrift auf der Akzentfarbe (Buttons, Markierungen) – dunkel oder weiß, je nach Akzent */
+  '--color-cta-fg',
+  '--color-highlight',
 ]);
 const FOLDER_PATTERN = /^[a-z0-9-]+(\/[a-z0-9-]+){0,2}$/;
 const NAME_PATTERN = /^[a-z0-9][a-z0-9_-]{0,80}$/;
 const FILE_PATTERN = /^[a-z0-9][a-z0-9_-]{0,80}\.(jpg|jpeg|png|webp)$/;
 const MAX_IMAGE_BASE64 = 12 * 1024 * 1024;
+const LOGO_FILE_PATTERN = /^logo-[a-z0-9-]{1,40}\.png$/;
+const PDF_PATTERN = /^[a-z0-9][a-z0-9-]{0,80}\.pdf$/;
+/** Logo-Designs (src/lib/logo.ts) */
+const LOGO_DESIGNS = new Set(['standard', 'band', 'badge', 'schrift', 'monogramm', 'maskottchen', 'eigenes']);
 
 const json = (data: unknown, status = 200) =>
   new Response(JSON.stringify(data), {
@@ -486,14 +502,88 @@ async function saveBlocks(request: Request, env: EditEnv) {
 async function uploadImage(request: Request, env: EditEnv, url: URL) {
   const folder = url.searchParams.get('folder') ?? '';
   const name = (url.searchParams.get('name') ?? '').toLowerCase();
-  const length = Number(request.headers.get('Content-Length'));
   if (!FOLDER_PATTERN.test(folder) || !FILE_PATTERN.test(name)) return fail('Ungültiger Ordner oder Dateiname.');
-  if (!request.body || !Number.isFinite(length) || length <= 0) return fail('Bild fehlt.');
-  if (length > MAX_IMAGE_BASE64) return fail('Das Bild ist zu groß.', 413);
+  const error = await uploadFile(request, env, `src/assets/images/${folder}/${name}`, `Bild hinzugefügt: ${folder}/${name}`);
+  return error ?? json({ ok: true, name: name.replace(/\.[^.]+$/, '') });
+}
+
+/** Eigenes Logo (PNG, im Browser verkleinert) → src/assets/brand/eigene/ */
+async function uploadLogo(request: Request, env: EditEnv, url: URL) {
+  const name = (url.searchParams.get('name') ?? '').toLowerCase();
+  if (!LOGO_FILE_PATTERN.test(name)) return fail('Ungültiger Dateiname.');
+  const error = await uploadFile(request, env, `${LOGO_DIR}/${name}`, `Logo hochgeladen: ${name}`);
+  return error ?? json({ ok: true, name });
+}
+
+/** Neues Zertifikat (PDF) → src/assets/zertifikate/ – die Seitenbilder erzeugt der Build */
+async function uploadCertificate(request: Request, env: EditEnv, url: URL) {
+  const name = (url.searchParams.get('name') ?? '').toLowerCase();
+  if (!PDF_PATTERN.test(name)) return fail('Ungültiger Dateiname.');
+  const error = await uploadFile(request, env, `${CERTS_DIR}/${name}`, `Zertifikat hochgeladen: ${name}`);
+  return error ?? json({ ok: true, name: name.replace(/\.pdf$/, '') });
+}
+
+/** Logo in der Kopfzeile: Design, eigenes Bild, Hintergrund → src/content/brand.json */
+async function saveLogo(request: Request, env: EditEnv) {
+  const body = (await request.json()) as { logo?: unknown; image?: unknown; background?: unknown };
+  const logo = String(body.logo ?? '');
+  const image = body.image === undefined ? undefined : String(body.image);
+  if (!LOGO_DESIGNS.has(logo)) return fail('Unbekanntes Logo-Design.');
+  if (image !== undefined && !LOGO_FILE_PATTERN.test(image)) return fail('Ungültiges Logo-Bild.');
+  await updateJsonFile<Record<string, string>>(
+    env,
+    BRAND_PATH,
+    {},
+    (file) => {
+      file.logo = logo;
+      if (image) file.image = image;
+      file.background = body.background === 'ohne' ? 'ohne' : 'hell';
+    },
+    `Logo geändert: ${logo}`,
+  );
+  return json({ ok: true });
+}
+
+/** Zertifikate: Reihenfolge, Titel, Aussteller, Jahr, ausgeblendet → src/assets/zertifikate/zertifikate.json */
+async function saveCertificates(request: Request, env: EditEnv) {
+  const body = (await request.json()) as { items?: unknown[] };
+  if (!Array.isArray(body.items)) return fail('Zertifikate fehlen.');
+  const text = (value: unknown, max: number) => normalizeText(String(value ?? '')).slice(0, max);
+  const items = body.items
+    .slice(0, 100)
+    .map((raw) => raw as Record<string, unknown>)
+    .map((item) => ({ name: String(item.name ?? ''), title: text(item.title, 300), issuer: text(item.issuer, 300), year: text(item.year, 20), hidden: item.hidden === true }))
+    .filter((item) => /^[a-z0-9][a-z0-9-]{0,80}$/.test(item.name));
+  await updateJsonFile<Record<string, Record<string, unknown>>>(
+    env,
+    CERTS_INFO_PATH,
+    {},
+    (file) => {
+      // Neu aufbauen – die Reihenfolge der Einträge ist die Reihenfolge auf der Seite
+      const next: Record<string, Record<string, unknown>> = {};
+      for (const { name, title, issuer, year, hidden } of items) {
+        next[name] = { ...(title ? { title } : {}), ...(issuer ? { issuer } : {}), ...(year ? { year } : {}), ...(hidden ? { hidden: true } : {}) };
+      }
+      for (const key of Object.keys(file)) delete file[key];
+      Object.assign(file, next);
+    },
+    `Zertifikate bearbeitet (${items.length})`,
+  );
+  return json({ ok: true });
+}
+
+/**
+ * Datei als Base64-Text aus dem Anfrage-Körper direkt an GitHub weiterreichen (ohne sie im Worker zu puffern).
+ * Liefert eine Fehlerantwort oder null bei Erfolg.
+ */
+async function uploadFile(request: Request, env: EditEnv, path: string, message: string): Promise<Response | null> {
+  const length = Number(request.headers.get('Content-Length'));
+  if (!request.body || !Number.isFinite(length) || length <= 0) return fail('Datei fehlt.');
+  if (length > MAX_IMAGE_BASE64) return fail('Die Datei ist zu groß (höchstens ca. 9 MB).', 413);
 
   const encoder = new TextEncoder();
   const prefix = encoder.encode(
-    `{"message":${JSON.stringify(`Bild hinzugefügt: ${folder}/${name}`)},"branch":${JSON.stringify(env.GITHUB_BRANCH ?? 'main')},"content":"`,
+    `{"message":${JSON.stringify(message)},"branch":${JSON.stringify(env.GITHUB_BRANCH ?? 'main')},"content":"`,
   );
   const suffix = encoder.encode('"}');
   const { readable, writable } = new FixedLengthStream(prefix.length + length + suffix.length);
@@ -511,7 +601,7 @@ async function uploadImage(request: Request, env: EditEnv, url: URL) {
     await writer.close();
   })();
 
-  const response = await fetch(contentsUrl(env, `src/assets/images/${folder}/${name}`), {
+  const response = await fetch(contentsUrl(env, path), {
     method: 'PUT',
     headers: { ...ghHeaders(env), 'Content-Type': 'application/json' },
     body: readable,
@@ -520,9 +610,9 @@ async function uploadImage(request: Request, env: EditEnv, url: URL) {
   if (!response.ok) {
     const detail = await response.text();
     console.error('GitHub-Upload', response.status, detail);
-    return fail(response.status === 422 ? 'Ein Bild mit diesem Namen gibt es schon.' : 'Hochladen fehlgeschlagen.', 502);
+    return fail(response.status === 422 ? 'Eine Datei mit diesem Namen gibt es schon.' : 'Hochladen fehlgeschlagen.', 502);
   }
-  return json({ ok: true, name: name.replace(/\.[^.]+$/, '') });
+  return null;
 }
 
 /* ------------------------------------------------------------------------ */
@@ -551,6 +641,10 @@ export async function handleEdit(request: Request, env: EditEnv, url: URL, pathn
     if (pathname === '/api/edit/bausteine' && request.method === 'GET') return await loadBlocks(env, url);
     if (pathname === '/api/edit/bausteine' && request.method === 'POST') return await saveBlocks(request, env);
     if (pathname === '/api/edit/bild' && request.method === 'PUT') return await uploadImage(request, env, url);
+    if (pathname === '/api/edit/logo-bild' && request.method === 'PUT') return await uploadLogo(request, env, url);
+    if (pathname === '/api/edit/logo' && request.method === 'POST') return await saveLogo(request, env);
+    if (pathname === '/api/edit/zertifikat' && request.method === 'PUT') return await uploadCertificate(request, env, url);
+    if (pathname === '/api/edit/zertifikate' && request.method === 'POST') return await saveCertificates(request, env);
   } catch (error) {
     console.error(error);
     const message = error instanceof Error ? error.message : '';
