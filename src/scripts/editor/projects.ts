@@ -3,6 +3,7 @@
  * Zeigt die Projekte der Karte (Galerie bearbeiten) und legt neue an:
  *   Fotos → src/assets/images/referenzen/<slug>/01.jpg … (PUT /api/edit/bild/)
  *   Projekt → src/content/referenzen/<slug>.md mit `leistungen: [<Karte>]` (POST /api/edit/projekt/)
+ *   Löschen → Projekt samt Fotos und Galerie-Eintrag (DELETE /api/edit/projekt/), nach Rückfrage
  * Das neue Projekt erscheint nach dem automatischen Build in der Karte.
  */
 import { h } from './dom';
@@ -34,7 +35,34 @@ export function projectsPanel(card: HTMLElement, openGallery: (carousel: HTMLEle
     const count = carousel?.dataset.count ?? '0';
     const button = h('button', { type: 'button', class: 'ed-btn ed-btn--small' }, 'Fotos');
     button.addEventListener('click', () => carousel && openGallery(carousel));
-    list.append(h('li', {}, h('span', {}, h('strong', {}, panel.dataset.title ?? 'Projekt'), h('small', {}, `${count} Fotos`)), carousel ? button : null));
+    const info = h('small', {}, `${count} Fotos`);
+    const remove = h('button', { type: 'button', class: 'ed-btn ed-btn--small ed-btn--danger' }, 'Löschen');
+    remove.addEventListener('click', () => void deleteProject(panel, info, [button, remove]));
+    list.append(h('li', {}, h('span', {}, h('strong', {}, panel.dataset.title ?? 'Projekt'), info), carousel ? button : null, panel.dataset.project ? remove : null));
+  }
+
+  async function deleteProject(panel: HTMLElement, info: HTMLElement, buttons: HTMLButtonElement[]) {
+    const name = panel.dataset.title ?? 'dieses Projekt';
+    if (!confirm(`„${name}“ mit allen Fotos löschen?\n\nDas Projekt verschwindet aus allen Leistungen, in denen es vorkommt.`)) return;
+    for (const button of buttons) button.disabled = true;
+    info.textContent = 'Wird gelöscht …';
+    try {
+      const response = await fetch('/api/edit/projekt/', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ slug: panel.dataset.project }),
+      });
+      const result = await response.json();
+      if (!response.ok || !result.ok) throw new Error(result.error || 'Löschen fehlgeschlagen.');
+      await publishEdits();
+      info.textContent = result.photosKept
+        ? 'gelöscht · Fotos bleiben (werden noch woanders genutzt) · nach dem Build weg'
+        : 'gelöscht · nach dem Build (ca. 2 Minuten) weg';
+      for (const button of buttons) button.remove();
+    } catch (error) {
+      info.textContent = error instanceof Error ? error.message : 'Löschen fehlgeschlagen.';
+      for (const button of buttons) button.disabled = false;
+    }
   }
   if (!panels.length) list.append(h('li', { class: 'ed-muted' }, 'Noch keine Projekte in dieser Karte.'));
   wrap.append(list);

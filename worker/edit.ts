@@ -22,6 +22,7 @@
  *  POST /api/edit/veroeffentlichen/ alle Commits vom Arbeits-Branch „bearbeitung“ auf main übernehmen (ein Build)
  *  POST /api/edit/projekt/          { slug, service, pillar, title, summary, location?, year? } – neues Referenzprojekt
  *                                   in einer Leistungskarte (Fotos vorher per /bild/ nach referenzen/<slug>/) → src/content/referenzen/<slug>.md
+ *  DELETE /api/edit/projekt/        { slug } – Projekt mit Fotos und Galerie-Eintrag löschen (ein Commit)
  *
  * Einrichtung: GitHub-Token (Fine-grained, nur dieses Repository, „Contents: Read and write“)
  *   npx wrangler secret put GITHUB_TOKEN
@@ -533,6 +534,62 @@ async function createProject(request: Request, env: EditEnv) {
   return json({ ok: true, slug });
 }
 
+/**
+ * Projekt löschen – in einem Commit: die Projektdatei, der Galerie-Eintrag und die Fotos. Fotos, die noch
+ * woanders genutzt werden (Kopfbild, Elemente, Vorlagen), bleiben liegen, damit der Build nicht bricht.
+ */
+async function deleteProject(request: Request, env: EditEnv) {
+  const body = (await request.json()) as { slug?: unknown };
+  const slug = String(body.slug ?? '');
+  if (!SLUG_PATTERN.test(slug) || slug.length > 80) return fail('Ungültiges Projekt.');
+  const folder = `referenzen/${slug}`;
+  const imageDir = `src/assets/images/${folder}`;
+
+  const projectFile = await github<{ name: string }>(env, `contents/${PROJECTS_DIR}/${slug}.md?ref=${WORK_BRANCH}`);
+  if (projectFile.status === 404) return fail('Dieses Projekt gibt es nicht (mehr).', 404);
+
+  // Wird ein Foto des Projekts noch woanders verwendet?
+  const usedElsewhere = (
+    await Promise.all(
+      [HEROES_PATH, BLOCKS_PATH, 'src/lib/blocks/presets.ts'].map(async (path) => {
+        const { status, data } = await github<{ content: string }>(env, `contents/${path}?ref=${WORK_BRANCH}`);
+        return status === 200 && fromBase64(data.content).includes(`${folder}/`);
+      }),
+    )
+  ).some(Boolean);
+
+  const photos = usedElsewhere ? { status: 404, data: [] } : await github<{ path: string; type: string }[]>(env, `contents/${imageDir}?ref=${WORK_BRANCH}`);
+  const photoPaths = photos.status === 200 ? photos.data.filter((entry) => entry.type === 'file').map((entry) => entry.path) : [];
+
+  const galleries = await readJsonFile<Record<string, unknown>>(env, GALLERIES_PATH, {});
+  const tree: { path: string; mode: '100644'; type: 'blob'; sha?: null; content?: string }[] = [
+    { path: `${PROJECTS_DIR}/${slug}.md`, mode: '100644', type: 'blob', sha: null },
+    ...photoPaths.map((path) => ({ path, mode: '100644' as const, type: 'blob' as const, sha: null })),
+  ];
+  if (folder in galleries.data) {
+    delete galleries.data[folder];
+    tree.push({ path: GALLERIES_PATH, mode: '100644', type: 'blob', content: `${JSON.stringify(galleries.data, null, 2)}\n` });
+  }
+
+  // Ein Commit: Baum auf Basis des Arbeits-Branches mit den gelöschten Dateien
+  const head = await github<{ object: { sha: string } }>(env, `git/ref/heads/${WORK_BRANCH}`);
+  const parent = await github<{ tree: { sha: string } }>(env, `git/commits/${head.data.object.sha}`);
+  const newTree = await github<{ sha: string }>(env, 'git/trees', {
+    method: 'POST',
+    body: JSON.stringify({ base_tree: parent.data.tree.sha, tree }),
+  });
+  const commit = await github<{ sha: string }>(env, 'git/commits', {
+    method: 'POST',
+    body: JSON.stringify({ message: `Projekt gelöscht: ${slug}`, tree: newTree.data.sha, parents: [head.data.object.sha] }),
+  });
+  const update = await github(env, `git/refs/heads/${WORK_BRANCH}`, {
+    method: 'PATCH',
+    body: JSON.stringify({ sha: commit.data.sha, force: false }),
+  });
+  if (update.status !== 200) return fail('Gleichzeitig wurde etwas anderes gespeichert – bitte erneut versuchen.', 409);
+  return json({ ok: true, photosKept: usedElsewhere });
+}
+
 /* ------------------------------------------------------------------------ */
 /* Elemente                                                                  */
 /* ------------------------------------------------------------------------ */
@@ -706,6 +763,7 @@ export async function handleEdit(request: Request, env: EditEnv, url: URL, pathn
     if (pathname === '/api/edit/abstaende' && request.method === 'POST') return await saveSpacing(request, env);
     if (pathname === '/api/edit/abstaende' && request.method === 'GET') return await loadSpacing(env);
     if (pathname === '/api/edit/projekt' && request.method === 'POST') return await createProject(request, env);
+    if (pathname === '/api/edit/projekt' && request.method === 'DELETE') return await deleteProject(request, env);
     if (pathname === '/api/edit/bausteine' && request.method === 'GET') return await loadBlocks(env, url);
     if (pathname === '/api/edit/bausteine' && request.method === 'POST') return await saveBlocks(request, env);
     if (pathname === '/api/edit/bild' && request.method === 'PUT') return await uploadImage(request, env, url);

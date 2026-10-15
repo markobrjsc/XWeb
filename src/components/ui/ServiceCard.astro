@@ -98,6 +98,7 @@ const key = (projectId: string) => `projekt-${service.id}-${projectId}`;
             id={key(project.id)}
             hidden={index > 0}
             data-project-panel
+            data-project={project.id}
             data-title={project.data.title}
           >
             <Carousel
