@@ -5,7 +5,7 @@
  *
  *  PUT  /api/upload/     eine Datei (Rohdaten) → kurzzeitig im KV-Speicher UPLOADS, Antwort { id }
  *  GET  /api/datei/:id/  liefert eine hochgeladene Datei aus – von hier holt Resend die Anhänge ab
- *  POST /api/senden/     Formularfelder als JSON → Prüfung → E-Mail an MAIL_TO
+ *  POST /api/senden/     Formularfelder als JSON → Prüfung → E-Mail an MAIL_TO_KONTAKT bzw. MAIL_TO_BEWERBUNG
  *  (Pfade enden wie alle Seiten auf „/“ – ohne Schrägstrich funktionieren sie ebenfalls)
  *
  * Warum Dateien nicht direkt mit dem Formular? Im kostenlosen Workers-Tarif stehen pro Anfrage nur 10 ms
@@ -32,8 +32,12 @@ interface Env extends EditEnv {
   UPLOADS: KVNamespace;
   /** Geheimer Schlüssel von resend.com – `npx wrangler secret put RESEND_API_KEY` */
   RESEND_API_KEY?: string;
-  /** Empfänger (Standard: E-Mail-Adresse aus src/config/site.ts) */
+  /** Empfänger, wenn ein Formular keinen eigenen hat (Standard: E-Mail-Adresse aus src/config/site.ts) */
   MAIL_TO?: string;
+  /** Empfänger fürs Kontaktformular (Standard: MAIL_TO) */
+  MAIL_TO_KONTAKT?: string;
+  /** Empfänger für Bewerbungen – Stellen und initiativ (Standard: MAIL_TO) */
+  MAIL_TO_BEWERBUNG?: string;
   /** Absender – muss eine bei Resend bestätigte Domain nutzen */
   MAIL_FROM?: string;
   /** "1" = nichts verschicken, nur protokollieren (lokale Entwicklung) */
@@ -240,7 +244,7 @@ async function handleSend(request: Request, env: Env, origin: string) {
   if (errors.length) return json({ ok: false, error: errors.join(' '), errors }, 422);
 
   const { subject, text, html } = buildEmail(formId, spec, values, attachments);
-  const to = env.MAIL_TO || site.contact.email;
+  const to = (formId === 'bewerbung' ? env.MAIL_TO_BEWERBUNG : env.MAIL_TO_KONTAKT) || env.MAIL_TO || site.contact.email;
   const from = env.MAIL_FROM || 'Website <onboarding@resend.dev>';
 
   const message = {

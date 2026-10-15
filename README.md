@@ -250,7 +250,8 @@ axe-core (WCAG 2.2 AA): keine Verstöße.
 
 Kontaktformular (`/kontakt/`) und Online-Bewerbung (`/stellenangebote/<stelle>/bewerben/`,
 `/stellenangebote/initiativ/`) schicken ihre Daten an einen kleinen **Cloudflare Worker** (`worker/index.ts`), der
-die E-Mail über **[Resend](https://resend.com)** an die Adresse aus `src/config/site.ts` verschickt. Beides ist im
+die E-Mail über **[Resend](https://resend.com)** verschickt – Kontaktanfragen an `MAIL_TO_KONTAKT`, Bewerbungen
+(auch initiativ) an `MAIL_TO_BEWERBUNG` (beide in `wrangler.jsonc`, Aliase von info@hildebrand-tiefbau.de). Beides ist im
 kostenlosen Tarif enthalten (Resend: 3.000 E-Mails/Monat, 100/Tag).
 
 - Felder, Auswahlmöglichkeiten und Grenzen für Anhänge: `src/lib/forms.ts` (gilt für Seiten _und_ Worker)
@@ -260,8 +261,9 @@ kostenlosen Tarif enthalten (Resend: 3.000 E-Mails/Monat, 100/Tag).
 
 ### Einmalig einrichten
 
-1. **Resend-Konto** anlegen (kostenlos) → **Domains → Add Domain** → `pflasterarbeiten-hildebrand.de` eintragen und
-   die angezeigten DNS-Einträge (SPF/DKIM) bei Cloudflare hinzufügen. Bis die Domain bestätigt ist, in
+1. **Resend-Konto** anlegen (kostenlos) → **Domains → Add Domain** → `hildebrand-tiefbau.de` eintragen und
+   die angezeigten DNS-Einträge (DKIM, SPF/MX für die Versand-Subdomain) dort hinzufügen, wo die DNS der Domain
+   verwaltet wird. Bestehende MX-Einträge des Postfachs nicht ändern. Bis die Domain bestätigt ist, in
    `wrangler.jsonc` als Absender `"Website <onboarding@resend.dev>"` eintragen – dann kann Resend aber nur an die
    E-Mail-Adresse des Resend-Kontos senden.
 2. **API-Key** bei Resend erstellen (Berechtigung „Sending access“) und im Worker hinterlegen:
@@ -272,7 +274,7 @@ kostenlosen Tarif enthalten (Resend: 3.000 E-Mails/Monat, 100/Tag).
    ```bash
    npx wrangler kv namespace create UPLOADS
    ```
-4. Absender (`MAIL_FROM`) und ggf. abweichenden Empfänger (`MAIL_TO`) in `wrangler.jsonc` → `vars` prüfen.
+4. Absender (`MAIL_FROM`) und Empfänger (`MAIL_TO_KONTAKT`, `MAIL_TO_BEWERBUNG`) in `wrangler.jsonc` → `vars` prüfen.
 
 ### Lokal testen
 

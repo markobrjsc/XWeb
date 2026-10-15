@@ -23,12 +23,14 @@
     }
   ],
   "vars": {
-    // TESTPHASE: Absender von Resend (funktioniert ohne bestätigte Domain) und Test-Empfänger.
-    // Für den Livegang: MAIL_FROM auf "Website Hildebrand <website@pflasterarbeiten-hildebrand.de>" setzen
-    // (Domain muss bei Resend bestätigt sein) und die Zeile MAIL_TO löschen – dann geht alles an die
-    // E-Mail aus src/config/site.ts.
-    "MAIL_FROM": "Website Hildebrand <onboarding@resend.dev>",
-    "MAIL_TO": "markobarjasic66@gmail.com",
+    // Absender: Die Domain hildebrand-tiefbau.de muss bei Resend bestätigt sein (Domains → Add Domain, DNS-Einträge
+    // setzen) – sonst lehnt Resend jeden Versand an diese Empfänger ab.
+    // Empfänger sind Aliase des Postfachs info@hildebrand-tiefbau.de (Hostinger); dort sortieren Filter nach Ordnern.
+    // Ohne Eintrag gilt MAIL_TO, danach die E-Mail aus src/config/site.ts.
+    "MAIL_FROM": "Website Hildebrand <website@hildebrand-tiefbau.de>",
+    "MAIL_TO_KONTAKT": "kontakt@hildebrand-tiefbau.de",
+    // Stellen- und Initiativbewerbungen (beide über das Formular „bewerbung“)
+    "MAIL_TO_BEWERBUNG": "bewerbung@hildebrand-tiefbau.de",
 
     // Bearbeiten-Modus (worker/edit.ts): speichert Änderungen als Commit in diesem Repository.
     // Öffnen: auf der Seite „Xaver will was ändern“ tippen → Passwort. Geschützt durch das Passwort im Worker.

@@ -64,3 +64,113 @@ body[data-page="/leistungen/"] article#gartenbau {
 body[data-page="/"] main#main > section.hero > div.hero__content:nth-of-type(2) > div.hero__card > div.hero__actions > a.btn.btn--primary.btn--lg:nth-of-type(1) {
   background-color: #faca30 !important;
 }
+
+body header#top > div.site-header__bar:nth-of-type(1) {
+  --color-heading: var(--onyx-950) !important;
+  --color-text: var(--gray-800) !important;
+  --color-text-muted: var(--gray-600) !important;
+  --color-text-subtle: var(--gray-500) !important;
+  --color-border: var(--gray-200) !important;
+  --color-border-strong: var(--gray-300) !important;
+  --color-link: var(--onyx-800) !important;
+  --color-link-hover: var(--onyx-950) !important;
+  --color-focus: var(--onyx-950) !important;
+  --color-surface: var(--gray-0) !important;
+  --color-surface-raised: var(--gray-0) !important;
+  --color-primary-soft: var(--onyx-100) !important;
+  --color-primary-softer: var(--onyx-50) !important;
+  --header-fg: var(--onyx-950) !important;
+  --header-fg-muted: var(--gray-600) !important;
+  --on-photo: var(--onyx-950) !important;
+  --color-danger: var(--onyx-950) !important;
+  --color-bg: var(--gray-0) !important;
+  --color-bg-subtle: var(--gray-50) !important;
+  --color-bg-muted: var(--onyx-50) !important;
+  background-color: var(--color-bg) !important;
+  color: var(--color-text) !important;
+}
+body header#top > div.site-header__bar:nth-of-type(1) .accent:not(body header#top > div.site-header__bar:nth-of-type(1) :is([data-tone='dark'], [data-tone='brand']) .accent) {
+  display: inline-block !important;
+  padding-inline: 0.08em !important;
+  color: var(--color-highlight) !important;
+}
+body header#top > div.site-header__bar:nth-of-type(1):is(.accent) {
+  display: inline-block !important;
+  padding-inline: 0.08em !important;
+  color: var(--color-highlight) !important;
+}
+body header#top > div.site-header__bar:nth-of-type(1) .accent:not(body header#top > div.site-header__bar:nth-of-type(1) :is([data-tone='dark'], [data-tone='brand']) .accent)::before {
+  content: '' !important;
+}
+body header#top > div.site-header__bar:nth-of-type(1):is(.accent)::before {
+  content: '' !important;
+}
+body header#top > div.site-header__bar:nth-of-type(1) .eyebrow:not(body header#top > div.site-header__bar:nth-of-type(1) :is([data-tone='dark'], [data-tone='brand']) .eyebrow) {
+  --eyebrow-color: var(--blue-600) !important;
+}
+body header#top > div.site-header__bar:nth-of-type(1):is(.eyebrow) {
+  --eyebrow-color: var(--blue-600) !important;
+}
+body header#top > div.site-header__bar:nth-of-type(1) .ub-eyebrow:not(body header#top > div.site-header__bar:nth-of-type(1) :is([data-tone='dark'], [data-tone='brand']) .ub-eyebrow) {
+  color: var(--blue-600) !important;
+}
+body header#top > div.site-header__bar:nth-of-type(1):is(.ub-eyebrow) {
+  color: var(--blue-600) !important;
+}
+body header#top > div.site-header__bar:nth-of-type(1) .checklist__item:not(body header#top > div.site-header__bar:nth-of-type(1) :is([data-tone='dark'], [data-tone='brand']) .checklist__item)::before {
+  background: var(--blue-50) !important;
+}
+body header#top > div.site-header__bar:nth-of-type(1) .checklist__item:not(body header#top > div.site-header__bar:nth-of-type(1) :is([data-tone='dark'], [data-tone='brand']) .checklist__item)::after {
+  background: var(--blue-600) !important;
+}
+body header#top > div.site-header__bar:nth-of-type(1) .btn--outline-light:not(body header#top > div.site-header__bar:nth-of-type(1) :is([data-tone='dark'], [data-tone='brand']) .btn--outline-light) {
+  --btn-fg: var(--onyx-950) !important;
+  --btn-border: rgb(11 11 12 / 0.35) !important;
+  --btn-bg-hover: rgb(11 11 12 / 0.06) !important;
+  --btn-fg-hover: var(--onyx-950) !important;
+  --btn-border-hover: var(--onyx-950) !important;
+}
+body header#top > div.site-header__bar:nth-of-type(1) .btn--light:not(body header#top > div.site-header__bar:nth-of-type(1) :is([data-tone='dark'], [data-tone='brand']) .btn--light) {
+  --btn-bg: var(--onyx-950) !important;
+  --btn-fg: #ffffff !important;
+  --btn-border: var(--onyx-950) !important;
+  --btn-bg-hover: var(--onyx-800) !important;
+  --btn-fg-hover: #ffffff !important;
+  --btn-border-hover: var(--onyx-800) !important;
+}
+body header#top > div.site-header__bar:nth-of-type(1) .badge--light:not(body header#top > div.site-header__bar:nth-of-type(1) :is([data-tone='dark'], [data-tone='brand']) .badge--light) {
+  background: var(--gray-100) !important;
+  color: var(--gray-700) !important;
+}
+body header#top > div.site-header__bar:nth-of-type(1) .facts:not(body header#top > div.site-header__bar:nth-of-type(1) :is([data-tone='dark'], [data-tone='brand']) .facts) {
+  background: var(--onyx-900) !important;
+}
+body header#top > div.site-header__bar:nth-of-type(1) .job-card__more:not(body header#top > div.site-header__bar:nth-of-type(1) :is([data-tone='dark'], [data-tone='brand']) .job-card__more) {
+  color: var(--color-heading) !important;
+}
+body header#top > div.site-header__bar:nth-of-type(1) .ub-button--secondary:not(body header#top > div.site-header__bar:nth-of-type(1) :is([data-tone='dark'], [data-tone='brand']) .ub-button--secondary) {
+  --btn-bg: #ffffff !important;
+  --btn-fg: var(--onyx-800) !important;
+  --btn-border: var(--gray-300) !important;
+  --btn-bg-hover: var(--onyx-50) !important;
+  --btn-border-hover: var(--onyx-400) !important;
+}
+body header#top > div.site-header__bar:nth-of-type(1) .ub-button--dunkel:not(body header#top > div.site-header__bar:nth-of-type(1) :is([data-tone='dark'], [data-tone='brand']) .ub-button--dunkel) {
+  --btn-bg: var(--onyx-950) !important;
+  --btn-fg: #ffffff !important;
+  --btn-bg-hover: var(--onyx-700) !important;
+}
+body header#top > div.site-header__bar:nth-of-type(1) .ub-iconbox__icon:not(body header#top > div.site-header__bar:nth-of-type(1) :is([data-tone='dark'], [data-tone='brand']) .ub-iconbox__icon) {
+  background: var(--onyx-950) !important;
+}
+body header#top > div.site-header__bar:nth-of-type(1) .hlogo:not(body header#top > div.site-header__bar:nth-of-type(1) :is([data-tone='dark'], [data-tone='brand']) .hlogo) {
+  --hl-label: #ffffff !important;
+  --hl-label-hover: var(--gray-100) !important;
+  --hl-ink: var(--onyx-950) !important;
+  --hl-text: var(--onyx-950) !important;
+}
+
+body header#top > div.site-header__bar:nth-of-type(1) {
+  color: #62625e !important;
+  background-color: #faca30 !important;
+}

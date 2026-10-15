@@ -48,4 +48,4 @@ Stand: 30.09.2026 · Hinweis: Jede Speicherung im Bearbeiten-Modus ist ein Commi
 - [ ] **Gelbton** – jetzt `rgb(243, 165, 5)`; mit dem Kunden am Bildschirm gegenprüfen, Feinabstimmung direkt über Stift → „Farben“
 - [ ] **Zuordnung Projekte → Leistungen** prüfen (`references` in `src/data/services.ts`)
 - [ ] **Social-Vorschaubild** nach größeren Design-Änderungen neu erzeugen (`npm run build && npm run og-image`)
-- [ ] Vor dem Livegang: Formular-Empfänger zurück auf t-online, Resend-Domain bestätigen, Bearbeiten-Modus abschalten oder absichern (`EDIT_MODE` in `wrangler.jsonc`)
+- [ ] Vor dem Livegang: Resend-Domain hildebrand-tiefbau.de bestätigen (sonst schlägt jeder Formularversand fehl), Bearbeiten-Modus abschalten oder absichern (`EDIT_MODE` in `wrangler.jsonc`)

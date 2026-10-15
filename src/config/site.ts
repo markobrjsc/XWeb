@@ -38,7 +38,7 @@ export const site = {
     phoneInternational: '+49 7732 10374',
     fax: '07732 822790',
     faxInternational: '+49 7732 822790',
-    email: 'hildebrand-pflasterarbeiten@t-online.de',
+    email: 'info@hildebrand-tiefbau.de',
   },
 
   /** Öffnungs- bzw. Bürozeiten. */
