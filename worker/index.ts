@@ -84,13 +84,16 @@ async function handleUpload(request: Request, env: Env) {
   return json({ ok: true, id });
 }
 
-async function handleDownload(id: string, env: Env) {
+/** head = nur prüfen, ob es die Datei gibt – Resend fragt so vor dem Abholen der Anhänge nach */
+async function handleDownload(id: string, env: Env, head = false) {
   if (!/^[a-f0-9]{64}$/.test(id)) return new Response('Nicht gefunden', { status: 404 });
   const { value, metadata } = await env.UPLOADS.getWithMetadata<FileMeta>(`f:${id}`, 'stream');
   if (!value || !metadata) return new Response('Nicht gefunden', { status: 404 });
-  return new Response(value, {
+  if (head) await value.cancel();
+  return new Response(head ? null : value, {
     headers: {
       'Content-Type': metadata.type,
+      'Content-Length': String(metadata.size),
       'Content-Disposition': `attachment; filename*=UTF-8''${encodeURIComponent(metadata.name)}`,
       'Cache-Control': 'private, no-store',
       'X-Robots-Tag': 'noindex',
@@ -308,7 +311,9 @@ export default {
       if (pathname === '/api/upload' && request.method === 'PUT') return await handleUpload(request, env);
       if (pathname === '/api/senden' && request.method === 'POST') return await handleSend(request, env, url.origin);
       const download = pathname.match(/^\/api\/datei\/([a-f0-9]+)$/);
-      if (download && request.method === 'GET') return await handleDownload(download[1], env);
+      if (download && (request.method === 'GET' || request.method === 'HEAD')) {
+        return await handleDownload(download[1], env, request.method === 'HEAD');
+      }
     } catch (error) {
       console.error(error);
       return fail('Unerwarteter Fehler. Bitte versuchen Sie es später erneut.', 500);
