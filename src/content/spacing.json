@@ -54,5 +54,8 @@
     "tone": "light",
     "color": "#62625e",
     "background-color": "#faca30"
+  },
+  "body[data-page=\"/leistungen/\"] article#leistung-pflasterarbeiten": {
+    "tone": "dark"
   }
 }
