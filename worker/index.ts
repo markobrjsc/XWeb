@@ -49,6 +49,13 @@ type FileMeta = { name: string; type: string; size: number };
 /** Hochgeladene Dateien verfallen automatisch (Datenschutz) – Resend holt sie direkt beim Versand ab */
 const UPLOAD_TTL_SECONDS = 6 * 60 * 60;
 
+/**
+ * Wartezeit vor dem Versand mit Anhängen: Der KV-Speicher braucht einige Sekunden, bis eine neue Datei an allen
+ * Cloudflare-Standorten sichtbar ist. Fragt Resend (USA) zu früh nach, bekommt es 404 – und der Standort merkt sich
+ * das „nicht gefunden“ bis zu einer Minute. Warten kostet keine Rechenzeit.
+ */
+const ATTACHMENT_DELAY_MS = 10_000;
+
 const json = (data: unknown, status = 200) =>
   new Response(JSON.stringify(data), {
     status,
@@ -273,6 +280,8 @@ async function handleSend(request: Request, env: Env, origin: string) {
     console.error('RESEND_API_KEY fehlt – E-Mail nicht verschickt.');
     return fail('Der Versand ist gerade nicht möglich. Bitte rufen Sie uns an oder schreiben Sie uns direkt eine E-Mail.', 503);
   }
+
+  if (attachments.length) await new Promise((resolve) => setTimeout(resolve, ATTACHMENT_DELAY_MS));
 
   const response = await fetch('https://api.resend.com/emails', {
     method: 'POST',
