@@ -7,6 +7,7 @@
  */
 import { h } from './dom';
 import { shrink, uploadImage } from './media';
+import { publishEdits } from './publish';
 
 const slugify = (text: string) =>
   text
@@ -91,6 +92,7 @@ export function projectsPanel(card: HTMLElement, openGallery: (carousel: HTMLEle
       });
       const result = await response.json();
       if (!response.ok || !result.ok) throw new Error(result.error || 'Projekt konnte nicht angelegt werden.');
+      await publishEdits();
       list.querySelector('.ed-muted')?.remove();
       list.append(h('li', {}, h('span', {}, h('strong', {}, title.value), h('small', {}, `neu · ${photos.length} Fotos · nach dem Build sichtbar`))));
       form.reset();

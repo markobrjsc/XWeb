@@ -1,6 +1,7 @@
 /**
- * Bearbeiten-Modus: speichert Änderungen aus der Website direkt als Commit im GitHub-Repository.
- * Nach jedem Commit baut Cloudflare (mit GitHub verbunden) die Seite neu – so bleiben die Änderungen dauerhaft.
+ * Bearbeiten-Modus: speichert Änderungen aus der Website als Commits im GitHub-Repository – zuerst auf dem
+ * Arbeits-Branch „bearbeitung“, nach dem Speichern per /veroeffentlichen/ in einem Schritt auf main. Cloudflare
+ * (mit GitHub verbunden) baut die Seite dann einmal neu – so bleiben die Änderungen dauerhaft.
  *
  *  GET  /api/edit/status/            { enabled } – ist der Bearbeiten-Modus verfügbar?
  *  POST /api/edit/texte/             { page, changes: [{ scope: 'global' | 'page', from, to }] } → src/content/edits.json
@@ -18,6 +19,7 @@
  *  PUT  /api/edit/zertifikat/?name=    neues Zertifikat (PDF) als Base64-Text                        → src/assets/zertifikate/<name>
  *  POST /api/edit/zertifikate/      { items: [{ name, title, issuer, year, hidden }] } – Reihenfolge,
  *                                   Angaben, Ausblenden                                → src/assets/zertifikate/zertifikate.json
+ *  POST /api/edit/veroeffentlichen/ alle Commits vom Arbeits-Branch „bearbeitung“ auf main übernehmen (ein Build)
  *  POST /api/edit/projekt/          { slug, service, pillar, title, summary, location?, year? } – neues Referenzprojekt
  *                                   in einer Leistungskarte (Fotos vorher per /bild/ nach referenzen/<slug>/) → src/content/referenzen/<slug>.md
  *
@@ -225,6 +227,70 @@ const ghHeaders = (env: EditEnv) => ({
 
 const contentsUrl = (env: EditEnv, path: string) =>
   `https://api.github.com/repos/${env.GITHUB_REPO}/contents/${path.split('/').map(encodeURIComponent).join('/')}`;
+const repoUrl = (env: EditEnv, path: string) => `https://api.github.com/repos/${env.GITHUB_REPO}/${path}`;
+
+/*
+ * Arbeits-Branch: Jeder Teil eines Speichervorgangs (Texte, Bilder, Gestaltung …) ist ein eigener Commit. Auf main
+ * würde Cloudflare für jeden davon neu bauen. Deshalb landen die Commits auf WORK_BRANCH, und /veroeffentlichen/
+ * zieht main am Ende in einem Schritt nach – ein Build pro Speichern.
+ */
+const WORK_BRANCH = 'bearbeitung';
+const mainBranch = (env: EditEnv) => env.GITHUB_BRANCH ?? 'main';
+
+async function github<T>(env: EditEnv, path: string, init: RequestInit = {}): Promise<{ status: number; data: T }> {
+  const response = await fetch(repoUrl(env, path), {
+    ...init,
+    headers: { ...ghHeaders(env), ...(init.body ? { 'Content-Type': 'application/json' } : {}) },
+  });
+  if (!response.ok && ![404, 409, 422].includes(response.status)) {
+    throw new Error(`GitHub (${response.status}): ${await response.text()}`);
+  }
+  return { status: response.status, data: (await response.json().catch(() => null)) as T };
+}
+
+/** Wie weit ist der Arbeits-Branch gegenüber main? identical | ahead | behind | diverged | missing */
+async function workStatus(env: EditEnv) {
+  const { status, data } = await github<{ status: string }>(
+    env,
+    `compare/${encodeURIComponent(mainBranch(env))}...${encodeURIComponent(WORK_BRANCH)}`,
+  );
+  return status === 404 ? 'missing' : data.status;
+}
+
+/** Arbeits-Branch anlegen bzw. auf main zurücksetzen, wenn er nichts Eigenes mehr enthält */
+async function prepareWorkBranch(env: EditEnv) {
+  const state = await workStatus(env);
+  if (state === 'ahead' || state === 'diverged') return;
+  const { data } = await github<{ object: { sha: string } }>(env, `git/ref/heads/${encodeURIComponent(mainBranch(env))}`);
+  const sha = data.object.sha;
+  if (state === 'missing') {
+    await github(env, 'git/refs', { method: 'POST', body: JSON.stringify({ ref: `refs/heads/${WORK_BRANCH}`, sha }) });
+  } else if (state === 'behind') {
+    await github(env, `git/refs/heads/${WORK_BRANCH}`, { method: 'PATCH', body: JSON.stringify({ sha, force: true }) });
+  }
+}
+
+/** Alle gespeicherten Änderungen auf main übernehmen – ein Commit-Stand, also ein Build */
+async function publish(env: EditEnv) {
+  const state = await workStatus(env);
+  if (state === 'ahead') {
+    const { data } = await github<{ object: { sha: string } }>(env, `git/ref/heads/${WORK_BRANCH}`);
+    const { status } = await github(env, `git/refs/heads/${encodeURIComponent(mainBranch(env))}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ sha: data.object.sha, force: false }),
+    });
+    if (status === 200 || status === 201) return json({ ok: true });
+  }
+  if (state === 'ahead' || state === 'diverged') {
+    // main hat sich inzwischen geändert (z. B. Code-Update) – zusammenführen statt vorspulen
+    const { status } = await github(env, 'merges', {
+      method: 'POST',
+      body: JSON.stringify({ base: mainBranch(env), head: WORK_BRANCH, commit_message: 'Änderungen aus dem Bearbeiten-Modus übernommen' }),
+    });
+    if (status === 409) return fail('Die Änderungen passen nicht zum aktuellen Stand der Website – bitte Bescheid geben.', 409);
+  }
+  return json({ ok: true });
+}
 
 const toBase64 = (text: string) => {
   const bytes = new TextEncoder().encode(text);
@@ -235,7 +301,7 @@ const toBase64 = (text: string) => {
 const fromBase64 = (b64: string) => new TextDecoder().decode(Uint8Array.from(atob(b64.replace(/\s/g, '')), (c) => c.charCodeAt(0)));
 
 async function readJsonFile<T>(env: EditEnv, path: string, fallback: T): Promise<{ data: T; sha?: string }> {
-  const response = await fetch(`${contentsUrl(env, path)}?ref=${env.GITHUB_BRANCH ?? 'main'}`, { headers: ghHeaders(env) });
+  const response = await fetch(`${contentsUrl(env, path)}?ref=${WORK_BRANCH}`, { headers: ghHeaders(env) });
   if (response.status === 404) return { data: fallback };
   if (!response.ok) throw new Error(`GitHub (${response.status}): ${await response.text()}`);
   const file = (await response.json()) as { content: string; sha: string };
@@ -245,12 +311,12 @@ async function readJsonFile<T>(env: EditEnv, path: string, fallback: T): Promise
 /** Textdatei komplett ersetzen (legt sie bei Bedarf an) */
 async function writeTextFile(env: EditEnv, path: string, content: string, message: string) {
   for (let attempt = 0; attempt < 3; attempt++) {
-    const current = await fetch(`${contentsUrl(env, path)}?ref=${env.GITHUB_BRANCH ?? 'main'}`, { headers: ghHeaders(env) });
+    const current = await fetch(`${contentsUrl(env, path)}?ref=${WORK_BRANCH}`, { headers: ghHeaders(env) });
     const sha = current.ok ? ((await current.json()) as { sha: string }).sha : undefined;
     const response = await fetch(contentsUrl(env, path), {
       method: 'PUT',
       headers: { ...ghHeaders(env), 'Content-Type': 'application/json' },
-      body: JSON.stringify({ message, content: toBase64(content), branch: env.GITHUB_BRANCH ?? 'main', ...(sha ? { sha } : {}) }),
+      body: JSON.stringify({ message, content: toBase64(content), branch: WORK_BRANCH, ...(sha ? { sha } : {}) }),
     });
     if (response.ok) return;
     if (response.status !== 409 && response.status !== 422) throw new Error(`GitHub (${response.status}): ${await response.text()}`);
@@ -269,7 +335,7 @@ async function updateJsonFile<T>(env: EditEnv, path: string, fallback: T, mutate
       body: JSON.stringify({
         message,
         content: toBase64(`${JSON.stringify(data, null, 2)}\n`),
-        branch: env.GITHUB_BRANCH ?? 'main',
+        branch: WORK_BRANCH,
         ...(sha ? { sha } : {}),
       }),
     });
@@ -445,7 +511,7 @@ async function createProject(request: Request, env: EditEnv) {
   const validYear = Number.isInteger(year) && year >= 1950 && year <= 2100;
 
   const path = `${PROJECTS_DIR}/${slug}.md`;
-  const existing = await fetch(`${contentsUrl(env, path)}?ref=${env.GITHUB_BRANCH ?? 'main'}`, { headers: ghHeaders(env) });
+  const existing = await fetch(`${contentsUrl(env, path)}?ref=${WORK_BRANCH}`, { headers: ghHeaders(env) });
   if (existing.ok) return fail('Ein Projekt mit diesem Namen gibt es schon.', 409);
 
   // JSON-Strings sind gültige YAML-Werte (doppelte Anführungszeichen, Escapes)
@@ -583,7 +649,7 @@ async function uploadFile(request: Request, env: EditEnv, path: string, message:
 
   const encoder = new TextEncoder();
   const prefix = encoder.encode(
-    `{"message":${JSON.stringify(message)},"branch":${JSON.stringify(env.GITHUB_BRANCH ?? 'main')},"content":"`,
+    `{"message":${JSON.stringify(message)},"branch":${JSON.stringify(WORK_BRANCH)},"content":"`,
   );
   const suffix = encoder.encode('"}');
   const { readable, writable } = new FixedLengthStream(prefix.length + length + suffix.length);
@@ -631,6 +697,8 @@ export async function handleEdit(request: Request, env: EditEnv, url: URL, pathn
   if (!(await hasSession(request, env))) return fail('Bitte zuerst anmelden.', 401);
 
   try {
+    if (pathname === '/api/edit/veroeffentlichen' && request.method === 'POST') return await publish(env);
+    await prepareWorkBranch(env);
     if (pathname === '/api/edit/texte' && request.method === 'POST') return await saveTexts(request, env);
     if (pathname === '/api/edit/galerie' && request.method === 'POST') return await saveGallery(request, env);
     if (pathname === '/api/edit/hero' && request.method === 'POST') return await saveHero(request, env);

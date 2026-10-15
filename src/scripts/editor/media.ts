@@ -5,6 +5,8 @@
  *  · Galerie: Bilder hinzufügen, per Ziehen sortieren, ausblenden → src/content/galleries.json (+ Bilddateien),
  *    gespeichert mit „Galerie speichern“ im Dialog.
  */
+import { publishEdits } from './publish';
+
 const DONE = 'Gespeichert – nach dem automatischen Build in ca. 2 Minuten live.';
 
 const readAsDataUrl = (blob: Blob) =>
@@ -246,6 +248,7 @@ export function createMedia(ui: HTMLElement, hooks: { onChange(): void }) {
       });
       const result = await response.json();
       if (!response.ok || !result.ok) throw new Error(result.error || 'Speichern fehlgeschlagen.');
+      await publishEdits();
       galleryStatus.textContent = DONE;
       renderGrid();
     } catch (error) {

@@ -6,6 +6,8 @@
  *   Liste     → POST /api/edit/zertifikate/      → src/assets/zertifikate/zertifikate.json (Reihenfolge, Angaben, hidden)
  * Die Vorschaubilder neuer PDFs erzeugt der Build (scripts/build-zertifikate.mjs).
  */
+import { publishEdits } from './publish';
+
 const DONE = 'Gespeichert – nach dem automatischen Build in ca. 2 Minuten live.';
 /** Base64 wird ca. 4/3 so groß – der Worker nimmt bis 12 MB an */
 const MAX_PDF_BYTES = 9 * 1024 * 1024;
@@ -194,6 +196,7 @@ export function createCertificates(ui: HTMLElement) {
       });
       const result = await response.json();
       if (!response.ok || !result.ok) throw new Error(result.error || 'Speichern fehlgeschlagen.');
+      await publishEdits();
       previewOnPage();
       status.textContent = fresh.length ? `${DONE} Neue Zertifikate erscheinen dann mit Vorschau.` : DONE;
       render();

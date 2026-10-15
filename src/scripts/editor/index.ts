@@ -26,6 +26,7 @@ import { designToggle, subsection } from './panel';
 import { projectsPanel } from './projects';
 import { type StyleProp, createStyles } from './styles';
 import { createTexts } from './texts';
+import { publishEdits } from './publish';
 
 type Tab = 'inspect' | 'insert' | 'layers' | 'spacing' | 'colors';
 
@@ -302,6 +303,7 @@ export async function initEditor() {
       await colors.save();
       await logo.save();
       await media.hero.save();
+      await publishEdits();
       note = SAVED;
     } catch (error) {
       note = error instanceof Error ? error.message : 'Speichern fehlgeschlagen.';
