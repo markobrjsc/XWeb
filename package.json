@@ -13,6 +13,7 @@
     "assets": "node scripts/build-brand-assets.mjs",
     "deploy": "npm run build && wrangler deploy",
     "og-image": "node scripts/generate-og-image.mjs",
+    "logo-schrift": "node scripts/build-logo-schrift.mjs",
     "zertifikate": "node scripts/build-zertifikate.mjs",
     "edit-password": "node scripts/edit-password.mjs",
     "prepare_assets": "node scripts/build-zertifikate.mjs && node scripts/build-spacing.mjs"

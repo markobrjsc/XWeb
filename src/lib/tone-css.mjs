@@ -28,6 +28,19 @@ const DARK = [
   // Kopfzeile (Header.astro)
   '--header-fg: #ffffff',
   '--header-fg-muted: rgb(255 255 255 / 0.72)',
+  '--header-pill-bg: rgb(255 255 255 / 0.08)',
+  '--header-pill-bg-hover: rgb(255 255 255 / 0.18)',
+  '--header-active-bg: #ffffff',
+  '--header-active-fg: var(--blue-950)',
+  '--header-icon-bg: transparent',
+  '--header-icon-fg: #ffffff',
+  '--header-icon-border: rgb(255 255 255 / 0.3)',
+  '--header-icon-bg-hover: transparent',
+  '--header-icon-fg-hover: var(--color-accent)',
+  '--header-icon-border-hover: var(--color-accent)',
+  '--header-cta-bg: var(--color-cta)',
+  '--header-cta-fg: var(--color-cta-fg)',
+  '--header-cta-bg-hover: var(--color-cta-hover)',
   // Schrift auf Fotos (Startbild, HomeHero.astro)
   '--on-photo: #ffffff',
   // Pflichtfeld-Sternchen und Fehlerhinweise in Formularen
@@ -51,6 +64,21 @@ const LIGHT = [
   '--color-primary-softer: var(--onyx-50)',
   '--header-fg: var(--onyx-950)',
   '--header-fg-muted: var(--gray-600)',
+  // Reiter: inaktive nur Schrift (Hover: zarter Schatten), aktiver schwarz mit weißer Schrift
+  '--header-pill-bg: transparent',
+  '--header-pill-bg-hover: rgb(11 11 12 / 0.08)',
+  '--header-active-bg: var(--onyx-950)',
+  '--header-active-fg: #ffffff',
+  // Symbole rechts: dunkler Ring, beim Hover schwarz gefüllt · Kontakt-Button schwarz (auf gelber Leiste sonst unsichtbar)
+  '--header-icon-bg: transparent',
+  '--header-icon-fg: var(--onyx-950)',
+  '--header-icon-border: var(--onyx-950)',
+  '--header-icon-bg-hover: var(--onyx-950)',
+  '--header-icon-fg-hover: #ffffff',
+  '--header-icon-border-hover: var(--onyx-950)',
+  '--header-cta-bg: var(--onyx-950)',
+  '--header-cta-fg: #ffffff',
+  '--header-cta-bg-hover: var(--onyx-600)',
   '--on-photo: var(--onyx-950)',
   '--color-danger: var(--onyx-950)',
 ];
@@ -97,7 +125,7 @@ const PARTS = {
     ['.ub-button--secondary', '', ['--btn-bg: #ffffff', '--btn-fg: var(--onyx-800)', '--btn-border: var(--gray-300)', '--btn-bg-hover: var(--onyx-50)', '--btn-border-hover: var(--onyx-400)']],
     ['.ub-button--dunkel', '', ['--btn-bg: var(--onyx-950)', '--btn-fg: #ffffff', '--btn-bg-hover: var(--onyx-700)']],
     ['.ub-iconbox__icon', '', ['background: var(--onyx-950)']],
-    ['.hlogo', '', ['--hl-label: #ffffff', '--hl-label-hover: var(--gray-100)', '--hl-ink: var(--onyx-950)', '--hl-text: var(--onyx-950)']],
+    ['.hlogo', '', ['--hl-label: #ffffff', '--hl-label-hover: var(--gray-100)', '--hl-ink: var(--onyx-950)', '--hl-text: var(--onyx-950)', '--hl-band-bg: transparent', '--hl-band-on-accent: none', '--hl-band-on-dark: block', '--hl-band-ratio: auto']],
   ],
 };
 

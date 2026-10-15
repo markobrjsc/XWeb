@@ -794,8 +794,8 @@ b {
 }
 
 /*
- * Beschriftungen über dem gleitenden Label: Während des Übergangs sind alle Menütexte weiß (Header.astro)
- * und werden per „difference“ mit dem Label verrechnet – über dem weißen Label dunkel, daneben hell.
+ * Beschriftungen über dem gleitenden Label (Header.astro): Alte und neue Reiter blenden ineinander über,
+ * während das Label vom alten zum neuen Punkt gleitet – gleiche Dauer, damit Schrift und Label zusammen ankommen.
  */
 ::view-transition-group(site-nav-indicator) {
   z-index: 1;
@@ -803,15 +803,12 @@ b {
 
 ::view-transition-group(site-nav-labels) {
   z-index: 2;
-  mix-blend-mode: difference;
 }
 
-::view-transition-old(site-nav-labels) {
-  display: none;
-}
-
+::view-transition-old(site-nav-labels),
 ::view-transition-new(site-nav-labels) {
-  animation: none;
+  animation-duration: 480ms;
+  animation-timing-function: var(--ease-in-out);
 }
 
 ::view-transition-old(site-nav-indicator),

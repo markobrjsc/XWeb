@@ -4,7 +4,9 @@
  * Gespeichert in src/content/brand.json: { "logo": "<Design>", "image": "<eigenes Bild>", "background": "hell" | "ohne" }
  *
  *  standard     Maskottchen und Schriftzug im weißen, runden Label
- *  band         das längliche Logo: Maskottchen mit Schriftband – das Band in der Akzentfarbe
+ *  band         das längliche Logo: Maskottchen mit Schriftband – das Band in der Akzentfarbe,
+ *               auf heller (z. B. gelber) Leiste ohne Band, mit schwarzem Schriftzug in Vektorschrift
+ *               (scripts/build-logo-schrift.mjs)
  *  badge        Maskottchen vor einem Namens-Label in der Akzentfarbe, weiß gerahmt
  *  schrift      nur Schriftzug, hell auf der dunklen Leiste, mit Akzentstrich
  *  monogramm    „H“ im Feld in der Akzentfarbe plus Schriftzug
@@ -16,6 +18,7 @@
 import type { ImageMetadata } from 'astro';
 import { Image } from 'astro:assets';
 import band from '@/assets/brand/hildebrand-logo-ohne-band.svg';
+import bandHell from '@/assets/brand/hildebrand-logo-ohne-band-hell.svg';
 import mascot from '@/assets/brand/hildebrand-maskottchen.svg';
 import brand from '@/content/brand.json';
 import { type BrandConfig, LOGO_DESIGNS } from '@/lib/logo';
@@ -38,7 +41,8 @@ const name = 'Pflasterarbeiten Hildebrand GmbH';
 {
   design === 'band' ? (
     <span class="hlogo hlogo--band">
-      <Image src={band} alt="" class="hlogo__band" loading="eager" decoding="async" />
+      <Image src={band} alt="" class="hlogo__band hlogo__band--akzent" loading="lazy" decoding="async" />
+      <Image src={bandHell} alt="" class="hlogo__band hlogo__band--dunkel" loading="lazy" decoding="async" />
       <span class="visually-hidden">{name}</span>
     </span>
   ) : design === 'badge' ? (
@@ -156,7 +160,7 @@ const name = 'Pflasterarbeiten Hildebrand GmbH';
   .hlogo--band {
     position: relative;
     height: calc(var(--hl-h) + 0.2rem);
-    aspect-ratio: 1031.3 / 288.8;
+    aspect-ratio: var(--hl-band-ratio, 1031.3 / 288.8);
     margin: -0.1rem 0 -0.1rem 0.45rem;
   }
 
@@ -166,12 +170,21 @@ const name = 'Pflasterarbeiten Hildebrand GmbH';
     position: absolute;
     inset: 31.37% 0 2.29% 10.76%;
     border-radius: 0 0.3rem 0.3rem 0;
-    background: var(--color-cta);
+    background: var(--hl-band-bg, var(--color-cta));
   }
 
   .hlogo--band .hlogo__band {
     position: relative;
     height: 100%;
+  }
+
+  /* Weißer Schriftzug fürs Akzent-Band, schwarzer ohne Band auf heller Leiste (Design „Hell“, src/lib/tone-css.mjs) */
+  .hlogo--band .hlogo__band--akzent {
+    display: var(--hl-band-on-accent, block);
+  }
+
+  .hlogo--band .hlogo__band--dunkel {
+    display: var(--hl-band-on-dark, none);
   }
 
   :is(a:hover, a:focus-visible) > .hlogo--band {

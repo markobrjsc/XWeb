@@ -127,6 +127,22 @@ const hasActiveNav = mainNav.some((item) => isCurrent(item.href));
     --header-bg: rgb(var(--glass-dark));
     --header-border: rgb(255 255 255 / 0.55);
     --header-accent: var(--color-accent);
+    /* Reiter: inaktive im zarten Label, aktiver im kräftigen Label (bei „Design: Hell“ siehe src/lib/tone-css.mjs) */
+    --header-pill-bg: rgb(255 255 255 / 0.08);
+    --header-pill-bg-hover: rgb(255 255 255 / 0.18);
+    --header-active-bg: #ffffff;
+    --header-active-fg: var(--blue-950);
+    /* Runde Symbole und Menü-Button rechts: feiner Ring, beim Hover in der Akzentfarbe */
+    --header-icon-bg: transparent;
+    --header-icon-fg: #ffffff;
+    --header-icon-border: rgb(255 255 255 / 0.3);
+    --header-icon-bg-hover: transparent;
+    --header-icon-fg-hover: var(--header-accent);
+    --header-icon-border-hover: var(--header-accent);
+    /* Kontakt-Button */
+    --header-cta-bg: var(--color-cta);
+    --header-cta-fg: var(--color-cta-fg);
+    --header-cta-bg-hover: var(--color-cta-hover);
     --header-h: var(--header-height);
     /* Innenabstand der Leiste – oben, unten, links und rechts gleich groß */
     --header-pad: 0.8rem;
@@ -240,23 +256,21 @@ const hasActiveNav = mainNav.some((item) => isCurrent(item.href));
     color: var(--header-fg);
     text-decoration: none;
     border-radius: 999px;
-    transition: background-color var(--duration-base) ease;
-  }
-
-  /* Während eines Seitenübergangs alle Menütexte weiß – siehe „site-nav-labels“ in global.css */
-  :global(html:active-view-transition) .site-nav__link {
-    color: #ffffff;
+    background: var(--header-pill-bg);
+    transition:
+      background-color var(--duration-base) ease,
+      color var(--duration-base) ease;
   }
 
   .site-nav__link:hover {
     color: var(--header-fg);
-    background: rgb(255 255 255 / 0.14);
+    background: var(--header-pill-bg-hover);
   }
 
   .site-nav__link[aria-current='page'] {
     font-weight: var(--weight-bold);
-    color: var(--blue-950);
-    background: #ffffff;
+    color: var(--header-active-fg);
+    background: var(--header-active-bg);
   }
 
   .site-nav__indicator {
@@ -288,7 +302,7 @@ const hasActiveNav = mainNav.some((item) => isCurrent(item.href));
       bottom: anchor(bottom);
       left: anchor(left);
       border-radius: 999px;
-      background: #ffffff;
+      background: var(--header-active-bg);
       view-transition-name: site-nav-indicator;
     }
   }
@@ -309,17 +323,26 @@ const hasActiveNav = mainNav.some((item) => isCurrent(item.href));
     flex: none;
     width: 2.4rem;
     height: 2.4rem;
-    color: var(--header-fg);
+  }
+
+  /* Instagram- und Telefon-Symbol: gleicher runder Knopf */
+  .site-header__social,
+  .site-header__phone-icon {
+    color: var(--header-icon-fg);
     border-radius: 50%;
-    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--header-fg) 30%, transparent);
+    background: var(--header-icon-bg);
+    box-shadow: inset 0 0 0 1.5px var(--header-icon-border);
     transition:
       color var(--duration-base) ease,
+      background-color var(--duration-base) ease,
       box-shadow var(--duration-base) ease;
   }
 
-  .site-header__social:hover {
-    color: var(--header-accent);
-    box-shadow: inset 0 0 0 1px var(--header-accent);
+  .site-header__social:is(:hover, :focus-visible),
+  .site-header__phone:is(:hover, :focus-visible) .site-header__phone-icon {
+    color: var(--header-icon-fg-hover);
+    background: var(--header-icon-bg-hover);
+    box-shadow: inset 0 0 0 1.5px var(--header-icon-border-hover);
   }
 
   .site-header__phone {
@@ -348,9 +371,6 @@ const hasActiveNav = mainNav.some((item) => isCurrent(item.href));
     width: 2.4rem;
     height: 2.4rem;
     font-size: 1.05rem;
-    border-radius: 50%;
-    color: var(--header-fg);
-    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--header-fg) 30%, transparent);
   }
 
   .site-header__phone-number {
@@ -364,14 +384,14 @@ const hasActiveNav = mainNav.some((item) => isCurrent(item.href));
   }
 
   .site-header :global(.site-header__cta.btn) {
+    --btn-bg: var(--header-cta-bg);
+    --btn-fg: var(--header-cta-fg);
+    --btn-border: var(--header-cta-bg);
+    --btn-bg-hover: var(--header-cta-bg-hover);
+    --btn-fg-hover: var(--header-cta-fg);
+    --btn-border-hover: var(--header-cta-bg-hover);
     min-height: var(--header-item-h);
     border-radius: 999px;
-  }
-
-  .site-header :global(.site-header__cta[aria-current='page']) {
-    --btn-bg: #ffffff;
-    --btn-fg: var(--blue-950);
-    --btn-border: #ffffff;
   }
 
   .site-header[data-menu-open='true'] :global(.site-header__cta.btn) {
@@ -392,17 +412,20 @@ const hasActiveNav = mainNav.some((item) => isCurrent(item.href));
     padding: 0 0.9rem;
     font-size: var(--text-sm);
     font-weight: var(--weight-semibold);
-    color: var(--header-fg);
-    background: transparent;
-    border: 1.5px solid color-mix(in srgb, var(--header-fg) 40%, transparent);
+    color: var(--header-icon-fg);
+    background: var(--header-icon-bg);
+    border: 1.5px solid var(--header-icon-border);
     border-radius: 999px;
     transition:
+      color var(--duration-base) ease,
       background-color var(--duration-base) ease,
       border-color var(--duration-base) ease;
   }
 
   .menu-toggle:hover {
-    border-color: var(--header-fg);
+    color: var(--header-icon-fg-hover);
+    background: var(--header-icon-bg-hover);
+    border-color: var(--header-icon-border-hover);
   }
 
   .menu-toggle__icon {
@@ -851,11 +874,23 @@ const hasActiveNav = mainNav.some((item) => isCurrent(item.href));
     }
   }
 
+  /* Handy: Leiste von Anfang an durchgehend am oberen Rand – wie nach dem Scrollen, keine schwebende Insel */
   @media (max-width: 40rem) {
     .site-header {
       --header-pad: 0.2rem;
       --header-item-h: 2.6rem;
-      padding-top: 0.2rem;
+      padding: 0;
+    }
+
+    .site-header .site-header__bar {
+      max-width: 100%;
+      border-width: 0 0 1px;
+      border-radius: 0;
+      padding-top: env(safe-area-inset-top);
+    }
+
+    .site-header .site-header__inner {
+      padding-inline: var(--gutter);
     }
   }
 
