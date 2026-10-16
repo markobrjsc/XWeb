@@ -56,41 +56,37 @@ const key = (projectId: string) => `projekt-${service.id}-${projectId}`;
     projects.length > 0 && (
       <div slot="footer" class="service__projects" data-projects>
         <p class="service__projects-label">
-          <span>{projects.length === 1 ? 'Referenzprojekt' : `${projects.length} Referenzprojekte`}</span>
-          {projects.length > 1 && (
-            <span class="service__current-count" data-project-count>
-              1 / {projects.length}
-            </span>
-          )}
+          <span data-projects-label>{projects.length === 1 ? 'Referenzprojekt' : `${projects.length} Referenzprojekte`}</span>
+          <span class="service__current-count" data-project-count hidden={projects.length < 2}>
+            1 / {projects.length}
+          </span>
         </p>
 
-        {projects.length > 1 && (
-          <div class="service__switch">
-            <button
-              class="service__nav"
-              type="button"
-              data-project-step="-1"
-              aria-label={`Vorheriges Projekt: ${projects.at(-1)?.data.title}`}
-              data-tip={`Vorheriges: ${projects.at(-1)?.data.title}`}
-            >
-              <Icon name="chevron-left" size="1.4rem" />
-            </button>
-            <p class="service__current" aria-live="polite">
-              <span class="service__current-title" data-project-current title={projects[0].data.title}>
-                {projects[0].data.title}
-              </span>
-            </p>
-            <button
-              class="service__nav"
-              type="button"
-              data-project-step="1"
-              aria-label={`Nächstes Projekt: ${projects[1].data.title}`}
-              data-tip={`Nächstes: ${projects[1].data.title}`}
-            >
-              <Icon name="chevron-right" size="1.4rem" />
-            </button>
-          </div>
-        )}
+        <div class="service__switch" data-project-switch hidden={projects.length < 2}>
+          <button
+            class="service__nav"
+            type="button"
+            data-project-step="-1"
+            aria-label={`Vorheriges Projekt: ${projects.at(-1)?.data.title}`}
+            data-tip={`Vorheriges: ${projects.at(-1)?.data.title}`}
+          >
+            <Icon name="chevron-left" size="1.4rem" />
+          </button>
+          <p class="service__current" aria-live="polite">
+            <span class="service__current-title" data-project-current title={projects[0].data.title}>
+              {projects[0].data.title}
+            </span>
+          </p>
+          <button
+            class="service__nav"
+            type="button"
+            data-project-step="1"
+            aria-label={`Nächstes Projekt: ${projects[1 % projects.length].data.title}`}
+            data-tip={`Nächstes: ${projects[1 % projects.length].data.title}`}
+          >
+            <Icon name="chevron-right" size="1.4rem" />
+          </button>
+        </div>
 
         {projects.map((project, index) => (
           <div
@@ -123,42 +119,10 @@ const key = (projectId: string) => `projekt-${service.id}-${projectId}`;
 </Card>
 
 <script>
-  // Projekt-Auswahl je Leistungskarte: Pfeile blättern im Kreis durch die Projekte
-  document.querySelectorAll<HTMLElement>('[data-projects]').forEach((root) => {
-    const panels = [...root.querySelectorAll<HTMLElement>('[data-project-panel]')];
-    const buttons = [...root.querySelectorAll<HTMLButtonElement>('[data-project-step]')];
-    const current = root.querySelector<HTMLElement>('[data-project-current]');
-    const count = root.querySelector<HTMLElement>('[data-project-count]');
-    if (panels.length < 2) return;
-    let index = 0;
+  // Projekt-Auswahl je Leistungskarte: Pfeile blättern im Kreis durch die Projekte (src/scripts/project-switch.ts)
+  import { initProjectSwitch } from '@/scripts/project-switch';
 
-    const titleAt = (i: number) => panels[(i + panels.length) % panels.length].dataset.title ?? '';
-
-    const show = (next: number) => {
-      index = (next + panels.length) % panels.length;
-      panels.forEach((panel, i) => {
-        panel.hidden = i !== index;
-        if (i === index) {
-          panel.classList.remove('is-entering');
-          void panel.offsetWidth;
-          panel.classList.add('is-entering');
-        }
-      });
-      if (current) {
-        current.textContent = titleAt(index);
-        current.title = titleAt(index);
-      }
-      if (count) count.textContent = `${index + 1} / ${panels.length}`;
-      buttons.forEach((button) => {
-        const step = Number(button.dataset.projectStep);
-        const label = step < 0 ? 'Vorheriges' : 'Nächstes';
-        button.dataset.tip = `${label}: ${titleAt(index + step)}`;
-        button.setAttribute('aria-label', `${label} Projekt: ${titleAt(index + step)}`);
-      });
-    };
-
-    buttons.forEach((button) => button.addEventListener('click', () => show(index + Number(button.dataset.projectStep))));
-  });
+  document.querySelectorAll<HTMLElement>('[data-projects]').forEach(initProjectSwitch);
 </script>
 
 <style>
@@ -363,7 +327,10 @@ const key = (projectId: string) => `projekt-${service.id}-${projectId}`;
     gap: var(--space-3);
   }
 
-  .service__project[hidden] {
+  .service__project[hidden],
+  .service__projects[hidden],
+  .service__switch[hidden],
+  .service__current-count[hidden] {
     display: none;
   }
 

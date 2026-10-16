@@ -59,8 +59,8 @@ export type InsertPosition = 'before' | 'after' | 'start' | 'end';
 export interface BlockEditorHooks {
   /** Änderungen an Elementen – Seitenleiste aktualisieren */
   onChange(): void;
-  /** Bild vor dem Hochladen verkleinern → Base64 (JPEG) */
-  shrink(file: File): Promise<string>;
+  /** Neues Bild vormerken (verkleinert, ohne Hochladen) → Bildname und Vorschau-Adresse */
+  stageImage(file: File): Promise<{ name: string; url: string }>;
   /** Statusmeldung in der Seitenleiste */
   status(message: string): void;
   /** Element nach Einfügen/Verschieben auswählen */
@@ -93,10 +93,12 @@ export function createBlockEditor(ui: HTMLElement, hooks: BlockEditorHooks) {
   let saved = '{}';
   let data: EditorData = { images: [], icons: {} };
   let imageMap = new Map<string, EditorImage>();
-  /** Neu hochgeladene Bilder – bis zum nächsten Build nur als Vorschau im Browser */
+  /** Neue, vorgemerkte Bilder – bis zum Speichern und nächsten Build nur als Vorschau im Browser */
   const localImages = new Map<string, string>();
   let active = false;
   let ready = false;
+  /** Vorschau: Elemente ohne Bearbeiten-Hilfen („+“-Felder, leere Zonen) zeigen */
+  let previewing = false;
   let session = 0;
   let placing: Placing | null = null;
   /** Handy: angetippte Stelle, wartet auf „Hier einfügen“ */
@@ -175,7 +177,7 @@ export function createBlockEditor(ui: HTMLElement, hooks: BlockEditorHooks) {
 
   const render = () => {
     if (!main) return;
-    const editing = active && ready;
+    const editing = active && ready && !previewing;
     for (const key of Object.keys(state)) if (!state[key].length) delete state[key];
     if (editing) ensureZones();
     main.querySelectorAll<HTMLElement>('ub-zone').forEach((zone) => {
@@ -1184,17 +1186,9 @@ export function createBlockEditor(ui: HTMLElement, hooks: BlockEditorHooks) {
     if (!files.length || !pickerState) return;
     try {
       for (const [i, file] of files.entries()) {
-        pickerStatus.textContent = files.length > 1 ? `Lade Bild ${i + 1} von ${files.length} hoch …` : 'Bild wird hochgeladen …';
-        const base64 = await hooks.shrink(file);
-        const response = await fetch(`/api/edit/bild/?folder=bausteine&name=neu-${Date.now().toString(36)}-${i}.jpg`, {
-          method: 'PUT',
-          headers: { 'Content-Type': 'text/plain' },
-          body: base64,
-        });
-        const result = await response.json();
-        if (!response.ok || !result.ok) throw new Error(result.error || 'Hochladen fehlgeschlagen.');
-        const name = `bausteine/${result.name}`;
-        localImages.set(name, `data:image/jpeg;base64,${base64}`);
+        pickerStatus.textContent = files.length > 1 ? `Bereite Bild ${i + 1} von ${files.length} vor …` : 'Bild wird vorbereitet …';
+        const { name, url } = await hooks.stageImage(file);
+        localImages.set(name, url);
         if (!pickerState.multiple) {
           pickerState.done([name]);
           picker.close();
@@ -1202,7 +1196,7 @@ export function createBlockEditor(ui: HTMLElement, hooks: BlockEditorHooks) {
         }
         pickerState.selected.push(name);
       }
-      pickerStatus.textContent = 'Hochgeladen – nach dem nächsten Build auch in bester Qualität.';
+      pickerStatus.textContent = 'Vorgemerkt – wird mit „Speichern“ übernommen.';
       renderPicker();
     } catch (error) {
       pickerStatus.textContent = error instanceof Error ? error.message : 'Hochladen fehlgeschlagen.';
@@ -1311,7 +1305,7 @@ export function createBlockEditor(ui: HTMLElement, hooks: BlockEditorHooks) {
   document.addEventListener(
     'click',
     (event) => {
-      if (!active || !ready || placing) return;
+      if (!active || !ready || placing || previewing) return;
       const add = (event.target as HTMLElement).closest<HTMLElement>('[data-ub-add]');
       if (!add || !main?.contains(add)) return;
       event.preventDefault();
@@ -1345,8 +1339,13 @@ export function createBlockEditor(ui: HTMLElement, hooks: BlockEditorHooks) {
 
   /* ---------------- Öffentliche Schnittstelle ---------------- */
   return {
-    async start() {
+    /**
+     * Elemente der Seite laden. `staged`: vorgemerkter Stand dieser Seite (wird gezeigt, gespeichert bleibt der aus
+     * GitHub), `images`: Vorschau-Adressen vorgemerkter Bilder.
+     */
+    async start(staged?: PageBlocks, images: Map<string, string> = new Map()) {
       if (!main) return;
+      images.forEach((url, name) => localImages.set(name, url));
       active = true;
       ready = false;
       const current = ++session;
@@ -1363,6 +1362,7 @@ export function createBlockEditor(ui: HTMLElement, hooks: BlockEditorHooks) {
         // Stand aus GitHub – ist nach dem Speichern aktueller als die Seite, bis der Build durch ist
         state = clampZones(sanitizePage(remote.zones), sections().length);
         saved = JSON.stringify(state);
+        if (staged) state = clampZones(sanitizePage(staged), sections().length);
         ready = true;
         const built = document.querySelector<HTMLStyleElement>('style[data-ub-style]')?.sheet;
         if (built) built.disabled = true;
@@ -1385,11 +1385,18 @@ export function createBlockEditor(ui: HTMLElement, hooks: BlockEditorHooks) {
       ready = false;
     },
     dirty: () => ready && JSON.stringify(state) !== saved,
-    discard() {
-      if (!ready) return;
-      state = JSON.parse(saved);
-      ensureZones();
-      render();
+    /** Aktueller Stand der Seite (für die Vormerkungen) */
+    zones: () => state,
+    /** Nach dem Speichern: der aktuelle Stand gilt als gespeichert */
+    committed() {
+      saved = JSON.stringify(state);
+    },
+    /** Vorschau an/aus – ohne „+“-Felder und leere Zonen, Klicks wirken normal */
+    setPreview(on: boolean) {
+      if (previewing === on) return;
+      previewing = on;
+      if (on) setPlacing(null);
+      if (ready) render();
     },
     isReady: () => ready,
     /** Element aus dem Baukasten auf der Seite */
@@ -1435,17 +1442,5 @@ export function createBlockEditor(ui: HTMLElement, hooks: BlockEditorHooks) {
       insertAt(choice, target.target, target.index, 'center');
     },
     showLibraryTab: showTab,
-    async save() {
-      const response = await fetch('/api/edit/bausteine/', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ page: location.pathname, zones: state }),
-      });
-      const result = await response.json();
-      if (!response.ok || !result.ok) throw new Error(result.error || 'Elemente konnten nicht gespeichert werden.');
-      state = clampZones(sanitizePage(result.zones), sections().length);
-      saved = JSON.stringify(state);
-      render();
-    },
   };
 }

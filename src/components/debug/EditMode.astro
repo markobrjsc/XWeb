@@ -10,6 +10,9 @@
  *  · Einfügen: Vorlagen, Basis-Elemente und Container mit Vorschau (BlockEditorUI.astro)
  *  · Ebenen:   Aufbau der Seite als Baum
  *  · Abstände: Außen-/Innenabstände sichtbar machen und einstellen
+ *  · Vorschau: Seite wie live bedienen, auch Links und Seitenwechsel (Leiste unten links)
+ * Alles wird nur vorgemerkt und mit „Speichern“ in einem Commit übernommen (src/scripts/editor/pending.ts, save.ts).
+ * Die Leiste ist ab Tablet-Breite auf --ed-scale verkleinert.
  * Logik: src/scripts/editor/ (Seitenleiste) und src/scripts/block-editor.ts (Elemente) · Server: worker/edit.ts.
  * Erscheint nur, wenn der Worker den Modus meldet (GET /api/edit/status/).
  */
@@ -34,7 +37,7 @@ const ICONS = [
   ...new Set([
     'box', 'mouse-pointer-click', 'square-plus', 'layers', 'blocks', 'type', 'square', 'hand', 'image', 'images',
     'rotate-ccw', 'align-left', 'align-center', 'align-right', 'align-justify', 'crosshair', 'x', 'chevron-right',
-    'sliders-horizontal', 'smartphone', 'monitor', 'eye-off', 'corner-left-up', 'corner-right-down', 'file-plus', 'link',
+    'sliders-horizontal', 'smartphone', 'monitor', 'eye', 'eye-off', 'corner-left-up', 'corner-right-down', 'file-plus', 'link',
     ...Object.values(KINDS).map((kind) => kind.icon),
   ]),
 ];
@@ -91,14 +94,20 @@ const ICONS = [
     <footer class="ed-foot">
       <p class="ed-status" data-ed-status aria-live="polite"></p>
       <div class="ed-foot__buttons">
-        <button class="ed-btn ed-btn--icon" type="button" data-ed-interact aria-pressed="false" title="Seite bedienen (Reiter, Galerien …) – geht auch mit Alt + Klick" aria-label="Seite bedienen">
-          <Icon name="hand" size="1rem" />
-        </button>
+        <button class="ed-btn" type="button" data-ed-preview title="Vorschau: Seite normal bedienen, auch Links – Änderungen bleiben vorgemerkt"><Icon name="eye" size="1rem" /><span>Vorschau</span></button>
         <button class="ed-btn" type="button" data-ed-discard disabled><Icon name="undo-2" size="1rem" /><span>Verwerfen</span></button>
         <button class="ed-btn ed-btn--primary" type="button" data-ed-save disabled><Icon name="save" size="1rem" /><span>Speichern</span></button>
       </div>
     </footer>
   </aside>
+
+  <!-- Vorschau: Seite wie live bedienen (src/scripts/editor/index.ts → setPreview) -->
+  <div class="ed-previewbar" data-ed-previewbar hidden role="region" aria-label="Vorschau">
+    <span class="ed-previewbar__label"><Icon name="eye" size="1rem" /> Vorschau</span>
+    <span class="ed-previewbar__status" data-ed-preview-status aria-live="polite"></span>
+    <button class="ed-btn" type="button" data-ed-preview-exit><Icon name="pencil" size="1rem" /><span>Bearbeiten</span></button>
+    <button class="ed-btn ed-btn--primary" type="button" data-ed-preview-save disabled><Icon name="save" size="1rem" /><span>Speichern</span></button>
+  </div>
 
   <!-- Markierungen auf der Seite -->
   <div class="ed-box ed-box--hover" data-ed-hover hidden><span class="ed-box__tag"></span></div>
@@ -170,7 +179,7 @@ const ICONS = [
           <Icon name="x" size="1.1rem" />
         </button>
       </header>
-      <p class="gallery-dialog__hint">Ziehen zum Sortieren (oder Pfeile) · Auge zum Aus-/Einblenden · neue Bilder werden automatisch verkleinert.</p>
+      <p class="gallery-dialog__hint">Ziehen zum Sortieren (oder Pfeile) · Auge zum Aus-/Einblenden · neue Bilder werden automatisch verkleinert. „Übernehmen“ merkt vor – live erst mit „Speichern“.</p>
       <ol class="gallery-dialog__grid" data-gallery-grid></ol>
       <footer class="gallery-dialog__foot">
         <label class="gallery-dialog__add">
@@ -178,7 +187,7 @@ const ICONS = [
           <Icon name="image-plus" size="1rem" /> Bilder hinzufügen
         </label>
         <p class="gallery-dialog__status" data-gallery-status aria-live="polite"></p>
-        <button class="ed-btn ed-btn--primary" type="button" data-gallery-save>Galerie speichern</button>
+        <button class="ed-btn ed-btn--primary" type="button" data-gallery-save>Übernehmen</button>
       </footer>
     </form>
   </dialog>
@@ -194,7 +203,7 @@ const ICONS = [
           <Icon name="x" size="1.1rem" />
         </button>
       </header>
-      <p class="gallery-dialog__hint">Ziehen oder Pfeile zum Sortieren · Auge zum Aus-/Einblenden · neue PDFs bekommen ihre Vorschau beim nächsten Build.</p>
+      <p class="gallery-dialog__hint">Ziehen oder Pfeile zum Sortieren · Auge zum Aus-/Einblenden · neue PDFs bekommen ihre Vorschau nach dem Speichern. „Übernehmen“ merkt vor – live erst mit „Speichern“.</p>
       <ol class="certs-edit" data-certs-list></ol>
       <footer class="gallery-dialog__foot">
         <label class="gallery-dialog__add">
@@ -202,7 +211,7 @@ const ICONS = [
           <Icon name="file-plus" size="1rem" /> PDF hinzufügen
         </label>
         <p class="gallery-dialog__status" data-certs-status aria-live="polite"></p>
-        <button class="ed-btn ed-btn--primary" type="button" data-certs-save>Zertifikate speichern</button>
+        <button class="ed-btn ed-btn--primary" type="button" data-certs-save>Übernehmen</button>
       </footer>
     </form>
   </dialog>
@@ -225,6 +234,8 @@ const ICONS = [
   :root {
     --ed-w: 23rem;
     --ed-rail: 3.5rem;
+    /* Leiste und Vorschau-Leiste verkleinert darstellen (ab Tablet) – Platz für die Seite: --ed-space */
+    --ed-scale: 0.75;
     --ed-font: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
     --ed-bg: #0c2b21;
     --ed-bg-2: #0f3428;
@@ -241,6 +252,7 @@ const ICONS = [
   }
 
   .ed-sidebar,
+  .ed-previewbar,
   .edit-ui .gallery-dialog {
     --ed-bg: #0a0a0a;
     --ed-bg-2: #111111;
@@ -291,12 +303,17 @@ const ICONS = [
    * Auf dem Handy liegt die Leiste unten und die Seite bekommt dort Luft.
    */
   @media (min-width: 48rem) {
+    .ed-sidebar,
+    .ed-previewbar {
+      zoom: var(--ed-scale);
+    }
+
     html.is-editing {
-      --ed-space: var(--ed-w);
+      --ed-space: calc(var(--ed-w) * var(--ed-scale));
     }
 
     html.is-editing.ed-collapsed {
-      --ed-space: var(--ed-rail);
+      --ed-space: calc(var(--ed-rail) * var(--ed-scale));
     }
 
     html.is-editing body {
@@ -332,15 +349,90 @@ const ICONS = [
   }
 
   /* Beim Auswählen keine Textcursor/Links auf der Seite */
-  html.is-editing:not(.ed-interact) :is(main, .site-header, .site-footer) * {
+  html.is-editing :is(main, .site-header, .site-footer) * {
     cursor: default;
   }
 
-  /* Ausgeblendete Elemente bleiben im Bearbeiten-Modus abgeblendet sichtbar */
+  /* Ausgeblendete Elemente bleiben im Bearbeiten-Modus abgeblendet sichtbar – in der Vorschau sind sie weg */
   html.is-editing [data-ed-hide] {
     opacity: 0.4 !important;
     outline: 2px dashed rgb(16 185 129 / 0.6);
     outline-offset: -2px;
+  }
+
+  html.ed-preview [data-ed-hide='all'] {
+    display: none !important;
+  }
+
+  @media (max-width: 47.99rem) {
+    html.ed-preview [data-ed-hide='mobile'] {
+      display: none !important;
+    }
+  }
+
+  @media (min-width: 48rem) {
+    html.ed-preview [data-ed-hide='desktop'] {
+      display: none !important;
+    }
+  }
+
+  /* ---------------- Vorschau-Leiste ---------------- */
+  .ed-previewbar {
+    position: fixed;
+    left: 1rem;
+    bottom: 1rem;
+    z-index: 1006;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    max-width: calc(100vw - 2rem);
+    padding: 0.45rem 0.45rem 0.45rem 0.9rem;
+    font: 400 0.8125rem/1.3 var(--ed-font);
+    color: var(--ed-text);
+    border: 1px solid var(--ed-line-strong);
+    border-radius: 999px;
+    background: var(--ed-bg);
+    box-shadow: 0 16px 40px -14px rgb(0 0 0 / 0.6);
+    color-scheme: dark;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .ed-previewbar__label {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-weight: 600;
+    white-space: nowrap;
+  }
+
+  .ed-previewbar__status {
+    padding-inline: 0.4rem;
+    font-size: 0.75rem;
+    color: var(--ed-muted);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .ed-previewbar .ed-btn {
+    border-radius: 999px;
+  }
+
+  @media (max-width: 47.99rem) {
+    .ed-previewbar {
+      left: 0.5rem;
+      right: 0.5rem;
+      bottom: 0.5rem;
+      max-width: none;
+    }
+
+    .ed-previewbar__status {
+      display: none;
+    }
+
+    .ed-previewbar .ed-btn {
+      flex: 1;
+    }
   }
 
   /* ---------------- Seitenleiste ---------------- */
@@ -649,7 +741,7 @@ const ICONS = [
 
   .ed-foot__buttons {
     display: grid;
-    grid-template-columns: auto 1fr 1.5fr;
+    grid-template-columns: 1fr 1fr 1.3fr;
     gap: 0.4rem;
   }
 
@@ -1559,6 +1651,16 @@ const ICONS = [
     flex: 1;
     min-width: 0;
     font-size: 0.78rem;
+  }
+
+  /* Zum Löschen vorgemerkt */
+  .ed-projects__list li.is-deleted {
+    opacity: 0.6;
+    border-style: dashed;
+  }
+
+  .ed-projects__list li.is-deleted strong {
+    text-decoration: line-through;
   }
 
   .ed-projects__list small {

@@ -1,14 +1,15 @@
 /**
  * Bearbeiten-Modus – Referenzprojekte einer Leistungskarte (src/components/ui/ServiceCard.astro).
- * Zeigt die Projekte der Karte (Galerie bearbeiten) und legt neue an:
- *   Fotos → src/assets/images/referenzen/<slug>/01.jpg … (PUT /api/edit/bild/)
- *   Projekt → src/content/referenzen/<slug>.md mit `leistungen: [<Karte>]` (POST /api/edit/projekt/)
- *   Löschen → Projekt samt Fotos und Galerie-Eintrag (DELETE /api/edit/projekt/), nach Rückfrage
- * Das neue Projekt erscheint nach dem automatischen Build in der Karte.
+ * Zeigt die Projekte der Karte (Galerie bearbeiten, löschen) und legt neue an. Beides wird nur vorgemerkt
+ * (./pending.ts) und sofort in der Karte gezeigt (./preview.ts); mit „Speichern“:
+ *   Fotos   → src/assets/images/referenzen/<slug>/01.jpg …
+ *   Projekt → src/content/referenzen/<slug>.md mit `leistungen: [<Karte>]`
+ *   Löschen → Projektdatei, Fotos und Galerie-Eintrag
  */
 import { h } from './dom';
-import { shrink, uploadImage } from './media';
-import { publishEdits } from './publish';
+import { stageImage } from './media';
+import { newId, pending } from './pending';
+import { previewProjects } from './preview';
 
 const slugify = (text: string) =>
   text
@@ -22,50 +23,56 @@ const slugify = (text: string) =>
     .slice(0, 50)
     .replace(/-+$/g, '');
 
-export function projectsPanel(card: HTMLElement, openGallery: (carousel: HTMLElement) => void): HTMLElement {
+export function projectsPanel(card: HTMLElement, openGallery: (carousel: HTMLElement) => void, onChange: () => void): HTMLElement {
   const service = card.dataset.service ?? '';
   const pillar = card.dataset.pillar ?? '';
   const wrap = h('div', { class: 'ed-projects' });
-
-  // Vorhandene Projekte der Karte
-  const panels = [...card.querySelectorAll<HTMLElement>('[data-project-panel]')];
   const list = h('ul', { class: 'ed-projects__list', role: 'list' });
-  for (const panel of panels) {
-    const carousel = panel.querySelector<HTMLElement>('[data-carousel][data-gallery]');
-    const count = carousel?.dataset.count ?? '0';
-    const button = h('button', { type: 'button', class: 'ed-btn ed-btn--small' }, 'Fotos');
-    button.addEventListener('click', () => carousel && openGallery(carousel));
-    const info = h('small', {}, `${count} Fotos`);
-    const remove = h('button', { type: 'button', class: 'ed-btn ed-btn--small ed-btn--danger' }, 'Löschen');
-    remove.addEventListener('click', () => void deleteProject(panel, info, [button, remove]));
-    list.append(h('li', {}, h('span', {}, h('strong', {}, panel.dataset.title ?? 'Projekt'), info), carousel ? button : null, panel.dataset.project ? remove : null));
-  }
-
-  async function deleteProject(panel: HTMLElement, info: HTMLElement, buttons: HTMLButtonElement[]) {
-    const name = panel.dataset.title ?? 'dieses Projekt';
-    if (!confirm(`„${name}“ mit allen Fotos löschen?\n\nDas Projekt verschwindet aus allen Leistungen, in denen es vorkommt.`)) return;
-    for (const button of buttons) button.disabled = true;
-    info.textContent = 'Wird gelöscht …';
-    try {
-      const response = await fetch('/api/edit/projekt/', {
-        method: 'DELETE',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ slug: panel.dataset.project }),
-      });
-      const result = await response.json();
-      if (!response.ok || !result.ok) throw new Error(result.error || 'Löschen fehlgeschlagen.');
-      await publishEdits();
-      info.textContent = result.photosKept
-        ? 'gelöscht · Fotos bleiben (werden noch woanders genutzt) · nach dem Build weg'
-        : 'gelöscht · nach dem Build (ca. 2 Minuten) weg';
-      for (const button of buttons) button.remove();
-    } catch (error) {
-      info.textContent = error instanceof Error ? error.message : 'Löschen fehlgeschlagen.';
-      for (const button of buttons) button.disabled = false;
-    }
-  }
-  if (!panels.length) list.append(h('li', { class: 'ed-muted' }, 'Noch keine Projekte in dieser Karte.'));
   wrap.append(list);
+
+  /** Vorschau auf der Seite und Liste neu aufbauen */
+  const refresh = async () => {
+    await previewProjects();
+    onChange();
+    renderList();
+  };
+
+  function renderList() {
+    const panels = [...card.querySelectorAll<HTMLElement>('[data-project-panel]')];
+    list.replaceChildren();
+    for (const panel of panels) {
+      const slug = panel.dataset.project ?? '';
+      const deleted = panel.hasAttribute('data-ed-deleted');
+      const isNew = panel.hasAttribute('data-ed-new');
+      const carousel = panel.querySelector<HTMLElement>('[data-carousel][data-gallery]');
+      const count = carousel?.dataset.count ?? '0';
+      const info = h('small', {}, deleted ? 'wird beim Speichern gelöscht' : `${isNew ? 'neu · ' : ''}${count} Fotos`);
+      const photos = h('button', { type: 'button', class: 'ed-btn ed-btn--small' }, 'Fotos');
+      photos.addEventListener('click', () => carousel && openGallery(carousel));
+      const remove = h('button', { type: 'button', class: `ed-btn ed-btn--small${deleted ? '' : ' ed-btn--danger'}` }, deleted ? 'Wiederherstellen' : 'Löschen');
+      remove.addEventListener('click', () => {
+        if (!deleted && !confirm(`„${panel.dataset.title ?? slug}“ mit allen Fotos löschen?\n\nDas Projekt verschwindet beim Speichern aus allen Leistungen, in denen es vorkommt.`)) return;
+        pending.update((draft) => {
+          if (deleted) draft.projects.deleted = draft.projects.deleted.filter((item) => item !== slug);
+          else if (isNew) draft.projects.added = draft.projects.added.filter((item) => item.slug !== slug);
+          else if (!draft.projects.deleted.includes(slug)) draft.projects.deleted.push(slug);
+          if (!deleted) delete draft.galleries[`referenzen/${slug}`];
+        });
+        void refresh();
+      });
+      list.append(
+        h(
+          'li',
+          { class: deleted ? 'is-deleted' : '' },
+          h('span', {}, h('strong', {}, panel.dataset.title ?? 'Projekt'), info),
+          carousel && !deleted ? photos : null,
+          slug ? remove : null,
+        ),
+      );
+    }
+    if (!panels.length) list.append(h('li', { class: 'ed-muted' }, 'Noch keine Projekte in dieser Karte.'));
+  }
+  renderList();
 
   // Neues Projekt
   const toggle = h('button', { type: 'button', class: 'ed-btn ed-btn--primary ed-btn--block' }, '+ Neues Projekt mit Galerie anlegen');
@@ -77,7 +84,7 @@ export function projectsPanel(card: HTMLElement, openGallery: (carousel: HTMLEle
   const files = h('input', { type: 'file', accept: 'image/jpeg,image/png,image/webp,image/heic', multiple: true });
   const thumbs = h('div', { class: 'ed-thumbs' });
   const status = h('p', { class: 'ed-form__status', 'aria-live': 'polite' });
-  const submit = h('button', { type: 'submit', class: 'ed-btn ed-btn--primary ed-btn--block' }, 'Projekt anlegen');
+  const submit = h('button', { type: 'submit', class: 'ed-btn ed-btn--primary ed-btn--block' }, 'Projekt vormerken');
   const field = (label: string, control: HTMLElement) => h('label', { class: 'ed-field' }, h('span', {}, label), control);
   form.append(
     field('Titel', title),
@@ -96,8 +103,17 @@ export function projectsPanel(card: HTMLElement, openGallery: (carousel: HTMLEle
     if (!form.hidden) title.focus();
   });
 
+  // Vorschaubilder als data:-Adresse – blob:-Adressen erlaubt die Content-Security-Policy nicht
   files.addEventListener('change', () => {
-    thumbs.replaceChildren(...[...(files.files ?? [])].map((file) => h('img', { src: URL.createObjectURL(file), alt: file.name })));
+    thumbs.replaceChildren(
+      ...[...(files.files ?? [])].map((file) => {
+        const img = h('img', { alt: file.name });
+        const reader = new FileReader();
+        reader.onload = () => img.setAttribute('src', String(reader.result));
+        reader.readAsDataURL(file);
+        return img;
+      }),
+    );
   });
 
   form.addEventListener('submit', async (event) => {
@@ -105,36 +121,41 @@ export function projectsPanel(card: HTMLElement, openGallery: (carousel: HTMLEle
     const photos = [...(files.files ?? [])];
     if (!title.value.trim() || !summary.value.trim()) return void (status.textContent = 'Bitte Titel und Kurzbeschreibung angeben.');
     if (!photos.length) return void (status.textContent = 'Bitte mindestens ein Foto auswählen.');
-    const slug = `${slugify(title.value) || 'projekt'}-${Date.now().toString(36).slice(-4)}`;
+    const slug = `${slugify(title.value) || 'projekt'}-${newId().slice(-4)}`;
     submit.disabled = true;
     try {
+      const names: string[] = [];
       for (const [index, file] of photos.entries()) {
-        status.textContent = `Lade Foto ${index + 1} von ${photos.length} hoch …`;
-        await uploadImage(`referenzen/${slug}`, `${String(index + 1).padStart(2, '0')}.jpg`, await shrink(file));
+        status.textContent = `Bereite Foto ${index + 1} von ${photos.length} vor …`;
+        const name = `referenzen/${slug}/${String(index + 1).padStart(2, '0')}`;
+        await stageImage(name, file);
+        names.push(name);
       }
-      status.textContent = 'Projekt wird angelegt …';
-      const response = await fetch('/api/edit/projekt/', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ slug, service, pillar, title: title.value, summary: summary.value, location: place.value, year: year.value }),
+      pending.update((draft) => {
+        draft.projects.added.push({
+          slug,
+          service,
+          pillar,
+          title: title.value.trim(),
+          summary: summary.value.trim(),
+          location: place.value.trim(),
+          year: year.value.trim(),
+          photos: names,
+        });
       });
-      const result = await response.json();
-      if (!response.ok || !result.ok) throw new Error(result.error || 'Projekt konnte nicht angelegt werden.');
-      await publishEdits();
-      list.querySelector('.ed-muted')?.remove();
-      list.append(h('li', {}, h('span', {}, h('strong', {}, title.value), h('small', {}, `neu · ${photos.length} Fotos · nach dem Build sichtbar`))));
       form.reset();
       thumbs.replaceChildren();
       form.hidden = true;
       toggle.textContent = '+ Weiteres Projekt anlegen';
       status.textContent = '';
-      wrap.append(h('p', { class: 'ed-note ed-note--ok' }, 'Projekt angelegt – erscheint nach dem automatischen Build (ca. 2 Minuten) in dieser Karte.'));
+      await refresh();
     } catch (error) {
-      status.textContent = error instanceof Error ? error.message : 'Projekt konnte nicht angelegt werden.';
+      status.textContent = error instanceof Error ? error.message : 'Projekt konnte nicht vorbereitet werden.';
     } finally {
       submit.disabled = false;
     }
   });
 
+  wrap.append(h('p', { class: 'ed-note' }, 'Neue und gelöschte Projekte sind vorgemerkt und erscheinen sofort in der Vorschau – übernommen werden sie mit „Speichern“.'));
   return wrap;
 }

@@ -13,7 +13,7 @@ export const isUi = (el: Element | null) => Boolean(el?.closest(UI));
 
 /** Texte darin werden nicht bearbeitet (Skripte, Formularfelder, Zähler, Galerien, Elemente aus dem Baukasten …) */
 export const TEXT_SKIP =
-  'script, style, noscript, template, svg, textarea, select, option, input, [data-edit-ui], [data-design-panel], ub-zone, [data-count-to], [data-carousel], .visually-hidden, [aria-hidden="true"], .hlogo';
+  'script, style, noscript, template, svg, textarea, select, option, input, [data-edit-ui], [data-design-panel], ub-zone, [data-count-to], [data-carousel], .visually-hidden, [aria-hidden="true"], .hlogo, [data-ed-new]';
 
 const NO_LIST = new Set(['SCRIPT', 'STYLE', 'NOSCRIPT', 'TEMPLATE', 'LINK', 'META', 'SOURCE', 'TRACK', 'BR', 'svg']);
 

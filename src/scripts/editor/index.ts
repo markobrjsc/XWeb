@@ -10,10 +10,12 @@
  *            auf die Seite oder antippen und Stelle anklicken (src/scripts/block-editor.ts).
  *  Ebenen    Aufbau der ganzen Seite als Baum.
  *  Abstände  Außen-/Innenabstände sichtbar machen und einstellen.
- *  „Seite bedienen“ (Hand-Symbol unten oder Alt + Klick): Reiter, Galerien usw. normal benutzen.
+ *  Vorschau  (Knopf unten): Seite ohne Bearbeiten-Hilfen normal bedienen, auch Links und Seitenwechsel – der
+ *            Bearbeiten-Modus und alle Vormerkungen bleiben dabei erhalten. Alt + Klick bedient einzelne Dinge direkt.
  *
- * Speichern schreibt Texte (edits.json), Gestaltung (spacing.json) und Elemente (blocks.json) als Commit auf main;
- * Kopfbilder, Galerien und neue Projekte speichern direkt in ihren Dialogen. Server-Teil: worker/edit.ts.
+ * Jede Änderung (Texte, Gestaltung, Elemente, Farben, Logo, Kopfbilder, Galerien, Projekte, Zertifikate) wird nur
+ * vorgemerkt (./pending.ts) – über Seitenwechsel hinweg – und auf jeder Seite als Vorschau gezeigt. „Speichern“
+ * übernimmt alles in einem Commit (./save.ts → worker/edit.ts), Cloudflare baut dann genau einmal.
  */
 import { createBlockEditor, type InsertTarget } from '@/scripts/block-editor';
 import { createCertificates } from './certificates';
@@ -21,16 +23,20 @@ import { ACCENT_PRESETS, BASE_COLORS, contrast, createColors } from './colors';
 import { axisOf, chainOf, childItems, h, isGlobal, isTextElement, isUi, kindAt, nameOf, parentOf, pickTarget, snippetOf, textNodes } from './dom';
 import type { Control, Kind } from './kinds';
 import { createLogo } from './logo';
-import { createMedia, shrink } from './media';
+import { createMedia, stageImage } from './media';
 import { designToggle, subsection } from './panel';
+import { imagePath, newId, pending } from './pending';
+import { previewProjects } from './preview';
 import { projectsPanel } from './projects';
+import { saveAll as saveEverything } from './save';
 import { type StyleProp, createStyles } from './styles';
 import { createTexts } from './texts';
-import { publishEdits } from './publish';
 
 type Tab = 'inspect' | 'insert' | 'layers' | 'spacing' | 'colors';
 
-const SAVED = 'Gespeichert – nach dem automatischen Build in ca. 2 Minuten live.';
+const SAVED = 'Gespeichert – die Website wird jetzt einmal neu gebaut und ist in ca. 3 Minuten live.';
+/** Neu laden ohne Abmelden (z. B. nach „Verwerfen“) */
+const SOFT_RELOAD = 'ed-soft-reload';
 const SIDES = ['top', 'right', 'bottom', 'left'] as const;
 const SIDE_LABELS = { top: 'Oben', right: 'Rechts', bottom: 'Unten', left: 'Links' } as const;
 
@@ -160,7 +166,9 @@ export async function initEditor() {
     const status = await (await fetch('/api/edit/status/')).json();
     if (!status?.enabled) return;
     // Neu laden meldet ab – danach wieder Tastenfolge und Passwort (Seitenwechsel über das Menü bleiben angemeldet)
-    const reloaded = (performance.getEntriesByType('navigation')[0] as PerformanceNavigationTiming | undefined)?.type === 'reload';
+    const soft = sessionStorage.getItem(SOFT_RELOAD) === '1';
+    sessionStorage.removeItem(SOFT_RELOAD);
+    const reloaded = !soft && (performance.getEntriesByType('navigation')[0] as PerformanceNavigationTiming | undefined)?.type === 'reload';
     if (status.loggedIn && reloaded) await logout();
     if (!status.loggedIn || reloaded) await unlock();
   } catch {
@@ -171,7 +179,10 @@ export async function initEditor() {
   const $ = <T extends Element = HTMLElement>(selector: string) => ui.querySelector<T>(selector)!;
   const toggle = $<HTMLButtonElement>('[data-ed-toggle]');
   const sidebar = $('[data-ed-sidebar]');
-  const interactButton = $<HTMLButtonElement>('[data-ed-interact]');
+  const previewButton = $<HTMLButtonElement>('[data-ed-preview]');
+  const previewBar = $('[data-ed-previewbar]');
+  const previewStatus = $('[data-ed-preview-status]');
+  const previewSave = $<HTMLButtonElement>('[data-ed-preview-save]');
   const tabs = [...ui.querySelectorAll<HTMLButtonElement>('[data-ed-tab]')];
   const panels = [...ui.querySelectorAll<HTMLElement>('[data-ed-panel]')];
   const inspector = $('[data-ed-inspector]');
@@ -204,14 +215,18 @@ export async function initEditor() {
   let selectedBlock: string | null = null;
   let hovered: Element | null = null;
   let insertTarget: InsertTarget | null = null;
-  let interact = false;
+  let previewing = false;
+  let saving = false;
   let note = '';
   const expanded = new Set<Element>();
   const mobile = () => matchMedia('(max-width: 47.99rem)').matches;
 
   const blocks = createBlockEditor(ui, {
     onChange: () => afterBlocksChange(),
-    shrink,
+    stageImage: async (file) => {
+      const name = `bausteine/neu-${newId()}`;
+      return { name, url: await stageImage(name, file) };
+    },
     status: (message) => setNote(message),
     select: (id) => selectBlock(id),
     openInsert: (target) => {
@@ -265,65 +280,58 @@ export async function initEditor() {
   };
 
   /* ---------------- Status & Speichern ---------------- */
-  const pendingParts = () => {
-    const textCount = texts.changes().length;
-    const styleCount = styles.count();
-    return [
-      ...(textCount ? [`${textCount} ${textCount === 1 ? 'Text' : 'Texte'}`] : []),
-      ...(styleCount ? [`${styleCount} ${styleCount === 1 ? 'Gestaltung' : 'Gestaltungen'}`] : []),
-      ...(blocks.dirty() ? ['Elemente'] : []),
-      ...(colors.dirty() ? ['Farben'] : []),
-      ...(logo.dirty() ? ['Logo'] : []),
-      ...(media.hero.dirty() ? ['Kopfbild'] : []),
-    ];
-  };
-  const unsaved = () => pendingParts().length > 0;
+  pending.onChange(() => updateStatus());
 
   function updateStatus() {
-    const parts = pendingParts();
-    statusEl.textContent = parts.length ? `Geändert: ${parts.join(' · ')} – noch nicht gespeichert` : note || 'Alles gespeichert.';
+    const parts = pending.parts();
+    const count = pending.count();
+    if (!saving) statusEl.textContent = parts.length ? `Vorgemerkt: ${parts.join(' · ')} – noch nicht gespeichert` : note || 'Alles gespeichert.';
     statusEl.classList.toggle('is-dirty', parts.length > 0);
+    if (!saving) previewStatus.textContent = count ? `${count} ${count === 1 ? 'Änderung' : 'Änderungen'} vorgemerkt` : note || 'Keine Änderungen vorgemerkt';
     // Anzahl der Änderungen am Speichern-Knopf
-    const count = texts.changes().length + styles.count() + (blocks.dirty() ? 1 : 0) + (colors.dirty() ? 1 : 0) + (logo.dirty() ? 1 : 0) + (media.hero.dirty() ? 1 : 0);
-    saveButton.querySelector('.ed-count')?.remove();
-    if (count) saveButton.append(h('span', { class: 'ed-count' }, String(count)));
-    saveButton.disabled = parts.length === 0;
-    discardButton.disabled = parts.length === 0;
+    for (const target of [saveButton, previewSave]) {
+      target.querySelector('.ed-count')?.remove();
+      if (count) target.append(h('span', { class: 'ed-count' }, String(count)));
+      target.disabled = saving || count === 0;
+    }
+    discardButton.disabled = saving || count === 0;
   }
 
   saveButton.addEventListener('click', () => void saveAll());
+  previewSave.addEventListener('click', () => void saveAll());
   async function saveAll() {
-    if (!unsaved()) return;
-    saveButton.disabled = true;
-    statusEl.textContent = 'Wird gespeichert …';
+    if (saving || !pending.count()) return;
+    saving = true;
+    updateStatus();
+    const progress = (text: string) => {
+      statusEl.textContent = text;
+      previewStatus.textContent = text;
+    };
     try {
-      await texts.save();
-      await styles.save();
-      if (blocks.dirty()) await blocks.save();
-      await colors.save();
-      await logo.save();
-      await media.hero.save();
-      await publishEdits();
+      await saveEverything(progress);
+      // Gespeicherter Stand ist der neue Ausgangspunkt – die Vorschau bleibt stehen, bis der Build durch ist
+      texts.collect();
+      styles.committed();
+      colors.committed();
+      logo.committed();
+      blocks.committed();
+      await pending.clear();
       note = SAVED;
     } catch (error) {
       note = error instanceof Error ? error.message : 'Speichern fehlgeschlagen.';
     }
+    saving = false;
     updateStatus();
     renderPanels();
   }
 
-  discardButton.addEventListener('click', () => {
-    if (!confirm('Alle ungespeicherten Änderungen verwerfen?')) return;
-    texts.discard();
-    styles.discard();
-    blocks.discard();
-    colors.discard();
-    logo.discard();
-    media.hero.discard();
-    note = 'Änderungen verworfen.';
-    if (selectedBlock && !blocks.element(selectedBlock)) selectedBlock = null;
-    updateStatus();
-    renderPanels();
+  /** Alle Vormerkungen verwerfen und die Seite im gespeicherten Stand neu laden (ohne Abmelden) */
+  discardButton.addEventListener('click', async () => {
+    if (!confirm(`Alle vorgemerkten Änderungen verwerfen (${pending.parts().join(', ')})?`)) return;
+    await pending.clear();
+    remember();
+    sessionStorage.setItem(SOFT_RELOAD, '1');
+    location.reload();
   });
 
   /* ---------------- Reiter ---------------- */
@@ -355,9 +363,12 @@ export async function initEditor() {
   function fitPage() {
     const root = document.documentElement;
     if (!editing || mobile()) return root.style.removeProperty('--ed-zoom');
+    if (previewing) return root.style.removeProperty('--ed-zoom');
     const styles = getComputedStyle(root);
     const rem = parseFloat(styles.fontSize) || 16;
-    const space = parseFloat(styles.getPropertyValue(sidebar.hasAttribute('data-collapsed') ? '--ed-rail' : '--ed-w')) * rem;
+    // Die Leiste ist verkleinert dargestellt (--ed-scale, EditMode.astro)
+    const scale = parseFloat(styles.getPropertyValue('--ed-scale')) || 1;
+    const space = parseFloat(styles.getPropertyValue(sidebar.hasAttribute('data-collapsed') ? '--ed-rail' : '--ed-w')) * rem * scale;
     const width = root.clientWidth;
     root.style.setProperty('--ed-zoom', String(Math.max(0.4, (width - space) / width)));
   }
@@ -393,6 +404,17 @@ export async function initEditor() {
   }
 
   function afterBlocksChange() {
+    // Stand der Elemente dieser Seite vormerken (bzw. die Vormerkung entfernen, wenn wieder wie gespeichert)
+    if (blocks.isReady()) {
+      const page = location.pathname;
+      const dirty = blocks.dirty();
+      if (dirty || page in pending.get().blocks) {
+        pending.update((draft) => {
+          if (dirty) draft.blocks[page] = structuredClone(blocks.zones());
+          else delete draft.blocks[page];
+        });
+      }
+    }
     updateStatus();
     if (selectedBlock && !blocks.element(selectedBlock)) {
       selectedBlock = null;
@@ -431,8 +453,9 @@ export async function initEditor() {
         step('square', 'Freie Fläche einer Karte', 'die ganze Karte mit allem darin'),
         step('square-plus', 'Einfügen', 'neue Elemente an jede Stelle, auch per Ziehen', () => showTab('insert')),
         step('layers', 'Ebenen', 'Aufbau der ganzen Seite', () => showTab('layers')),
-        step('hand', 'Seite bedienen', 'Hand-Symbol unten oder Alt + Klick – z. B. Reiter wechseln'),
-        step('link', 'Seite wechseln', 'Strg + Klick (Mac: ⌘ + Klick) auf einen Link – der Bearbeiten-Modus bleibt offen'),
+        step('eye', 'Vorschau', 'Knopf unten: Seite normal bedienen, auch Links – alle Änderungen bleiben vorgemerkt', () => setPreview(true)),
+        step('link', 'Seite wechseln', 'Strg + Klick (Mac: ⌘ + Klick) auf einen Link – Änderungen bleiben vorgemerkt'),
+        step('hand', 'Einzelnes bedienen', 'Alt + Klick – z. B. einen Reiter wechseln'),
       ),
     );
   }
@@ -548,9 +571,7 @@ export async function initEditor() {
     input.addEventListener('change', () => {
       const file = input.files?.[0];
       if (!file) return;
-      logo.upload(file);
-      updateStatus();
-      renderPanels();
+      void logo.upload(file).then(() => renderPanels());
     });
     const upload = h('label', { class: 'ed-upload' }, input, 'Eigenes Logo hochladen – am besten PNG mit transparentem Hintergrund');
 
@@ -590,7 +611,7 @@ export async function initEditor() {
     if (el.matches('a[href]')) {
       tools.push(
         h('div', { class: 'ed-field' }, h('span', {}, 'Link-Ziel'), h('p', { class: 'ed-code' }, el.getAttribute('href') ?? '')),
-        h('p', { class: 'ed-note' }, 'Link-Ziele sind fest eingebaut. Seite wechseln: Strg + Klick auf den Link oder hier öffnen.'),
+        h('p', { class: 'ed-note' }, 'Link-Ziele sind fest eingebaut. Seite wechseln: Strg + Klick auf den Link oder hier öffnen – Änderungen bleiben vorgemerkt.'),
         button('Seite öffnen', () => void navigate((el as HTMLAnchorElement).href), { icon: 'link', cls: 'ed-btn--block' }),
       );
     }
@@ -614,7 +635,7 @@ export async function initEditor() {
     }
     const card = el.closest<HTMLElement>('.service[data-service]');
     if (card && (el === card || el.closest('.service__projects'))) {
-      tools.push(h('div', { class: 'ed-field' }, h('span', {}, 'Referenzprojekte'), projectsPanel(card, media.openGallery)));
+      tools.push(h('div', { class: 'ed-field' }, h('span', {}, 'Referenzprojekte'), projectsPanel(card, (carousel) => void media.openGallery(carousel), () => updateStatus())));
     }
     if (!tools.length && el.matches('img, picture, figure') && !el.closest('[data-ub]')) {
       tools.push(h('p', { class: 'ed-note' }, 'Dieses Foto ist fest eingebaut. Kopfbilder und Galerien lassen sich hier tauschen.'));
@@ -1100,7 +1121,12 @@ export async function initEditor() {
       selectLabel = cur ? labelFor(cur) : '';
       updateSelectTools(cur);
     }
-    const quiet = interact || blocks.isPlacing();
+    if (previewing) {
+      [hoverBox, selectBox, spacingOverlay].forEach((box) => (box.hidden = true));
+      requestAnimationFrame(frame);
+      return;
+    }
+    const quiet = blocks.isPlacing();
     place(hoverBox, !quiet && hovered && hovered !== cur ? hovered : null, hoverLabel);
     place(selectBox, cur, selectLabel);
     drawSpacing(tab === 'spacing' && !quiet ? (hovered ?? cur) : null);
@@ -1108,7 +1134,8 @@ export async function initEditor() {
   };
 
   /* ---------------- Ereignisse auf der Seite ---------------- */
-  const passThrough = (event: MouseEvent) => interact || event.altKey;
+  /** Klick wirkt normal: in der Vorschau oder mit Alt */
+  const passThrough = (event: MouseEvent) => previewing || event.altKey;
 
   document.addEventListener(
     'pointermove',
@@ -1177,7 +1204,7 @@ export async function initEditor() {
       void saveAll();
       return;
     }
-    if (event.key !== 'Escape' || document.querySelector('dialog[open]')) return;
+    if (previewing || event.key !== 'Escape' || document.querySelector('dialog[open]')) return;
     if (typing) target.blur();
     else if (insertTarget) {
       insertTarget = null;
@@ -1185,11 +1212,12 @@ export async function initEditor() {
     } else if (current()) select(null);
   });
 
+  // Vormerkungen überstehen Seitenwechsel – nur ein laufendes Speichern darf nicht abgebrochen werden
   window.addEventListener('beforeunload', (event) => {
-    if (editing && unsaved()) event.preventDefault();
+    if (saving) event.preventDefault();
   });
 
-  /** Zu einer anderen Seite wechseln – ungespeicherte Änderungen vorher speichern (oder bleiben) */
+  /** Zu einer anderen Seite wechseln – die Vormerkungen bleiben erhalten und werden dort wieder gezeigt */
   async function navigate(href: string) {
     const url = new URL(href, location.href);
     if (url.origin !== location.origin) {
@@ -1200,22 +1228,17 @@ export async function initEditor() {
       location.hash = url.hash;
       return;
     }
-    if (unsaved()) {
-      if (!confirm('Es gibt ungespeicherte Änderungen. Jetzt speichern und dann die Seite wechseln?')) return;
-      await saveAll();
-      if (unsaved()) return;
-    }
     remember();
     location.href = url.href;
   }
 
   /* Bearbeiten-Modus über Seitenwechsel hinweg offen halten (gleicher Tab) */
   const SESSION_KEY = 'ed-session';
-  type Resume = { tab: Tab; collapsed: boolean };
+  type Resume = { tab: Tab; collapsed: boolean; preview?: boolean };
   function remember() {
     if (!editing) return;
     try {
-      sessionStorage.setItem(SESSION_KEY, JSON.stringify({ tab, collapsed: sidebar.hasAttribute('data-collapsed') }));
+      sessionStorage.setItem(SESSION_KEY, JSON.stringify({ tab, collapsed: sidebar.hasAttribute('data-collapsed'), preview: previewing }));
     } catch {
       /* ohne Speicher: nach dem Seitenwechsel wieder „Bearbeiten“ anklicken */
     }
@@ -1236,13 +1259,26 @@ export async function initEditor() {
     }
   }
 
-  interactButton.addEventListener('click', () => {
-    interact = !interact;
-    interactButton.setAttribute('aria-pressed', String(interact));
-    document.documentElement.classList.toggle('ed-interact', interact);
+  /* ---------------- Vorschau ---------------- */
+  /** Seite wie live: ohne Leiste und Bearbeiten-Hilfen, Klicks und Links wirken normal – Vormerkungen bleiben */
+  function setPreview(on: boolean) {
+    if (!editing) return;
+    previewing = on;
+    const root = document.documentElement;
+    root.classList.toggle('is-editing', !on);
+    root.classList.toggle('ed-preview', on);
+    sidebar.hidden = on;
+    previewBar.hidden = !on;
+    if (on && blocks.isPlacing()) blocks.cancelPlacing();
+    blocks.setPreview(on);
     setHover(null);
-    setNote(interact ? 'Seite bedienen: Klicks wirken normal (Reiter, Galerien …). Zum Auswählen das Hand-Symbol wieder ausschalten.' : '');
-  });
+    fitPage();
+    remember();
+    updateStatus();
+    if (!on) renderPanels();
+  }
+  previewButton.addEventListener('click', () => setPreview(true));
+  $('[data-ed-preview-exit]').addEventListener('click', () => setPreview(false));
 
   $('[data-ed-sheet]').addEventListener('click', () => {
     sidebar.dataset.size = sidebar.dataset.size === 'full' ? 'half' : 'full';
@@ -1255,6 +1291,7 @@ export async function initEditor() {
     document.documentElement.classList.add('is-editing');
     document.querySelectorAll('[data-reveal]').forEach((el) => el.classList.add('is-revealed'));
     texts.collect();
+    texts.applyPending();
     toggle.hidden = true;
     sidebar.hidden = false;
     sidebar.dataset.size = 'half';
@@ -1267,19 +1304,36 @@ export async function initEditor() {
     remember();
     updateStatus();
     requestAnimationFrame(frame);
+    if (resume?.preview) setPreview(true);
+    // Vorgemerkte Änderungen (auch von anderen Seiten) als Vorschau einsetzen
     colors.load();
-    await Promise.all([styles.load(), blocks.start()]);
+    const state = pending.get();
+    const images = new Map<string, string>();
+    for (const path of Object.keys(state.files).filter((file) => file.startsWith('src/assets/images/bausteine/'))) {
+      const name = path.replace(/^src\/assets\/images\//, '').replace(/\.jpg$/, '');
+      const url = await pending.fileUrl(path);
+      if (url && imagePath(name) === path) images.set(name, url);
+    }
+    await Promise.all([
+      styles.load().then(() => styles.applyPending()),
+      blocks.start(state.blocks[location.pathname], images),
+      logo.applyPending(),
+      media.hero.applyPending(),
+      previewProjects().then(() => media.applyPending()),
+    ]);
+    certificates.applyPending();
+    if (previewing) blocks.setPreview(true);
     if (!note.includes('nicht')) note = '';
     updateStatus();
     renderPanels();
   }
 
+  /** Beenden – vorgemerkte Änderungen bleiben im Browser und sind beim nächsten Öffnen wieder da */
   function stop() {
-    if (unsaved() && !confirm('Es gibt ungespeicherte Änderungen. Trotzdem beenden (sie bleiben nur bis zum Neuladen sichtbar)?')) return false;
+    if (previewing) setPreview(false);
     editing = false;
     forget();
     blocks.stop();
-    if (interact) interactButton.click();
     document.documentElement.classList.remove('is-editing');
     fitPage();
     sidebar.hidden = true;
@@ -1302,9 +1356,10 @@ export async function initEditor() {
     ui.hidden = false;
   });
 
-  // Nach einem Seitenwechsel im Bearbeiten-Modus direkt weiterbearbeiten
+  // Nach einem Seitenwechsel im Bearbeiten-Modus direkt weiterbearbeiten – mit Vormerkungen auch nach dem Anmelden
   const resume = resumeState();
-  if (resume) void start(resume);
+  if (resume || pending.count()) void start(resume);
+  else updateStatus();
 }
 
 /** Farbe aus getComputedStyle → #rrggbb */

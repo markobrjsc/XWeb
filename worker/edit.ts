@@ -1,28 +1,27 @@
 /**
- * Bearbeiten-Modus: speichert Änderungen aus der Website als Commits im GitHub-Repository – zuerst auf dem
- * Arbeits-Branch „bearbeitung“, nach dem Speichern per /veroeffentlichen/ in einem Schritt auf main. Cloudflare
- * (mit GitHub verbunden) baut die Seite dann einmal neu – so bleiben die Änderungen dauerhaft.
+ * Bearbeiten-Modus: Änderungen aus der Website landen als Commit im GitHub-Repository; Cloudflare (mit GitHub
+ * verbunden) baut die Seite danach neu – so bleiben sie dauerhaft.
  *
- *  GET  /api/edit/status/            { enabled } – ist der Bearbeiten-Modus verfügbar?
- *  POST /api/edit/texte/             { page, changes: [{ scope: 'global' | 'page', from, to }] } → src/content/edits.json
- *  POST /api/edit/galerie/           { folder, order: [..], hidden: [..] }                        → src/content/galleries.json
- *  POST /api/edit/hero/             { page, image }  – Kopfbild einer Seite                            → src/content/heroes.json
- *  POST /api/edit/farben/           { colors: { "--yellow-500": "#f3a505", … } }                    → src/styles/custom-colors.css
+ * Alles wird zuerst nur im Browser vorgemerkt (src/scripts/editor/pending.ts) und mit „Speichern“ in EINEM Commit
+ * übernommen – ein Build pro Speichern, egal auf wie vielen Seiten bearbeitet wurde.
+ *
+ *  GET  /api/edit/status/            { enabled, loggedIn } – ist der Bearbeiten-Modus verfügbar?
+ *  POST /api/edit/login/ · /logout/  Anmeldung mit Passwort (signiertes Cookie)
  *  GET  /api/edit/abstaende/         gespeicherte Gestaltung je Element (direkt aus GitHub)
- *  POST /api/edit/abstaende/        { rules: { "<Selektor>": { "margin-top": "24px", "color": "#fff", … } | null } }
- *                                   Abstände, Farben, Schrift, Ecken, Ausblenden je Element  → src/content/spacing.json
  *  GET  /api/edit/bausteine/?page=   aktueller Stand der Elemente einer Seite (direkt aus GitHub, auch vor dem Build)
- *  POST /api/edit/bausteine/        { page, zones: { "2": [Block, …] } } – Elemente einer Seite             → src/content/blocks.json
- *  PUT  /api/edit/bild/?folder=&name=  Bild als Base64-Text (vom Browser verkleinert)             → src/assets/images/<folder>/<name>
- *  PUT  /api/edit/logo-bild/?name=     eigenes Logo als Base64-Text (PNG)                          → src/assets/brand/eigene/<name>
- *  POST /api/edit/logo/             { logo, image?, background? } – Logo in der Kopfzeile            → src/content/brand.json
- *  PUT  /api/edit/zertifikat/?name=    neues Zertifikat (PDF) als Base64-Text                        → src/assets/zertifikate/<name>
- *  POST /api/edit/zertifikate/      { items: [{ name, title, issuer, year, hidden }] } – Reihenfolge,
- *                                   Angaben, Ausblenden                                → src/assets/zertifikate/zertifikate.json
- *  POST /api/edit/veroeffentlichen/ alle Commits vom Arbeits-Branch „bearbeitung“ auf main übernehmen (ein Build)
- *  POST /api/edit/projekt/          { slug, service, pillar, title, summary, location?, year? } – neues Referenzprojekt
- *                                   in einer Leistungskarte (Fotos vorher per /bild/ nach referenzen/<slug>/) → src/content/referenzen/<slug>.md
- *  DELETE /api/edit/projekt/        { slug } – Projekt mit Fotos und Galerie-Eintrag löschen (ein Commit)
+ *  PUT  /api/edit/datei/?path=       Bild/Logo/PDF als Base64-Text → Git-Blob (noch kein Commit) → { sha }
+ *  POST /api/edit/speichern/         alles in einem Commit:
+ *         dateien     [{ path, sha }]                                   Bilder, Logo, PDFs (vorher als Blob hochgeladen)
+ *         texte       [{ scope, page, from, to }]                       → src/content/edits.json
+ *         galerien    { "<Ordner>": { order, hidden } }                 → src/content/galleries.json
+ *         kopfbilder  { "<Seite>": "<Bild>" }                           → src/content/heroes.json
+ *         farben      { "--yellow-500": "#f3a505", … } ({} = Standard)  → src/styles/custom-colors.css
+ *         gestaltung  { "<Selektor>": { "margin-top": "24px", … } | null } → src/content/spacing.json
+ *         elemente    { "<Seite>": { "2": [Block, …] } }                 → src/content/blocks.json
+ *         logo        { logo, image?, background? }                     → src/content/brand.json
+ *         zertifikate [{ name, title, issuer, year, hidden }]           → src/assets/zertifikate/zertifikate.json
+ *         projekte    { added: [{ slug, service, pillar, title, summary, location?, year? }], deleted: [slug] }
+ *                                                                       → src/content/referenzen/<slug>.md (+ Fotos)
  *
  * Einrichtung: GitHub-Token (Fine-grained, nur dieses Repository, „Contents: Read and write“)
  *   npx wrangler secret put GITHUB_TOKEN
@@ -58,7 +57,6 @@ const COLORS_PATH = 'src/styles/custom-colors.css';
 const SPACING_PATH = 'src/content/spacing.json';
 const BLOCKS_PATH = 'src/content/blocks.json';
 const BRAND_PATH = 'src/content/brand.json';
-const LOGO_DIR = 'src/assets/brand/eigene';
 const CERTS_DIR = 'src/assets/zertifikate';
 const CERTS_INFO_PATH = `${CERTS_DIR}/zertifikate.json`;
 const PAGE_PATTERN = /^\/[a-z0-9/_-]*$/i;
@@ -115,10 +113,8 @@ const COLOR_VARIABLES = new Set([
 ]);
 const FOLDER_PATTERN = /^[a-z0-9-]+(\/[a-z0-9-]+){0,2}$/;
 const NAME_PATTERN = /^[a-z0-9][a-z0-9_-]{0,80}$/;
-const FILE_PATTERN = /^[a-z0-9][a-z0-9_-]{0,80}\.(jpg|jpeg|png|webp)$/;
 const MAX_IMAGE_BASE64 = 12 * 1024 * 1024;
 const LOGO_FILE_PATTERN = /^logo-[a-z0-9-]{1,40}\.png$/;
-const PDF_PATTERN = /^[a-z0-9][a-z0-9-]{0,80}\.pdf$/;
 /** Logo-Designs (src/lib/logo.ts) */
 const LOGO_DESIGNS = new Set(['standard', 'band', 'badge', 'schrift', 'monogramm', 'maskottchen', 'eigenes']);
 
@@ -226,18 +222,11 @@ const ghHeaders = (env: EditEnv) => ({
   'X-GitHub-Api-Version': '2022-11-28',
 });
 
-const contentsUrl = (env: EditEnv, path: string) =>
-  `https://api.github.com/repos/${env.GITHUB_REPO}/contents/${path.split('/').map(encodeURIComponent).join('/')}`;
 const repoUrl = (env: EditEnv, path: string) => `https://api.github.com/repos/${env.GITHUB_REPO}/${path}`;
-
-/*
- * Arbeits-Branch: Jeder Teil eines Speichervorgangs (Texte, Bilder, Gestaltung …) ist ein eigener Commit. Auf main
- * würde Cloudflare für jeden davon neu bauen. Deshalb landen die Commits auf WORK_BRANCH, und /veroeffentlichen/
- * zieht main am Ende in einem Schritt nach – ein Build pro Speichern.
- */
-const WORK_BRANCH = 'bearbeitung';
+const encodePath = (path: string) => path.split('/').map(encodeURIComponent).join('/');
 const mainBranch = (env: EditEnv) => env.GITHUB_BRANCH ?? 'main';
 
+/** GitHub-API als JSON – 404, 409 und 422 kommen als Status zurück, alles andere wirft */
 async function github<T>(env: EditEnv, path: string, init: RequestInit = {}): Promise<{ status: number; data: T }> {
   const response = await fetch(repoUrl(env, path), {
     ...init,
@@ -249,465 +238,141 @@ async function github<T>(env: EditEnv, path: string, init: RequestInit = {}): Pr
   return { status: response.status, data: (await response.json().catch(() => null)) as T };
 }
 
-/** Wie weit ist der Arbeits-Branch gegenüber main? identical | ahead | behind | diverged | missing */
-async function workStatus(env: EditEnv) {
-  const { status, data } = await github<{ status: string }>(
-    env,
-    `compare/${encodeURIComponent(mainBranch(env))}...${encodeURIComponent(WORK_BRANCH)}`,
-  );
-  return status === 404 ? 'missing' : data.status;
-}
-
-/** Arbeits-Branch anlegen bzw. auf main zurücksetzen, wenn er nichts Eigenes mehr enthält */
-async function prepareWorkBranch(env: EditEnv) {
-  const state = await workStatus(env);
-  if (state === 'ahead' || state === 'diverged') return;
-  const { data } = await github<{ object: { sha: string } }>(env, `git/ref/heads/${encodeURIComponent(mainBranch(env))}`);
-  const sha = data.object.sha;
-  if (state === 'missing') {
-    await github(env, 'git/refs', { method: 'POST', body: JSON.stringify({ ref: `refs/heads/${WORK_BRANCH}`, sha }) });
-  } else if (state === 'behind') {
-    await github(env, `git/refs/heads/${WORK_BRANCH}`, { method: 'PATCH', body: JSON.stringify({ sha, force: true }) });
-  }
-}
-
-/** Alle gespeicherten Änderungen auf main übernehmen – ein Commit-Stand, also ein Build */
-async function publish(env: EditEnv) {
-  const state = await workStatus(env);
-  if (state === 'ahead') {
-    const { data } = await github<{ object: { sha: string } }>(env, `git/ref/heads/${WORK_BRANCH}`);
-    const { status } = await github(env, `git/refs/heads/${encodeURIComponent(mainBranch(env))}`, {
-      method: 'PATCH',
-      body: JSON.stringify({ sha: data.object.sha, force: false }),
-    });
-    if (status === 200 || status === 201) return json({ ok: true });
-  }
-  if (state === 'ahead' || state === 'diverged') {
-    // main hat sich inzwischen geändert (z. B. Code-Update) – zusammenführen statt vorspulen
-    const { status } = await github(env, 'merges', {
-      method: 'POST',
-      body: JSON.stringify({ base: mainBranch(env), head: WORK_BRANCH, commit_message: 'Änderungen aus dem Bearbeiten-Modus übernommen' }),
-    });
-    if (status === 409) return fail('Die Änderungen passen nicht zum aktuellen Stand der Website – bitte Bescheid geben.', 409);
-  }
-  return json({ ok: true });
-}
-
-const toBase64 = (text: string) => {
-  const bytes = new TextEncoder().encode(text);
-  let binary = '';
-  for (let i = 0; i < bytes.length; i += 0x8000) binary += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
-  return btoa(binary);
-};
-const fromBase64 = (b64: string) => new TextDecoder().decode(Uint8Array.from(atob(b64.replace(/\s/g, '')), (c) => c.charCodeAt(0)));
-
-async function readJsonFile<T>(env: EditEnv, path: string, fallback: T): Promise<{ data: T; sha?: string }> {
-  const response = await fetch(`${contentsUrl(env, path)}?ref=${WORK_BRANCH}`, { headers: ghHeaders(env) });
-  if (response.status === 404) return { data: fallback };
+/** Datei als Text lesen (null = gibt es nicht) – roh statt Base64, klappt auch bei großen Dateien */
+async function readText(env: EditEnv, path: string, ref: string): Promise<string | null> {
+  const response = await fetch(`${repoUrl(env, `contents/${encodePath(path)}`)}?ref=${encodeURIComponent(ref)}`, {
+    headers: { ...ghHeaders(env), Accept: 'application/vnd.github.raw+json' },
+  });
+  if (response.status === 404) return null;
   if (!response.ok) throw new Error(`GitHub (${response.status}): ${await response.text()}`);
-  const file = (await response.json()) as { content: string; sha: string };
-  return { data: JSON.parse(fromBase64(file.content)) as T, sha: file.sha };
+  return response.text();
 }
 
-/** Textdatei komplett ersetzen (legt sie bei Bedarf an) */
-async function writeTextFile(env: EditEnv, path: string, content: string, message: string) {
-  for (let attempt = 0; attempt < 3; attempt++) {
-    const current = await fetch(`${contentsUrl(env, path)}?ref=${WORK_BRANCH}`, { headers: ghHeaders(env) });
-    const sha = current.ok ? ((await current.json()) as { sha: string }).sha : undefined;
-    const response = await fetch(contentsUrl(env, path), {
-      method: 'PUT',
-      headers: { ...ghHeaders(env), 'Content-Type': 'application/json' },
-      body: JSON.stringify({ message, content: toBase64(content), branch: WORK_BRANCH, ...(sha ? { sha } : {}) }),
-    });
-    if (response.ok) return;
-    if (response.status !== 409 && response.status !== 422) throw new Error(`GitHub (${response.status}): ${await response.text()}`);
+async function readJsonFile<T>(env: EditEnv, path: string, fallback: T): Promise<T> {
+  const text = await readText(env, path, mainBranch(env));
+  return text ? (JSON.parse(text) as T) : fallback;
+}
+
+/*
+ * Sammel-Commit: Alles, was im Bearbeiten-Modus vorgemerkt wurde (auch auf anderen Seiten), geht mit einem Klick auf
+ * „Speichern“ als EIN Commit auf main – Cloudflare baut dann genau einmal. Gelesen wird vom Stand, auf dem der Commit
+ * aufsetzt; hat sich main inzwischen bewegt, wird alles auf dem neuen Stand wiederholt.
+ */
+type TreeEntry = { path: string; mode: '100644'; type: 'blob'; sha?: string | null; content?: string };
+
+class Changes {
+  private base = '';
+  private baseTree = '';
+  private readonly entries = new Map<string, TreeEntry>();
+  private readonly cache = new Map<string, string | null>();
+  /** Für die Commit-Nachricht */
+  readonly summary: string[] = [];
+
+  constructor(private readonly env: EditEnv) {}
+
+  async begin() {
+    const ref = await github<{ object: { sha: string } }>(this.env, `git/ref/heads/${encodePath(mainBranch(this.env))}`);
+    this.base = ref.data.object.sha;
+    const commit = await github<{ tree: { sha: string } }>(this.env, `git/commits/${this.base}`);
+    this.baseTree = commit.data.tree.sha;
   }
-  throw new Error('Speichern fehlgeschlagen – bitte erneut versuchen.');
-}
 
-/** JSON-Datei lesen, ändern, zurückschreiben – bei gleichzeitigen Änderungen bis zu 3 Versuche */
-async function updateJsonFile<T>(env: EditEnv, path: string, fallback: T, mutate: (data: T) => void, message: string) {
-  for (let attempt = 0; attempt < 3; attempt++) {
-    const { data, sha } = await readJsonFile(env, path, fallback);
-    mutate(data);
-    const response = await fetch(contentsUrl(env, path), {
-      method: 'PUT',
-      headers: { ...ghHeaders(env), 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        message,
-        content: toBase64(`${JSON.stringify(data, null, 2)}\n`),
-        branch: WORK_BRANCH,
-        ...(sha ? { sha } : {}),
-      }),
-    });
-    if (response.ok) return;
-    if (response.status !== 409 && response.status !== 422) throw new Error(`GitHub (${response.status}): ${await response.text()}`);
+  /** Inhalt einer Textdatei – mit den Änderungen dieses Speicherns */
+  async text(path: string): Promise<string | null> {
+    const entry = this.entries.get(path);
+    if (entry) return entry.sha === null ? null : (entry.content ?? '');
+    if (!this.cache.has(path)) this.cache.set(path, await readText(this.env, path, this.base));
+    return this.cache.get(path) ?? null;
   }
-  throw new Error('Speichern fehlgeschlagen – bitte erneut versuchen.');
+
+  async json<T>(path: string, fallback: T): Promise<T> {
+    const text = await this.text(path);
+    return text ? (JSON.parse(text) as T) : fallback;
+  }
+
+  write(path: string, content: string) {
+    this.entries.set(path, { path, mode: '100644', type: 'blob', content });
+  }
+
+  writeJson(path: string, data: unknown) {
+    this.write(path, `${JSON.stringify(data, null, 2)}\n`);
+  }
+
+  /** Datei aus einem vorher hochgeladenen Blob (Bilder, PDFs) */
+  blob(path: string, sha: string) {
+    this.entries.set(path, { path, mode: '100644', type: 'blob', sha });
+  }
+
+  /** Löschen – Dateien des letzten Stands werden entfernt, gerade erst hinzugefügte fallen einfach weg */
+  remove(path: string, existed: boolean) {
+    if (existed) this.entries.set(path, { path, mode: '100644', type: 'blob', sha: null });
+    else this.entries.delete(path);
+  }
+
+  /** Dateien direkt in einem Ordner: letzter Stand plus in diesem Speichern hinzugefügte */
+  async list(dir: string) {
+    const { status, data } = await github<{ path: string; type: string }[]>(this.env, `contents/${encodePath(dir)}?ref=${this.base}`);
+    const existing = status === 200 && Array.isArray(data) ? data.filter((item) => item.type === 'file').map((item) => item.path) : [];
+    const added = [...this.entries.keys()].filter(
+      (path) => path.startsWith(`${dir}/`) && !path.slice(dir.length + 1).includes('/') && !existing.includes(path),
+    );
+    return [...existing.map((path) => ({ path, existed: true })), ...added.map((path) => ({ path, existed: false }))];
+  }
+
+  get size() {
+    return this.entries.size;
+  }
+
+  /** Ein Commit mit allen Änderungen auf main – false, wenn main sich inzwischen bewegt hat */
+  async commit(message: string) {
+    const tree = await github<{ sha: string; message?: string }>(this.env, 'git/trees', {
+      method: 'POST',
+      body: JSON.stringify({ base_tree: this.baseTree, tree: [...this.entries.values()] }),
+    });
+    if (tree.status !== 201) throw new Error(`GitHub (${tree.status}): ${tree.data?.message ?? 'Baum'}`);
+    const commit = await github<{ sha: string; message?: string }>(this.env, 'git/commits', {
+      method: 'POST',
+      body: JSON.stringify({ message, tree: tree.data.sha, parents: [this.base] }),
+    });
+    if (commit.status !== 201) throw new Error(`GitHub (${commit.status}): ${commit.data?.message ?? 'Commit'}`);
+    const update = await github(this.env, `git/refs/heads/${encodePath(mainBranch(this.env))}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ sha: commit.data.sha, force: false }),
+    });
+    return update.status === 200;
+  }
 }
 
-/* ------------------------------------------------------------------------ */
-/* Texte                                                                     */
-/* ------------------------------------------------------------------------ */
-type TextChange = { scope?: unknown; from?: unknown; to?: unknown };
-
-async function saveTexts(request: Request, env: EditEnv) {
-  const body = (await request.json()) as { page?: unknown; changes?: TextChange[] };
-  const page = String(body.page ?? '');
-  if (!/^\/[a-z0-9/_-]*$/i.test(page)) return fail('Ungültige Seite.');
-
-  const changes = (body.changes ?? [])
-    .slice(0, 300)
-    .map((change) => ({
-      scope: change.scope === 'global' ? ('global' as const) : ('page' as const),
-      from: normalizeText(String(change.from ?? '')).slice(0, 5000),
-      to: normalizeText(String(change.to ?? '')).slice(0, 5000),
-    }))
-    .filter((change) => change.from && change.from !== change.to);
-  if (!changes.length) return json({ ok: true, saved: 0 });
-
-  await updateJsonFile<EditsFile>(
-    env,
-    EDITS_PATH,
-    { global: {}, pages: {} },
-    (file) => {
-      file.global ??= {};
-      file.pages ??= {};
-      for (const { scope, from, to } of changes) {
-        const map = scope === 'global' ? file.global : (file.pages[page] ??= {});
-        // Schon einmal bearbeitet? Dann den ursprünglichen Schlüssel weiterführen (Original → neuester Text)
-        const original = Object.keys(map).find((key) => map[key] === from) ?? from;
-        if (original === to) delete map[original];
-        else map[original] = to;
-      }
-      if (file.pages[page] && Object.keys(file.pages[page]).length === 0) delete file.pages[page];
-    },
-    `Texte bearbeitet: ${page} (${changes.length} ${changes.length === 1 ? 'Änderung' : 'Änderungen'})`,
-  );
-  return json({ ok: true, saved: changes.length });
-}
+/** Ein Teil des Speicherns: Fehlermeldung oder null */
+type Step = (tx: Changes, input: unknown) => Promise<string | null>;
+const record = (value: unknown): Record<string, unknown> =>
+  value && typeof value === 'object' && !Array.isArray(value) ? (value as Record<string, unknown>) : {};
+const plural = (count: number, one: string, many: string) => `${count} ${count === 1 ? one : many}`;
 
 /* ------------------------------------------------------------------------ */
-/* Galerien                                                                  */
+/* Dateien (Bilder, Logo, PDFs)                                              */
 /* ------------------------------------------------------------------------ */
-type Galleries = Record<string, { order?: string[]; hidden?: string[] }>;
-
-async function saveGallery(request: Request, env: EditEnv) {
-  const body = (await request.json()) as { folder?: unknown; order?: unknown[]; hidden?: unknown[] };
-  const folder = String(body.folder ?? '');
-  if (!FOLDER_PATTERN.test(folder)) return fail('Ungültiger Ordner.');
-  const clean = (list: unknown[] | undefined) =>
-    [...new Set((list ?? []).map(String).filter((name) => NAME_PATTERN.test(name)))].slice(0, 200);
-  const order = clean(body.order);
-  const hidden = clean(body.hidden);
-
-  await updateJsonFile<Galleries>(
-    env,
-    GALLERIES_PATH,
-    {},
-    (file) => {
-      file[folder] = { order, ...(hidden.length ? { hidden } : {}) };
-    },
-    `Galerie bearbeitet: ${folder}`,
-  );
-  return json({ ok: true });
-}
-
-async function saveHero(request: Request, env: EditEnv) {
-  const body = (await request.json()) as { page?: unknown; image?: unknown };
-  const page = String(body.page ?? '');
-  const image = String(body.image ?? '').toLowerCase();
-  if (!/^\/[a-z0-9/_-]*$/i.test(page) || !/^[a-z0-9][a-z0-9/_-]{0,160}$/.test(image)) return fail('Ungültige Angaben.');
-  await updateJsonFile<Record<string, string>>(env, HEROES_PATH, {}, (file) => {
-    file[page] = image;
-  }, `Kopfbild geändert: ${page} → ${image}`);
-  return json({ ok: true });
-}
-
-/* ------------------------------------------------------------------------ */
-/* Farben                                                                    */
-/* ------------------------------------------------------------------------ */
-async function saveColors(request: Request, env: EditEnv) {
-  const body = (await request.json()) as { colors?: Record<string, unknown> };
-  const entries = Object.entries(body.colors ?? {})
-    .filter(([name]) => COLOR_VARIABLES.has(name))
-    .map(([name, value]) => [name, String(value).trim().toLowerCase()] as const)
-    .filter(([name, value]) => (name === '--ink' ? /^\d{1,3} \d{1,3} \d{1,3}$/.test(value) : /^#[0-9a-f]{6}$/.test(value)));
-
-  // Nur ein ausdrücklich leeres Objekt setzt zurück – fehlende oder ungültige Angaben werden abgelehnt
-  if (!body.colors || typeof body.colors !== 'object') return fail('Farben fehlen.');
-  if (Object.keys(body.colors).length > 0 && entries.length === 0) return fail('Ungültige Farbwerte.');
-
-  const lines = entries.map(([name, value]) => `  ${name}: ${value};`).join('\n');
-  const css =
-    '/* Farbänderungen aus dem Bearbeiten-Modus der Website (Stift oben rechts → Farben).\n' +
-    '   Diese Datei wird beim Speichern automatisch überschrieben; Standardwerte stehen in tokens.css. */\n' +
-    `:root {\n${lines ? `${lines}\n` : ''}}\n`;
-
-  await writeTextFile(env, COLORS_PATH, css, entries.length ? `Farben geändert (${entries.length} Werte)` : 'Farben auf Standard zurückgesetzt');
-  return json({ ok: true, saved: entries.length });
-}
-
-/* ------------------------------------------------------------------------ */
-/* Abstände                                                                  */
-/* ------------------------------------------------------------------------ */
-type Spacing = Record<string, Record<string, string>>;
-
-async function saveSpacing(request: Request, env: EditEnv) {
-  const body = (await request.json()) as { rules?: Record<string, Record<string, unknown> | null> };
-  if (!body.rules || typeof body.rules !== 'object') return fail('Abstände fehlen.');
-
-  const changes = Object.entries(body.rules)
-    .slice(0, 200)
-    .filter(([selector]) => SPACING_SELECTOR.test(selector));
-  if (!changes.length) return fail('Ungültige Angaben.');
-
-  await updateJsonFile<Spacing>(
-    env,
-    SPACING_PATH,
-    {},
-    (file) => {
-      for (const [selector, props] of changes) {
-        if (props === null) {
-          delete file[selector];
-          continue;
-        }
-        const next = { ...(file[selector] ?? {}) };
-        for (const [prop, raw] of Object.entries(props)) {
-          const rule = STYLE_PROPS[prop];
-          if (!rule) continue;
-          if (raw === null || raw === '') delete next[prop];
-          else if (rule.test(String(raw).trim())) next[prop] = String(raw).trim();
-        }
-        if (Object.keys(next).length) file[selector] = next;
-        else delete file[selector];
-      }
-    },
-    `Gestaltung bearbeitet (${changes.length} ${changes.length === 1 ? 'Element' : 'Elemente'})`,
-  );
-  return json({ ok: true, saved: changes.length });
-}
-
-async function loadSpacing(env: EditEnv) {
-  const { data } = await readJsonFile<Spacing>(env, SPACING_PATH, {});
-  return json({ ok: true, rules: data });
-}
-
-/* ------------------------------------------------------------------------ */
-/* Neue Referenzprojekte                                                     */
-/* ------------------------------------------------------------------------ */
-async function createProject(request: Request, env: EditEnv) {
-  const body = (await request.json()) as Record<string, unknown>;
-  const text = (key: string, max: number) => String(body[key] ?? '').replace(/\s+/g, ' ').trim().slice(0, max);
-  const slug = String(body.slug ?? '');
-  const service = String(body.service ?? '');
-  const pillar = String(body.pillar ?? '');
-  const title = text('title', 120);
-  const summary = text('summary', 500);
-  const location = text('location', 80);
-  const year = Number(body.year);
-  if (!SLUG_PATTERN.test(slug) || slug.length > 80) return fail('Ungültiger Projektname.');
-  if (!/^[a-z0-9-]{1,60}$/.test(service) || !PILLARS.has(pillar)) return fail('Ungültige Leistung.');
-  if (!title || !summary) return fail('Bitte Titel und Kurzbeschreibung angeben.');
-  const validYear = Number.isInteger(year) && year >= 1950 && year <= 2100;
-
-  const path = `${PROJECTS_DIR}/${slug}.md`;
-  const existing = await fetch(`${contentsUrl(env, path)}?ref=${WORK_BRANCH}`, { headers: ghHeaders(env) });
-  if (existing.ok) return fail('Ein Projekt mit diesem Namen gibt es schon.', 409);
-
-  // JSON-Strings sind gültige YAML-Werte (doppelte Anführungszeichen, Escapes)
-  const lines = [
-    '---',
-    `# Angelegt im Bearbeiten-Modus. Fotos: src/assets/images/referenzen/${slug}/ (erstes Foto = Titelbild)`,
-    `title: ${JSON.stringify(title)}`,
-    `category: ${pillar}`,
-    ...(location ? [`location: ${JSON.stringify(location)}`] : []),
-    ...(validYear ? [`year: ${year}`] : []),
-    `summary: ${JSON.stringify(summary)}`,
-    `leistungen: [${service}]`,
-    'icon: image',
-    'order: 100',
-    '---',
-    '',
-  ];
-  await writeTextFile(env, path, lines.join('\n'), `Neues Projekt: ${title} (${service})`);
-  return json({ ok: true, slug });
-}
+/** Wohin Dateien aus dem Bearbeiten-Modus dürfen */
+const FILE_PATHS = [
+  /^src\/assets\/images\/[a-z0-9-]+(\/[a-z0-9-]+){0,2}\/[a-z0-9][a-z0-9_-]{0,80}\.(jpg|jpeg|png|webp)$/,
+  /^src\/assets\/brand\/eigene\/logo-[a-z0-9-]{1,40}\.png$/,
+  /^src\/assets\/zertifikate\/[a-z0-9][a-z0-9-]{0,80}\.pdf$/,
+];
+const allowedFile = (path: string) => FILE_PATHS.some((pattern) => pattern.test(path));
 
 /**
- * Projekt löschen – in einem Commit: die Projektdatei, der Galerie-Eintrag und die Fotos. Fotos, die noch
- * woanders genutzt werden (Kopfbild, Elemente, Vorlagen), bleiben liegen, damit der Build nicht bricht.
+ * Datei als Base64-Text aus dem Anfrage-Körper direkt als Git-Blob an GitHub weiterreichen (ohne sie im Worker zu
+ * puffern – kostet kaum Rechenzeit). Ein Blob ist noch kein Commit: Er landet erst mit „Speichern“ im Repository.
  */
-async function deleteProject(request: Request, env: EditEnv) {
-  const body = (await request.json()) as { slug?: unknown };
-  const slug = String(body.slug ?? '');
-  if (!SLUG_PATTERN.test(slug) || slug.length > 80) return fail('Ungültiges Projekt.');
-  const folder = `referenzen/${slug}`;
-  const imageDir = `src/assets/images/${folder}`;
-
-  const projectFile = await github<{ name: string }>(env, `contents/${PROJECTS_DIR}/${slug}.md?ref=${WORK_BRANCH}`);
-  if (projectFile.status === 404) return fail('Dieses Projekt gibt es nicht (mehr).', 404);
-
-  // Wird ein Foto des Projekts noch woanders verwendet?
-  const usedElsewhere = (
-    await Promise.all(
-      [HEROES_PATH, BLOCKS_PATH, 'src/lib/blocks/presets.ts'].map(async (path) => {
-        const { status, data } = await github<{ content: string }>(env, `contents/${path}?ref=${WORK_BRANCH}`);
-        return status === 200 && fromBase64(data.content).includes(`${folder}/`);
-      }),
-    )
-  ).some(Boolean);
-
-  const photos = usedElsewhere ? { status: 404, data: [] } : await github<{ path: string; type: string }[]>(env, `contents/${imageDir}?ref=${WORK_BRANCH}`);
-  const photoPaths = photos.status === 200 ? photos.data.filter((entry) => entry.type === 'file').map((entry) => entry.path) : [];
-
-  const galleries = await readJsonFile<Record<string, unknown>>(env, GALLERIES_PATH, {});
-  const tree: { path: string; mode: '100644'; type: 'blob'; sha?: null; content?: string }[] = [
-    { path: `${PROJECTS_DIR}/${slug}.md`, mode: '100644', type: 'blob', sha: null },
-    ...photoPaths.map((path) => ({ path, mode: '100644' as const, type: 'blob' as const, sha: null })),
-  ];
-  if (folder in galleries.data) {
-    delete galleries.data[folder];
-    tree.push({ path: GALLERIES_PATH, mode: '100644', type: 'blob', content: `${JSON.stringify(galleries.data, null, 2)}\n` });
-  }
-
-  // Ein Commit: Baum auf Basis des Arbeits-Branches mit den gelöschten Dateien
-  const head = await github<{ object: { sha: string } }>(env, `git/ref/heads/${WORK_BRANCH}`);
-  const parent = await github<{ tree: { sha: string } }>(env, `git/commits/${head.data.object.sha}`);
-  const newTree = await github<{ sha: string }>(env, 'git/trees', {
-    method: 'POST',
-    body: JSON.stringify({ base_tree: parent.data.tree.sha, tree }),
-  });
-  const commit = await github<{ sha: string }>(env, 'git/commits', {
-    method: 'POST',
-    body: JSON.stringify({ message: `Projekt gelöscht: ${slug}`, tree: newTree.data.sha, parents: [head.data.object.sha] }),
-  });
-  const update = await github(env, `git/refs/heads/${WORK_BRANCH}`, {
-    method: 'PATCH',
-    body: JSON.stringify({ sha: commit.data.sha, force: false }),
-  });
-  if (update.status !== 200) return fail('Gleichzeitig wurde etwas anderes gespeichert – bitte erneut versuchen.', 409);
-  return json({ ok: true, photosKept: usedElsewhere });
-}
-
-/* ------------------------------------------------------------------------ */
-/* Elemente                                                                  */
-/* ------------------------------------------------------------------------ */
-async function loadBlocks(env: EditEnv, url: URL) {
-  const page = url.searchParams.get('page') ?? '';
-  if (!PAGE_PATTERN.test(page)) return fail('Ungültige Seite.');
-  const { data } = await readJsonFile<BlocksFile>(env, BLOCKS_PATH, {});
-  return json({ ok: true, zones: sanitizePage(data[page]) });
-}
-
-async function saveBlocks(request: Request, env: EditEnv) {
-  const body = (await request.json()) as { page?: unknown; zones?: unknown };
-  const page = String(body.page ?? '');
-  if (!PAGE_PATTERN.test(page)) return fail('Ungültige Seite.');
-  if (!body.zones || typeof body.zones !== 'object') return fail('Elemente fehlen.');
-  const zones = sanitizePage(body.zones);
-  const count = Object.values(zones).reduce((sum, blocks) => sum + blocks.length, 0);
-
-  await updateJsonFile<BlocksFile>(
-    env,
-    BLOCKS_PATH,
-    {},
-    (file) => {
-      if (count) file[page] = zones;
-      else delete file[page];
-    },
-    count ? `Elemente bearbeitet: ${page}` : `Elemente entfernt: ${page}`,
-  );
-  return json({ ok: true, zones });
-}
-
-/** Bild als Datei committen – der Base64-Text wird unverändert durchgereicht (kostet kaum Rechenzeit) */
-async function uploadImage(request: Request, env: EditEnv, url: URL) {
-  const folder = url.searchParams.get('folder') ?? '';
-  const name = (url.searchParams.get('name') ?? '').toLowerCase();
-  if (!FOLDER_PATTERN.test(folder) || !FILE_PATTERN.test(name)) return fail('Ungültiger Ordner oder Dateiname.');
-  const error = await uploadFile(request, env, `src/assets/images/${folder}/${name}`, `Bild hinzugefügt: ${folder}/${name}`);
-  return error ?? json({ ok: true, name: name.replace(/\.[^.]+$/, '') });
-}
-
-/** Eigenes Logo (PNG, im Browser verkleinert) → src/assets/brand/eigene/ */
-async function uploadLogo(request: Request, env: EditEnv, url: URL) {
-  const name = (url.searchParams.get('name') ?? '').toLowerCase();
-  if (!LOGO_FILE_PATTERN.test(name)) return fail('Ungültiger Dateiname.');
-  const error = await uploadFile(request, env, `${LOGO_DIR}/${name}`, `Logo hochgeladen: ${name}`);
-  return error ?? json({ ok: true, name });
-}
-
-/** Neues Zertifikat (PDF) → src/assets/zertifikate/ – die Seitenbilder erzeugt der Build */
-async function uploadCertificate(request: Request, env: EditEnv, url: URL) {
-  const name = (url.searchParams.get('name') ?? '').toLowerCase();
-  if (!PDF_PATTERN.test(name)) return fail('Ungültiger Dateiname.');
-  const error = await uploadFile(request, env, `${CERTS_DIR}/${name}`, `Zertifikat hochgeladen: ${name}`);
-  return error ?? json({ ok: true, name: name.replace(/\.pdf$/, '') });
-}
-
-/** Logo in der Kopfzeile: Design, eigenes Bild, Hintergrund → src/content/brand.json */
-async function saveLogo(request: Request, env: EditEnv) {
-  const body = (await request.json()) as { logo?: unknown; image?: unknown; background?: unknown };
-  const logo = String(body.logo ?? '');
-  const image = body.image === undefined ? undefined : String(body.image);
-  if (!LOGO_DESIGNS.has(logo)) return fail('Unbekanntes Logo-Design.');
-  if (image !== undefined && !LOGO_FILE_PATTERN.test(image)) return fail('Ungültiges Logo-Bild.');
-  await updateJsonFile<Record<string, string>>(
-    env,
-    BRAND_PATH,
-    {},
-    (file) => {
-      file.logo = logo;
-      if (image) file.image = image;
-      file.background = body.background === 'ohne' ? 'ohne' : 'hell';
-    },
-    `Logo geändert: ${logo}`,
-  );
-  return json({ ok: true });
-}
-
-/** Zertifikate: Reihenfolge, Titel, Aussteller, Jahr, ausgeblendet → src/assets/zertifikate/zertifikate.json */
-async function saveCertificates(request: Request, env: EditEnv) {
-  const body = (await request.json()) as { items?: unknown[] };
-  if (!Array.isArray(body.items)) return fail('Zertifikate fehlen.');
-  const text = (value: unknown, max: number) => normalizeText(String(value ?? '')).slice(0, max);
-  const items = body.items
-    .slice(0, 100)
-    .map((raw) => raw as Record<string, unknown>)
-    .map((item) => ({ name: String(item.name ?? ''), title: text(item.title, 300), issuer: text(item.issuer, 300), year: text(item.year, 20), hidden: item.hidden === true }))
-    .filter((item) => /^[a-z0-9][a-z0-9-]{0,80}$/.test(item.name));
-  await updateJsonFile<Record<string, Record<string, unknown>>>(
-    env,
-    CERTS_INFO_PATH,
-    {},
-    (file) => {
-      // Neu aufbauen – die Reihenfolge der Einträge ist die Reihenfolge auf der Seite
-      const next: Record<string, Record<string, unknown>> = {};
-      for (const { name, title, issuer, year, hidden } of items) {
-        next[name] = { ...(title ? { title } : {}), ...(issuer ? { issuer } : {}), ...(year ? { year } : {}), ...(hidden ? { hidden: true } : {}) };
-      }
-      for (const key of Object.keys(file)) delete file[key];
-      Object.assign(file, next);
-    },
-    `Zertifikate bearbeitet (${items.length})`,
-  );
-  return json({ ok: true });
-}
-
-/**
- * Datei als Base64-Text aus dem Anfrage-Körper direkt an GitHub weiterreichen (ohne sie im Worker zu puffern).
- * Liefert eine Fehlerantwort oder null bei Erfolg.
- */
-async function uploadFile(request: Request, env: EditEnv, path: string, message: string): Promise<Response | null> {
+async function uploadBlob(request: Request, env: EditEnv, url: URL) {
+  const path = url.searchParams.get('path') ?? '';
+  if (!allowedFile(path)) return fail('Ungültiger Dateiname.');
   const length = Number(request.headers.get('Content-Length'));
   if (!request.body || !Number.isFinite(length) || length <= 0) return fail('Datei fehlt.');
   if (length > MAX_IMAGE_BASE64) return fail('Die Datei ist zu groß (höchstens ca. 9 MB).', 413);
 
   const encoder = new TextEncoder();
-  const prefix = encoder.encode(
-    `{"message":${JSON.stringify(message)},"branch":${JSON.stringify(WORK_BRANCH)},"content":"`,
-  );
+  const prefix = encoder.encode('{"encoding":"base64","content":"');
   const suffix = encoder.encode('"}');
   const { readable, writable } = new FixedLengthStream(prefix.length + length + suffix.length);
 
@@ -724,18 +389,331 @@ async function uploadFile(request: Request, env: EditEnv, path: string, message:
     await writer.close();
   })();
 
-  const response = await fetch(contentsUrl(env, path), {
-    method: 'PUT',
+  const response = await fetch(repoUrl(env, 'git/blobs'), {
+    method: 'POST',
     headers: { ...ghHeaders(env), 'Content-Type': 'application/json' },
     body: readable,
   });
   await pump;
   if (!response.ok) {
-    const detail = await response.text();
-    console.error('GitHub-Upload', response.status, detail);
-    return fail(response.status === 422 ? 'Eine Datei mit diesem Namen gibt es schon.' : 'Hochladen fehlgeschlagen.', 502);
+    console.error('GitHub-Upload', response.status, await response.text());
+    return fail('Hochladen fehlgeschlagen.', 502);
+  }
+  const { sha } = (await response.json()) as { sha: string };
+  return json({ ok: true, sha });
+}
+
+const applyFiles: Step = async (tx, input) => {
+  const files = Array.isArray(input) ? input.slice(0, 300).map(record) : [];
+  for (const file of files) {
+    const path = String(file.path ?? '');
+    const sha = String(file.sha ?? '');
+    if (!allowedFile(path) || !/^[0-9a-f]{40}$/.test(sha)) return 'Ungültige Datei.';
+    tx.blob(path, sha);
   }
   return null;
+};
+
+/* ------------------------------------------------------------------------ */
+/* Texte                                                                     */
+/* ------------------------------------------------------------------------ */
+const applyTexts: Step = async (tx, input) => {
+  const changes = (Array.isArray(input) ? input : [])
+    .slice(0, 500)
+    .map(record)
+    .map((change) => ({
+      scope: change.scope === 'global' ? ('global' as const) : ('page' as const),
+      page: String(change.page ?? ''),
+      from: normalizeText(String(change.from ?? '')).slice(0, 5000),
+      to: normalizeText(String(change.to ?? '')).slice(0, 5000),
+    }))
+    .filter((change) => change.from && change.from !== change.to && PAGE_PATTERN.test(change.page));
+  if (!changes.length) return null;
+
+  const file = await tx.json<EditsFile>(EDITS_PATH, { global: {}, pages: {} });
+  file.global ??= {};
+  file.pages ??= {};
+  for (const { scope, page, from, to } of changes) {
+    const map = scope === 'global' ? file.global : (file.pages[page] ??= {});
+    // Schon einmal bearbeitet? Dann den ursprünglichen Schlüssel weiterführen (Original → neuester Text)
+    const original = Object.keys(map).find((key) => map[key] === from) ?? from;
+    if (original === to) delete map[original];
+    else map[original] = to;
+    if (scope === 'page' && Object.keys(map).length === 0) delete file.pages[page];
+  }
+  tx.writeJson(EDITS_PATH, file);
+  tx.summary.push(plural(changes.length, 'Text', 'Texte'));
+  return null;
+};
+
+/* ------------------------------------------------------------------------ */
+/* Galerien und Kopfbilder                                                   */
+/* ------------------------------------------------------------------------ */
+type Galleries = Record<string, { order?: string[]; hidden?: string[] }>;
+
+const applyGalleries: Step = async (tx, input) => {
+  const entries = Object.entries(record(input)).slice(0, 100);
+  if (!entries.length) return null;
+  const clean = (list: unknown) =>
+    [...new Set((Array.isArray(list) ? list : []).map(String).filter((name) => NAME_PATTERN.test(name)))].slice(0, 200);
+  const file = await tx.json<Galleries>(GALLERIES_PATH, {});
+  for (const [folder, raw] of entries) {
+    if (!FOLDER_PATTERN.test(folder)) return 'Ungültiger Galerie-Ordner.';
+    const hidden = clean(record(raw).hidden);
+    file[folder] = { order: clean(record(raw).order), ...(hidden.length ? { hidden } : {}) };
+  }
+  tx.writeJson(GALLERIES_PATH, file);
+  tx.summary.push(entries.length === 1 ? `Galerie ${entries[0][0]}` : `${entries.length} Galerien`);
+  return null;
+};
+
+const applyHeroes: Step = async (tx, input) => {
+  const entries = Object.entries(record(input)).slice(0, 50);
+  if (!entries.length) return null;
+  const file = await tx.json<Record<string, string>>(HEROES_PATH, {});
+  for (const [page, raw] of entries) {
+    const image = String(raw ?? '').toLowerCase();
+    if (!PAGE_PATTERN.test(page) || !/^[a-z0-9][a-z0-9/_-]{0,160}$/.test(image)) return 'Ungültiges Kopfbild.';
+    file[page] = image;
+  }
+  tx.writeJson(HEROES_PATH, file);
+  tx.summary.push(plural(entries.length, 'Kopfbild', 'Kopfbilder'));
+  return null;
+};
+
+/* ------------------------------------------------------------------------ */
+/* Farben                                                                    */
+/* ------------------------------------------------------------------------ */
+/** input: { "--yellow-500": "#f3a505", … } – ein leeres Objekt setzt auf die Standardfarben zurück */
+const applyColors: Step = async (tx, input) => {
+  if (input === undefined || input === null) return null;
+  if (typeof input !== 'object' || Array.isArray(input)) return 'Ungültige Farben.';
+  const entries = Object.entries(input as Record<string, unknown>)
+    .filter(([name]) => COLOR_VARIABLES.has(name))
+    .map(([name, value]) => [name, String(value).trim().toLowerCase()] as const)
+    .filter(([name, value]) => (name === '--ink' ? /^\d{1,3} \d{1,3} \d{1,3}$/.test(value) : /^#[0-9a-f]{6}$/.test(value)));
+  if (Object.keys(input).length > 0 && entries.length === 0) return 'Ungültige Farbwerte.';
+
+  const lines = entries.map(([name, value]) => `  ${name}: ${value};`).join('\n');
+  tx.write(
+    COLORS_PATH,
+    '/* Farbänderungen aus dem Bearbeiten-Modus der Website (Stift oben rechts → Farben).\n' +
+      '   Diese Datei wird beim Speichern automatisch überschrieben; Standardwerte stehen in tokens.css. */\n' +
+      `:root {\n${lines ? `${lines}\n` : ''}}\n`,
+  );
+  tx.summary.push(entries.length ? 'Farben' : 'Farben zurückgesetzt');
+  return null;
+};
+
+/* ------------------------------------------------------------------------ */
+/* Gestaltung je Element                                                     */
+/* ------------------------------------------------------------------------ */
+type Spacing = Record<string, Record<string, string>>;
+
+/** input: { "<Selektor>": { "margin-top": "24px", … } | null } – null entfernt alle eigenen Werte */
+const applySpacing: Step = async (tx, input) => {
+  const changes = Object.entries(record(input))
+    .slice(0, 300)
+    .filter(([selector]) => SPACING_SELECTOR.test(selector));
+  if (!changes.length) return null;
+  const file = await tx.json<Spacing>(SPACING_PATH, {});
+  for (const [selector, props] of changes) {
+    if (props === null) {
+      delete file[selector];
+      continue;
+    }
+    const next = { ...(file[selector] ?? {}) };
+    for (const [prop, raw] of Object.entries(record(props))) {
+      const rule = STYLE_PROPS[prop];
+      if (!rule) continue;
+      if (raw === null || raw === '') delete next[prop];
+      else if (rule.test(String(raw).trim())) next[prop] = String(raw).trim();
+    }
+    if (Object.keys(next).length) file[selector] = next;
+    else delete file[selector];
+  }
+  tx.writeJson(SPACING_PATH, file);
+  tx.summary.push(plural(changes.length, 'Gestaltung', 'Gestaltungen'));
+  return null;
+};
+
+async function loadSpacing(env: EditEnv) {
+  return json({ ok: true, rules: await readJsonFile<Spacing>(env, SPACING_PATH, {}) });
+}
+
+/* ------------------------------------------------------------------------ */
+/* Elemente aus dem Baukasten                                                */
+/* ------------------------------------------------------------------------ */
+async function loadBlocks(env: EditEnv, url: URL) {
+  const page = url.searchParams.get('page') ?? '';
+  if (!PAGE_PATTERN.test(page)) return fail('Ungültige Seite.');
+  const data = await readJsonFile<BlocksFile>(env, BLOCKS_PATH, {});
+  return json({ ok: true, zones: sanitizePage(data[page]) });
+}
+
+/** input: { "<Seite>": { "2": [Block, …] } } – der komplette neue Stand je geänderter Seite */
+const applyBlocks: Step = async (tx, input) => {
+  const pages = Object.entries(record(input)).slice(0, 50);
+  if (!pages.length) return null;
+  const file = await tx.json<BlocksFile>(BLOCKS_PATH, {});
+  for (const [page, raw] of pages) {
+    if (!PAGE_PATTERN.test(page)) return 'Ungültige Seite.';
+    const zones = sanitizePage(raw);
+    if (Object.values(zones).some((blocks) => blocks.length)) file[page] = zones;
+    else delete file[page];
+  }
+  tx.writeJson(BLOCKS_PATH, file);
+  tx.summary.push(pages.length === 1 ? `Elemente ${pages[0][0]}` : `Elemente auf ${pages.length} Seiten`);
+  return null;
+};
+
+/* ------------------------------------------------------------------------ */
+/* Logo                                                                      */
+/* ------------------------------------------------------------------------ */
+/** input: { logo, image?, background? } → src/content/brand.json (das eigene Bild kommt über die Dateien) */
+const applyLogo: Step = async (tx, input) => {
+  if (!input) return null;
+  const body = record(input);
+  const logo = String(body.logo ?? '');
+  const image = body.image === undefined ? undefined : String(body.image);
+  if (!LOGO_DESIGNS.has(logo)) return 'Unbekanntes Logo-Design.';
+  if (image !== undefined && !LOGO_FILE_PATTERN.test(image)) return 'Ungültiges Logo-Bild.';
+  const file = await tx.json<Record<string, string>>(BRAND_PATH, {});
+  file.logo = logo;
+  if (image) file.image = image;
+  file.background = body.background === 'ohne' ? 'ohne' : 'hell';
+  tx.writeJson(BRAND_PATH, file);
+  tx.summary.push(`Logo: ${logo}`);
+  return null;
+};
+
+/* ------------------------------------------------------------------------ */
+/* Zertifikate                                                               */
+/* ------------------------------------------------------------------------ */
+/** input: [{ name, title, issuer, year, hidden }] – Reihenfolge = Reihenfolge auf der Seite (neue PDFs über die Dateien) */
+const applyCertificates: Step = async (tx, input) => {
+  if (!Array.isArray(input)) return null;
+  const text = (value: unknown, max: number) => normalizeText(String(value ?? '')).slice(0, max);
+  const items = input
+    .slice(0, 100)
+    .map(record)
+    .map((item) => ({ name: String(item.name ?? ''), title: text(item.title, 300), issuer: text(item.issuer, 300), year: text(item.year, 20), hidden: item.hidden === true }))
+    .filter((item) => /^[a-z0-9][a-z0-9-]{0,80}$/.test(item.name));
+  const next: Record<string, Record<string, unknown>> = {};
+  for (const { name, title, issuer, year, hidden } of items) {
+    next[name] = { ...(title ? { title } : {}), ...(issuer ? { issuer } : {}), ...(year ? { year } : {}), ...(hidden ? { hidden: true } : {}) };
+  }
+  tx.writeJson(CERTS_INFO_PATH, next);
+  tx.summary.push(plural(items.length, 'Zertifikat', 'Zertifikate'));
+  return null;
+};
+
+/* ------------------------------------------------------------------------ */
+/* Referenzprojekte                                                          */
+/* ------------------------------------------------------------------------ */
+/**
+ * input: { added: [{ slug, service, pillar, title, summary, location?, year? }], deleted: [slug] }
+ * Neue Projekte: src/content/referenzen/<slug>.md (Fotos kommen über die Dateien nach referenzen/<slug>/).
+ * Gelöschte: Projektdatei, Galerie-Eintrag und Fotos – Fotos, die noch woanders genutzt werden (Kopfbild, Elemente,
+ * Vorlagen), bleiben liegen, damit der Build nicht bricht.
+ */
+const applyProjects: Step = async (tx, input) => {
+  const body = record(input);
+  const added = (Array.isArray(body.added) ? body.added : []).slice(0, 30).map(record);
+  const deleted = [...new Set((Array.isArray(body.deleted) ? body.deleted : []).map(String))].slice(0, 30);
+
+  for (const project of added) {
+    const text = (key: string, max: number) => String(project[key] ?? '').replace(/\s+/g, ' ').trim().slice(0, max);
+    const slug = String(project.slug ?? '');
+    const service = String(project.service ?? '');
+    const pillar = String(project.pillar ?? '');
+    const title = text('title', 120);
+    const summary = text('summary', 500);
+    const location = text('location', 80);
+    const year = Number(project.year);
+    if (!SLUG_PATTERN.test(slug) || slug.length > 80) return 'Ungültiger Projektname.';
+    if (!/^[a-z0-9-]{1,60}$/.test(service) || !PILLARS.has(pillar)) return 'Ungültige Leistung.';
+    if (!title || !summary) return 'Bitte Titel und Kurzbeschreibung angeben.';
+    const path = `${PROJECTS_DIR}/${slug}.md`;
+    if ((await tx.text(path)) !== null) return `Ein Projekt „${slug}“ gibt es schon.`;
+    const validYear = Number.isInteger(year) && year >= 1950 && year <= 2100;
+    // JSON-Strings sind gültige YAML-Werte (doppelte Anführungszeichen, Escapes)
+    const lines = [
+      '---',
+      `# Angelegt im Bearbeiten-Modus. Fotos: src/assets/images/referenzen/${slug}/ (erstes Foto = Titelbild)`,
+      `title: ${JSON.stringify(title)}`,
+      `category: ${pillar}`,
+      ...(location ? [`location: ${JSON.stringify(location)}`] : []),
+      ...(validYear ? [`year: ${year}`] : []),
+      `summary: ${JSON.stringify(summary)}`,
+      `leistungen: [${service}]`,
+      'icon: image',
+      'order: 100',
+      '---',
+      '',
+    ];
+    tx.write(path, lines.join('\n'));
+    tx.summary.push(`Neues Projekt: ${title}`);
+  }
+
+  for (const slug of deleted) {
+    if (!SLUG_PATTERN.test(slug) || slug.length > 80) return 'Ungültiges Projekt.';
+    const folder = `referenzen/${slug}`;
+    const path = `${PROJECTS_DIR}/${slug}.md`;
+    if ((await tx.text(path)) === null) continue;
+    tx.remove(path, true);
+
+    // Wird ein Foto des Projekts noch woanders verwendet?
+    const usage = await Promise.all([HEROES_PATH, BLOCKS_PATH, 'src/lib/blocks/presets.ts'].map((file) => tx.text(file)));
+    if (!usage.some((content) => content?.includes(`${folder}/`))) {
+      for (const photo of await tx.list(`src/assets/images/${folder}`)) tx.remove(photo.path, photo.existed);
+    }
+    const galleries = await tx.json<Galleries>(GALLERIES_PATH, {});
+    if (folder in galleries) {
+      delete galleries[folder];
+      tx.writeJson(GALLERIES_PATH, galleries);
+    }
+    tx.summary.push(`Projekt gelöscht: ${slug}`);
+  }
+  return null;
+};
+
+/* ------------------------------------------------------------------------ */
+/* Speichern                                                                 */
+/* ------------------------------------------------------------------------ */
+/**
+ * Alle vorgemerkten Änderungen in einem Commit. Dateien vorher per PUT /api/edit/datei/ hochladen.
+ * Reihenfolge: Projekte zuletzt – ihr Löschen prüft, ob Fotos noch als Kopfbild oder in Elementen vorkommen.
+ */
+async function saveAll(request: Request, env: EditEnv) {
+  if (Number(request.headers.get('Content-Length') ?? 0) > 4 * 1024 * 1024) return fail('Zu viele Änderungen auf einmal.', 413);
+  const body = record(await request.json().catch(() => null));
+  const steps: [Step, unknown][] = [
+    [applyFiles, body.dateien],
+    [applyTexts, body.texte],
+    [applyGalleries, body.galerien],
+    [applyHeroes, body.kopfbilder],
+    [applyColors, body.farben],
+    [applySpacing, body.gestaltung],
+    [applyBlocks, body.elemente],
+    [applyLogo, body.logo],
+    [applyCertificates, body.zertifikate],
+    [applyProjects, body.projekte],
+  ];
+
+  for (let attempt = 0; attempt < 3; attempt++) {
+    const tx = new Changes(env);
+    await tx.begin();
+    for (const [step, input] of steps) {
+      const error = await step(tx, input);
+      if (error) return fail(error);
+    }
+    if (!tx.size) return json({ ok: true, saved: 0 });
+    const summary = tx.summary.length ? tx.summary.join(' · ') : 'Dateien';
+    if (await tx.commit(`Bearbeitet: ${summary}`)) return json({ ok: true, saved: tx.summary.length });
+    // main hat sich gerade bewegt (z. B. Code-Update) – alles auf dem neuen Stand wiederholen
+  }
+  return fail('Gleichzeitig wurde etwas anderes gespeichert – bitte noch einmal auf „Speichern“ klicken.', 409);
 }
 
 /* ------------------------------------------------------------------------ */
@@ -754,23 +732,10 @@ export async function handleEdit(request: Request, env: EditEnv, url: URL, pathn
   if (!(await hasSession(request, env))) return fail('Bitte zuerst anmelden.', 401);
 
   try {
-    if (pathname === '/api/edit/veroeffentlichen' && request.method === 'POST') return await publish(env);
-    await prepareWorkBranch(env);
-    if (pathname === '/api/edit/texte' && request.method === 'POST') return await saveTexts(request, env);
-    if (pathname === '/api/edit/galerie' && request.method === 'POST') return await saveGallery(request, env);
-    if (pathname === '/api/edit/hero' && request.method === 'POST') return await saveHero(request, env);
-    if (pathname === '/api/edit/farben' && request.method === 'POST') return await saveColors(request, env);
-    if (pathname === '/api/edit/abstaende' && request.method === 'POST') return await saveSpacing(request, env);
     if (pathname === '/api/edit/abstaende' && request.method === 'GET') return await loadSpacing(env);
-    if (pathname === '/api/edit/projekt' && request.method === 'POST') return await createProject(request, env);
-    if (pathname === '/api/edit/projekt' && request.method === 'DELETE') return await deleteProject(request, env);
     if (pathname === '/api/edit/bausteine' && request.method === 'GET') return await loadBlocks(env, url);
-    if (pathname === '/api/edit/bausteine' && request.method === 'POST') return await saveBlocks(request, env);
-    if (pathname === '/api/edit/bild' && request.method === 'PUT') return await uploadImage(request, env, url);
-    if (pathname === '/api/edit/logo-bild' && request.method === 'PUT') return await uploadLogo(request, env, url);
-    if (pathname === '/api/edit/logo' && request.method === 'POST') return await saveLogo(request, env);
-    if (pathname === '/api/edit/zertifikat' && request.method === 'PUT') return await uploadCertificate(request, env, url);
-    if (pathname === '/api/edit/zertifikate' && request.method === 'POST') return await saveCertificates(request, env);
+    if (pathname === '/api/edit/datei' && request.method === 'PUT') return await uploadBlob(request, env, url);
+    if (pathname === '/api/edit/speichern' && request.method === 'POST') return await saveAll(request, env);
   } catch (error) {
     console.error(error);
     const message = error instanceof Error ? error.message : '';

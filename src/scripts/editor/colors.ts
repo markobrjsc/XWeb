@@ -2,8 +2,9 @@
  * Bearbeiten-Modus – Grundfarben der Website (Reiter „Farben“).
  * Aus wenigen Grundfarben werden alle abhängigen Töne berechnet (Akzent-Abstufungen, dunkle Flächen, Schrift auf
  * dem Akzent …) und sofort als Vorschau auf :root gesetzt – jedes Element, das die Farben über var(--…) nutzt,
- * passt sich mit an. Gespeichert über den gemeinsamen Knopf: POST /api/edit/farben/ → src/styles/custom-colors.css.
+ * passt sich mit an. Vorgemerkt in ./pending.ts (gilt auf allen Seiten), mit „Speichern“ → src/styles/custom-colors.css.
  */
+import { pending } from './pending';
 
 export type BaseColor = { name: string; label: string; hint: string; fallback: string };
 
@@ -76,6 +77,11 @@ const toHex = (value: string) => {
   return rgbToHex(rgb);
 };
 
+/** Was beim Speichern in custom-colors.css landet – Standardfarben = leer (dann gelten die aus tokens.css) */
+export function colorsPayload(base: Record<string, string>) {
+  return BASE_COLORS.every((c) => base[c.name] === c.fallback) ? {} : derive(base);
+}
+
 export function createColors() {
   const root = document.documentElement;
   const defaults = Object.fromEntries(BASE_COLORS.map((c) => [c.name, c.fallback]));
@@ -101,38 +107,33 @@ export function createColors() {
 
   const dirty = () => BASE_COLORS.some((c) => current[c.name] !== saved[c.name]);
 
+  const remember = () =>
+    pending.update((draft) => {
+      draft.colors = dirty() ? { ...current } : null;
+    });
+
   return {
+    /** Gespeicherten Stand lesen und vorgemerkte Farben zeigen */
     load() {
       saved = read();
-      current = { ...saved };
+      current = { ...saved, ...(pending.get().colors ?? {}) };
+      apply();
     },
     value: (name: string) => current[name] ?? saved[name] ?? defaults[name],
     set(name: string, value: string) {
       current = { ...current, [name]: value.toLowerCase() };
       apply();
+      remember();
     },
     /** Alle Grundfarben auf die Werte aus tokens.css (Vorschau, Speichern übernimmt) */
     resetToDefaults() {
       current = { ...defaults };
       apply();
+      remember();
     },
     isDefault: () => BASE_COLORS.every((c) => current[c.name] === defaults[c.name]),
-    dirty,
-    discard() {
-      current = { ...saved };
-      apply();
-    },
-    async save() {
-      if (!dirty()) return;
-      const isDefault = BASE_COLORS.every((c) => current[c.name] === defaults[c.name]);
-      const response = await fetch('/api/edit/farben/', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ colors: isDefault ? {} : derive(current) }),
-      });
-      const result = await response.json();
-      if (!response.ok || !result.ok) throw new Error(result.error || 'Farben konnten nicht gespeichert werden.');
-      // Vorschau bleibt stehen, bis der Build die Farben übernommen hat
+    /** Nach dem Speichern: der vorgemerkte Stand gilt als gespeichert (die Vorschau bleibt bis zum Build stehen) */
+    committed() {
       saved = { ...current };
       previewed = [];
     },

@@ -1,11 +1,14 @@
 /**
  * Bearbeiten-Modus – Logo in der Kopfzeile (src/components/layout/HeaderLogo.astro).
  * Design wählen (Vorlagen aus EditMode.astro, <template data-ed-logo>) oder eigenes Bild hochladen; Vorschau sofort
- * im Header, gespeichert über den gemeinsamen Knopf:
- *   eigenes Bild → PUT /api/edit/logo-bild/?name=… → src/assets/brand/eigene/<name>
- *   Auswahl      → POST /api/edit/logo/ { logo, image?, background? } → src/content/brand.json
+ * im Header (auf allen Seiten), vorgemerkt in ./pending.ts. Mit „Speichern“:
+ *   eigenes Bild → src/assets/brand/eigene/logo-<id>.png
+ *   Auswahl      → src/content/brand.json { logo, image?, background? }
  */
 import { type LogoDesign, LOGO_DESIGNS } from '@/lib/logo';
+import { newId, pending } from './pending';
+
+const imageFile = (image: string) => `src/assets/brand/eigene/${image}`;
 
 type State = { logo: LogoDesign; image: string; background: 'hell' | 'ohne' };
 
@@ -47,10 +50,8 @@ export function createLogo(ui: HTMLElement) {
 
   let saved: State = read();
   let state: State = { ...saved };
-  /** Original-Markup für „Verwerfen“ */
-  let original = current()?.cloneNode(true) as HTMLElement | undefined;
-  /** Neu gewähltes Bild (bis zum Speichern nur im Browser) */
-  let file: File | null = null;
+  /** Neu gewähltes Bild (bis zum Speichern nur im Browser): Dateiname und Vorschau */
+  let newImage = '';
   let fileUrl = '';
   /** Vorhandenes eigenes Bild (gespeichert) – zum Zurückwechseln */
   const savedImage = saved.logo === 'eigenes' ? (current()?.cloneNode(true) as HTMLElement) : null;
@@ -84,6 +85,13 @@ export function createLogo(ui: HTMLElement) {
     if (el && next) el.replaceWith(next);
   };
 
+  const dirty = () => Boolean(newImage) || state.logo !== saved.logo || (state.logo === 'eigenes' && state.background !== saved.background);
+
+  const remember = () =>
+    pending.update((draft) => {
+      draft.logo = dirty() ? { logo: state.logo, background: state.background, ...(newImage ? { image: newImage } : {}) } : null;
+    });
+
   return {
     /** Alle Designs (ohne „eigenes“) mit Beschriftung */
     designs: LOGO_DESIGNS,
@@ -94,54 +102,39 @@ export function createLogo(ui: HTMLElement) {
       if (design === 'eigenes' && !fileUrl && !savedImage) return;
       state = { ...state, logo: design };
       show();
+      remember();
     },
     setBackground(background: 'hell' | 'ohne') {
       state = { ...state, background };
       show();
+      remember();
     },
-    /** Eigenes Bild wählen – wird sofort als Vorschau gezeigt */
-    upload(next: File) {
-      if (fileUrl) URL.revokeObjectURL(fileUrl);
-      file = next;
-      fileUrl = URL.createObjectURL(next);
+    /** Eigenes Bild wählen – verkleinert vormerken und sofort als Vorschau zeigen */
+    async upload(next: File) {
+      const base64 = await shrinkLogo(next);
+      newImage = `logo-${newId()}.png`;
+      await pending.putFile(imageFile(newImage), base64, 'image/png');
+      fileUrl = `data:image/png;base64,${base64}`;
       state = { ...state, logo: 'eigenes' };
       show();
+      remember();
     },
-    dirty: () => Boolean(file) || state.logo !== saved.logo || (state.logo === 'eigenes' && state.background !== saved.background),
-    discard() {
-      if (!this.dirty()) return;
-      file = null;
-      if (fileUrl) URL.revokeObjectURL(fileUrl);
-      fileUrl = '';
-      state = { ...saved };
-      const el = current();
-      if (el && original) el.replaceWith(original.cloneNode(true));
-    },
-    async save() {
-      if (!this.dirty()) return;
-      let image = '';
-      if (state.logo === 'eigenes' && file) {
-        const name = `logo-${Date.now().toString(36)}.png`;
-        const response = await fetch(`/api/edit/logo-bild/?name=${encodeURIComponent(name)}`, {
-          method: 'PUT',
-          headers: { 'Content-Type': 'text/plain' },
-          body: await shrinkLogo(file),
-        });
-        const result = await response.json();
-        if (!response.ok || !result.ok) throw new Error(result.error || 'Logo konnte nicht hochgeladen werden.');
-        image = name;
+    /** Vorgemerktes Logo zeigen (beim Start auf jeder Seite) */
+    async applyPending() {
+      const change = pending.get().logo;
+      if (!change) return;
+      if (change.image) {
+        fileUrl = (await pending.fileUrl(imageFile(change.image))) ?? '';
+        newImage = fileUrl ? change.image : '';
       }
-      const response = await fetch('/api/edit/logo/', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ logo: state.logo, ...(image ? { image } : {}), background: state.background }),
-      });
-      const result = await response.json();
-      if (!response.ok || !result.ok) throw new Error(result.error || 'Logo konnte nicht gespeichert werden.');
-      // Vorschau bleibt stehen, bis der Build das neue Logo ausliefert
-      file = null;
+      if (change.logo === 'eigenes' && !fileUrl && !savedImage) return;
+      state = { logo: change.logo as LogoDesign, image: '', background: change.background };
+      show();
+    },
+    /** Nach dem Speichern: der vorgemerkte Stand gilt als gespeichert (die Vorschau bleibt bis zum Build stehen) */
+    committed() {
+      newImage = '';
       saved = { ...state };
-      original = current()?.cloneNode(true) as HTMLElement | undefined;
     },
   };
 }

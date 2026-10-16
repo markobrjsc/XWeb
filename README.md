@@ -102,10 +102,18 @@ von unten); oben rechts darin „Einklappen“ und „Schließen“. Alles, was 
   Helligkeit) werden berechnet, die Vorschau gilt sofort für alle Elemente, die die Farben nutzen
   (`src/scripts/editor/colors.ts` → `src/styles/custom-colors.css`).
 
+**Vormerken statt sofort speichern:** Jede Änderung – Texte, Gestaltung, Elemente, Farben, Logo, Kopfbilder, Galerien,
+Projekte anlegen/löschen, Zertifikate – wird nur im Browser vorgemerkt (`src/scripts/editor/pending.ts`: Angaben im
+localStorage, neue Bilder/PDFs in IndexedDB) und sofort auf der Seite gezeigt. Die Vormerkungen überstehen
+Seitenwechsel, Vorschau und Neuladen; jede Seite spielt sie beim Laden wieder ein. „Verwerfen“ löscht alle.
+
 **Seiten wechseln:** Strg + Klick (Mac: ⌘ + Klick) auf einen Link oder „Seite öffnen“ bei einem ausgewählten Link –
-der Bearbeiten-Modus bleibt offen (Reiter und eingeklappte Leiste werden übernommen). Ungespeicherte Änderungen
-werden vorher gespeichert (Rückfrage). Das Hand-Symbol unten (oder Alt + Klick) schaltet auf „Seite bedienen“ –
-z. B. um Reiter zu wechseln.
+der Bearbeiten-Modus bleibt offen (Reiter und eingeklappte Leiste werden übernommen), Vormerkungen bleiben erhalten.
+Alt + Klick bedient einzelne Dinge direkt (z. B. einen Reiter wechseln).
+
+**Vorschau** (Knopf unten neben „Speichern“): die Seite wie live, mit allen Vormerkungen, ohne Leiste und
+Bearbeiten-Hilfen – Galerien, Reiter, Projekte und Links funktionieren normal, auch Seitenwechsel. Unten links bleibt
+eine kleine Leiste mit „Bearbeiten“ und „Speichern“.
 
 **Logo in der Kopfzeile** anklicken → Inhalt: sechs Designs mit Vorschau (Standard, Schriftband – das längliche Logo
 mit Band in der Akzentfarbe –, Namens-Label, Schriftzug, Monogramm, Maskottchen) oder ein eigenes Bild hochladen
@@ -114,12 +122,14 @@ Gespeichert in `src/content/brand.json`, eigene Bilder in `src/assets/brand/eige
 `src/components/layout/HeaderLogo.astro`.
 
 **Zertifikate** (Leistungen) anklicken → „Zertifikate bearbeiten“: PDFs hinzufügen, sortieren, aus-/einblenden,
-Titel/Aussteller/Jahr ändern. Gespeichert direkt im Dialog: PDFs nach `src/assets/zertifikate/`, Reihenfolge und
-Angaben in `zertifikate.json` (`"hidden": true` blendet aus); die Seitenbilder erzeugt der Build.
+Titel/Aussteller/Jahr ändern, „Übernehmen“ merkt vor. Beim Speichern: PDFs nach `src/assets/zertifikate/`, Reihenfolge
+und Angaben in `zertifikate.json` (`"hidden": true` blendet aus); die Seitenbilder erzeugt der Build.
 
-**Speichern** schreibt Texte (`src/content/edits.json`), Gestaltung (`src/content/spacing.json` →
-`scripts/build-spacing.mjs`), Elemente (`src/content/blocks.json`), Farben und Logo als Commit auf `main`; Kopfbilder,
-Galerien, Zertifikate und neue Projekte speichern direkt in ihren Dialogen.
+**Speichern** übernimmt alle Vormerkungen – auch die anderer Seiten – in **einem Commit** auf `main`, Cloudflare baut
+also genau einmal (`src/scripts/editor/save.ts` → `POST /api/edit/speichern/`): neue Bilder und PDFs werden vorher als
+Git-Blobs hochgeladen; Texte (`src/content/edits.json`), Gestaltung (`src/content/spacing.json` →
+`scripts/build-spacing.mjs`), Elemente (`src/content/blocks.json`), Farben, Logo, Kopfbilder, Galerien, Zertifikate und
+Projekte gehen zusammen. Hat sich `main` gerade bewegt, wiederholt der Worker das auf dem neuen Stand.
 Code: `src/components/debug/EditMode.astro` (Leiste), `src/scripts/editor/` (Auswahl, Inspektor, Element-Katalog
 `kinds.ts`, Texte, Gestaltung, Farben, Logo, Zertifikate, Fotos, Projekte), `src/scripts/block-editor.ts` (Elemente),
 Server: `worker/edit.ts`.
